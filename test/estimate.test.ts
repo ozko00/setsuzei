@@ -202,6 +202,7 @@ describe("配偶者控除・配偶者特別控除", () => {
     assert.deepEqual(spouseDeduction(9_000_001, 0), [260_000, 220_000]);
     assert.deepEqual(spouseDeduction(9_500_001, 0), [130_000, 110_000]);
     assert.deepEqual(spouseDeduction(10_000_001, 0), [0, 0]);
+    // 所得要件 62 万円以下（所得税: No.1191、住民税: 地方税法 第292条第1項第7号 令和9年度分から）
     assert.deepEqual(spouseDeduction(5_000_000, 620_000), [380_000, 330_000]);
     assert.deepEqual(spouseDeduction(5_000_000, 0, true), [480_000, 380_000]);
     assert.deepEqual(spouseDeduction(9_200_000, 0, true), [320_000, 260_000]);
@@ -395,6 +396,17 @@ describe("ふるさと納税（総務省 ふるさと納税ポータルサイト
     assert.equal(special(8_000_000), 6_651);
     // 合計所得 1,000 万円: 957 万 − 19 万 = 938 万円 → 33% → 56.307%
     assert.equal(special(10_000_000), 5_630);
+  });
+
+  it("特例分の割合は地方税法 附則第5条の6 の読替え後の割合と一致する", () => {
+    // 附則第5条の6: 85% → 84.895%、80% → 79.79%、70% → 69.58%、67% → 66.517%、
+    // 57% → 56.307%、50% → 49.16%、45% → 44.055%
+    const statutory = [84_895, 79_790, 69_580, 66_517, 56_307, 49_160, 44_055];
+    const rule = data.residentTax.donation;
+    const computed = rule.specialRateBrackets.map(
+      (b) => (100 - rule.basicRatePercent) * 1_000 - b.value * (1_000 + data.incomeTax.reconstructionPermille),
+    );
+    assert.deepEqual(computed, statutory);
   });
 
   it("所得割額が 0 なら上限も 0", () => {

@@ -52,8 +52,13 @@ export const taxYear2026: TaxYearData = {
     // 控除対象配偶者の合計所得金額: 62 万円以下（令和 8 年分から）
     // 出典: 国税庁 No.1191 配偶者控除
     // https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1191.htm
-    // 住民税（令和 9 年度）も同一生計配偶者の所得要件は 62 万円
-    // 出典: 江戸川区「令和9年度 税制改正の住民税における主な改正点」
+    // 住民税も、同一生計配偶者・扶養親族の所得要件は令和 9 年度分から 62 万円以下
+    // 出典: 地方税法 第292条第1項第7号・第9号（令和 9 年 1 月 1 日施行の条文）と、
+    //       地方税法等の一部を改正する法律（令和8年法律第2号）附則第3条第2項・第11条第2項
+    //       （令和 9 年度以後の年度分の個人住民税から適用）
+    // https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002
+    // （API: https://laws.e-gov.go.jp/api/2/law_data/325AC0000000226?asof=2027-01-01）
+    // 参考: 江戸川区「令和9年度 税制改正の住民税における主な改正点」
     // https://www.city.edogawa.tokyo.jp/e013/kurashi/zeikin/juminzei/r9kaisei.html
     spouseDeductionIncomeLimit: 62 * MAN,
     // 配偶者特別控除の対象: 62 万円超 133 万円以下
@@ -210,13 +215,21 @@ export const taxYear2026: TaxYearData = {
     // 寄附金税額控除（ふるさと納税）
     // 出典: 総務省 ふるさと納税ポータルサイト「税金の控除について」
     // https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/furusato/mechanism/deduction.html
-    // 出典: 地方税法 第314条の7第1項・第11項
+    // 出典: 地方税法 第314条の7第1項・第11項（道府県民税は第37条の2）
+    // 出典: 地方税法 附則第5条の6（復興特別所得税を織り込んだ特例分の割合。
+    //       85% → 84.895%、80% → 79.79%、70% → 69.58%、67% → 66.517%、57% → 56.307%、
+    //       50% → 49.16%、45% → 44.055%。令和 20 年度分まで）
+    //
+    // 令和 9 年 1 月 1 日施行の改正で、特例分に定額の上限（道府県民税 77 万 2 千円 +
+    // 市町村民税 115 万 8 千円 = 193 万円）が加わるが、適用は令和 10 年度分（2027 年中の寄附）から
+    // （令和8年法律第2号 附則第3条第9項・第11条第8項）。令和 9 年度分には適用がないので入れていない。
     donation: {
       floor: 2_000,
       basicRatePercent: 10,
       incomeCapPercent: 30,
       specialCapPercent: 20,
-      // 第314条の7第11項第1号の表（85% = 100% − 10% − 5% …）に対応する所得税率
+      // 第314条の7第11項第1号の表（85% = 100% − 10% − 5% …）に対応する所得税率。
+      // 計算では 100% − 10% − 所得税率 × 1.021 とし、附則第5条の6 の割合と一致する（テストで確認）。
       specialRateBrackets: [
         { upTo: 195 * MAN, value: 5 },
         { upTo: 330 * MAN, value: 10 },
@@ -307,15 +320,20 @@ export const sources2026: readonly Source[] = [
     url: "https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/furusato/mechanism/deduction.html",
   },
   {
-    title: "e-Gov 地方税法（第20条の4の2、第314条の2、第314条の3、第314条の6、第314条の7）",
+    title: "e-Gov 地方税法（第20条の4の2、第314条の2、第314条の3、第314条の6、第314条の7、附則第5条の6）",
     url: "https://laws.e-gov.go.jp/law/325AC0000000226",
+  },
+  {
+    title:
+      "e-Gov 地方税法 令和9年1月1日施行の条文（第292条第1項第7号・第9号: 配偶者・扶養親族の所得要件 62 万円）と令和8年法律第2号 附則",
+    url: "https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002",
   },
   {
     title: "e-Gov 復興財源確保法（第13条）",
     url: "https://laws.e-gov.go.jp/law/423AC0000000117",
   },
   {
-    title: "江戸川区 令和9年度 税制改正の住民税における主な改正点",
+    title: "江戸川区 令和9年度 税制改正の住民税における主な改正点（給与収入への換算の参考）",
     url: "https://www.city.edogawa.tokyo.jp/e013/kurashi/zeikin/juminzei/r9kaisei.html",
   },
   {

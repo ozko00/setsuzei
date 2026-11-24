@@ -204,6 +204,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 - 住民税の「その他の所得控除」は、指定がなければ所得税と同額とします（実際は生命保険料控除などで額が違います。`--other-deductions-resident` で指定できます）。
 - 税額の端数は、所得税 + 復興特別所得税、住民税の所得割とも 100 円未満を切り捨てます。源泉徴収や予定納税との精算前の年税額です。
 - ふるさと納税の上限は「住民税所得割額 × 20% ÷（90% − 所得税率 × 1.021）+ 2,000 円」を 1,000 円未満切り捨てにした目安で、確定申告をする前提です（ワンストップ特例は扱いません）。ふるさと納税以外の寄附金は扱いません。
+- ふるさと納税の特例分に定額の上限（193 万円）を設ける改正は、令和10年度分の住民税（2027 年中の寄附）からの適用なので、令和8年分の計算には入れていません。
 - iDeCo の年間上限は、給与収入がなければ国民年金第1号被保険者（月額 68,000 円 × 12）、給与収入があれば「企業年金のない会社員」（月額 23,000 円 × 12）と仮定します。企業年金がある方・公務員の方は `--ideco-limit` で指定してください。2026 年 12 月施行の限度額引上げは、12 月分の掛金が翌年 1 月の納付になるため、令和8年分には反映していません。
 - 小規模企業共済は「掛金月額の上限 70,000 円 × 12 か月」を年間の上限とし、給与収入がある場合・雑所得の場合は対象外として計算しません。加入資格の判定はしません。
 - 青色申告の区分の比較は税額の差だけを出します。その区分の要件（承認申請、複式簿記、e-Tax など）を満たせるかは判定しません。
@@ -227,7 +228,9 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 | 住民税の税率・均等割・森林環境税 | [総務省 個人住民税](https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/150790_06.html) |
 | ふるさと納税（住民税） | [総務省 ふるさと納税ポータルサイト](https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/furusato/mechanism/deduction.html) |
 | 住民税の所得控除・調整控除・寄附金税額控除・端数処理 | [地方税法](https://laws.e-gov.go.jp/law/325AC0000000226) 第20条の4の2、第314条の2、第314条の3、第314条の6、第314条の7 |
-| 令和9年度住民税の改正点（扶養の所得要件など） | [江戸川区 令和9年度 税制改正の住民税における主な改正点](https://www.city.edogawa.tokyo.jp/e013/kurashi/zeikin/juminzei/r9kaisei.html) |
+| ふるさと納税の特例分の割合（復興特別所得税を織り込んだ 84.895% など） | [地方税法](https://laws.e-gov.go.jp/law/325AC0000000226) 附則第5条の6 |
+| 住民税の配偶者・扶養親族の所得要件 62 万円（令和9年度分から） | [地方税法 令和9年1月1日施行の条文](https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002) 第292条第1項第7号・第9号、令和8年法律第2号 附則第3条第2項・第11条第2項 |
+| 令和9年度住民税の改正点（給与収入への換算の参考） | [江戸川区 令和9年度 税制改正の住民税における主な改正点](https://www.city.edogawa.tokyo.jp/e013/kurashi/zeikin/juminzei/r9kaisei.html) |
 | iDeCo の拠出限度額 | [厚生労働省 2026年12月からiDeCoがパワーアップ！](https://www.mhlw.go.jp/web_magazine/column/20261020.html)、[iDeCo公式サイト](https://www.ideco-koushiki.jp/start/) |
 | 小規模企業共済の掛金・加入資格 | 中小機構 [掛金](https://kyosai-web.smrj.go.jp/customer/skyosai/installment/index.html)、[加入資格](https://kyosai-web.smrj.go.jp/skyosai/entry/index_02.html) |
 
