@@ -80,8 +80,25 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
   if (m.ideco.applicable) rows.push(contributionRow("iDeCo", m.ideco));
   if (m.kyosai.applicable) rows.push(contributionRow("小規模企業共済", m.kyosai));
   if (rows.length > 1) out.push(...table(rows));
-  out.push("  ※ それぞれ単独で実行した場合の軽減額です。組み合わせると合計は単純な足し算より小さくなることがあります。");
+  out.push("  ※ それぞれ単独で実行した場合の軽減額です。まとめて実行した場合の合計は下の「全部やった場合」を見てください。");
   out.push("");
+
+  const c = m.combined;
+  if (c.totalPayment > 0) {
+    out.push("  ◆ 全部やった場合（ふるさと納税 + iDeCo + 小規模企業共済）");
+    const parts: string[][] = [];
+    if (c.furusatoAdditional > 0) parts.push(["ふるさと納税の追加", yen(c.furusatoAdditional)]);
+    if (c.idecoAdditional > 0) parts.push(["iDeCo の追加", yen(c.idecoAdditional)]);
+    if (c.kyosaiAdditional > 0) parts.push(["小規模企業共済の追加", yen(c.kyosaiAdditional)]);
+    parts.push(["追加で支払う額の合計", yen(c.totalPayment)]);
+    parts.push(["税額の合計（実行後）", yen(c.totalTax)]);
+    parts.push(["減る税額の合計", yen(c.saving.total)]);
+    parts.push(["　うち所得税", yen(c.saving.incomeTax)]);
+    parts.push(["　うち住民税", yen(c.saving.residentTax)]);
+    out.push(...table(parts, "    "));
+    out.push(...bullet(c.notes));
+    out.push("");
+  }
 
   out.push("  ◆ ふるさと納税");
   if (f.limit > 0) {
@@ -103,25 +120,25 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
   out.push(...bullet(f.notes));
   out.push("");
 
-  for (const [name, c] of [
+  for (const [name, k] of [
     ["iDeCo（個人型確定拠出年金）", m.ideco],
     ["小規模企業共済", m.kyosai],
   ] as const) {
     out.push(`  ◆ ${name}`);
-    if (c.applicable) {
+    if (k.applicable) {
       out.push(
         ...table(
           [
-            ["年間上限", yen(c.annualLimit)],
-            ["支払済み", yen(c.paid)],
-            ["残り枠", yen(c.remaining)],
-            [`${yen(c.additional)}を追加した場合の軽減額`, yen(c.saving.total)],
+            ["年間上限", yen(k.annualLimit)],
+            ["支払済み", yen(k.paid)],
+            ["残り枠", yen(k.remaining)],
+            [`${yen(k.additional)}を追加した場合の軽減額`, yen(k.saving.total)],
           ],
           "    ",
         ),
       );
     }
-    out.push(...bullet(c.notes));
+    out.push(...bullet(k.notes));
     out.push("");
   }
 

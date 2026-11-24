@@ -42,9 +42,11 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "test": "tsc -p tsconfig.test.json && node --test .test-dist/test/*.test.js",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "build:site": "tsc -p tsconfig.web.json",
+    "serve:site": "python3 -m http.server 8080 --bind 127.0.0.1 --directory docs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

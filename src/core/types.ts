@@ -160,6 +160,23 @@ export interface ContributionMeasure {
   readonly notes: readonly string[];
 }
 
+/** ふるさと納税・iDeCo・小規模企業共済をまとめて実行した場合 */
+export interface CombinedMeasure {
+  /** iDeCo に追加する額（measures.ideco.additional と同じ） */
+  readonly idecoAdditional: number;
+  /** 小規模企業共済に追加する額（measures.kyosai.additional と同じ。対象外なら 0） */
+  readonly kyosaiAdditional: number;
+  /** 掛金を追加した後の上限まで寄附する場合の、ふるさと納税の追加額 */
+  readonly furusatoAdditional: number;
+  /** 追加で支払う額の合計 */
+  readonly totalPayment: number;
+  /** 3 つをまとめて実行した場合の税額（まとめて再計算した値） */
+  readonly totalTax: number;
+  /** 現状からの軽減額（まとめて再計算した値。各策の軽減額の単純な合計ではない） */
+  readonly saving: Saving;
+  readonly notes: readonly string[];
+}
+
 export interface BlueReturnOption {
   readonly level: BlueReturn;
   /** 控除額の枠（10 万 / 55 万 / 65 万） */
@@ -195,6 +212,8 @@ export interface SetsuzeiResult {
     readonly ideco: ContributionMeasure;
     readonly kyosai: ContributionMeasure;
     readonly blueReturn: BlueReturnMeasure;
+    /** ふるさと納税・iDeCo・小規模企業共済をまとめて実行した場合（青色申告の区分は現在のまま） */
+    readonly combined: CombinedMeasure;
   };
   /** 計算上の注意（入力に応じて出るもの） */
   readonly warnings: readonly string[];

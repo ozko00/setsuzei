@@ -72,6 +72,7 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 | ふるさと納税の上限の目安・残り | `measures.furusato.limit` / `.remaining` |
 | 上限まで寄附した場合に追加で減る税額・自己負担 | `measures.furusato.saving` / `.outOfPocket` |
 | iDeCo・共済も実行した場合のふるさと納税の上限 | `measures.furusato.limitAfterOtherMeasures` |
+| 3つ（ふるさと納税・iDeCo・共済）を全部やった場合の軽減額の合計と、追加で支払う額 | `measures.combined.saving` / `.totalPayment` |
 | iDeCo の残り枠と軽減額 | `measures.ideco.remaining` / `.saving` |
 | 小規模企業共済の残り枠と軽減額 | `measures.kyosai.remaining` / `.saving` |
 | 青色申告の区分ごとの税額と現在との差 | `measures.blueReturn.options[]` |
@@ -82,7 +83,7 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 
 1. 現状の税額の見込み（所得税・住民税・合計）。
 2. 策ごとに「いくら払うと、いくら減るか」。軽減額の大きい順に並べる。各策の `notes` にある条件や期限の注意を落とさずに伝える。
-3. 組み合わせの注意: 各策の軽減額は単独で実行した場合のもの。iDeCo や共済を増やすとふるさと納税の上限は下がる（`limitAfterOtherMeasures`）。合計を単純に足さない。
+3. 組み合わせ: 各策の軽減額は単独で実行した場合のもの。全部やった場合の合計は `measures.combined.saving` を使う（各策の軽減額を自分で足さない）。iDeCo や共済を増やすとふるさと納税の上限は下がる（`limitAfterOtherMeasures`）ことも伝える。
 4. iDeCo と小規模企業共済は「税が減る」だけでなく資金が原則として長期間引き出せなくなること、ふるさと納税は税の前払いに近く手取りが増えるわけではないことを添える。
 5. `warnings` があれば伝える。
 6. 概算であること・税理士や税務署の判断に代わらないことを最後に添える。根拠を聞かれたら `setsuzei --sources` の一覧を示す。

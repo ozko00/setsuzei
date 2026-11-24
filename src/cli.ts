@@ -4,7 +4,7 @@ import { parseArgs } from "node:util";
 import { calculate } from "./core/calculate.js";
 import type { TaxInput } from "./core/types.js";
 import { InputError, validateInput } from "./core/validate.js";
-import { parseAmount } from "./cli/amount.js";
+import { flagsToInput, INPUT_BOOLEAN_FLAGS, INPUT_STRING_FLAGS } from "./cli/flags.js";
 import { formatResult } from "./cli/format.js";
 import { askInteractively } from "./cli/interactive.js";
 import { DEFAULT_YEAR, getSources, supportedYears } from "./data/index.js";
@@ -63,37 +63,8 @@ const HELP = `setsuzei ${VERSION}
 結果は概算です。税理士や税務署・市区町村の判断に代わるものではありません。
 `;
 
-const AMOUNT_FLAGS = {
-  salary: "salaryRevenue",
-  revenue: "businessRevenue",
-  expenses: "businessExpenses",
-  "social-insurance": "socialInsurance",
-  "ideco-paid": "idecoPaid",
-  "ideco-limit": "idecoAnnualLimit",
-  "ideco-add": "idecoAdditional",
-  "kyosai-paid": "kyosaiPaid",
-  "kyosai-add": "kyosaiAdditional",
-  "furusato-paid": "furusatoPaid",
-  "other-deductions": "otherDeductions",
-  "other-deductions-resident": "otherDeductionsResident",
-} as const;
-
-const DEPENDENT_FLAGS = {
-  dependents: "general",
-  "dependents-specific": "specific",
-  "dependents-elderly": "elderly",
-  "dependents-elderly-cohabiting": "elderlyCohabiting",
-} as const;
-
-const STRING_FLAGS = [
-  ...Object.keys(AMOUNT_FLAGS),
-  ...Object.keys(DEPENDENT_FLAGS),
-  "spouse-income",
-  "blue",
-  "year",
-  "input",
-] as const;
-const BOOLEAN_FLAGS = ["misc", "spouse-70", "json", "sources", "interactive", "help", "version"] as const;
+const STRING_FLAGS = [...INPUT_STRING_FLAGS, "input"] as const;
+const BOOLEAN_FLAGS = [...INPUT_BOOLEAN_FLAGS, "json", "sources", "interactive", "help", "version"] as const;
 
 type Flags = Partial<Record<(typeof STRING_FLAGS)[number], string>> &
   Partial<Record<(typeof BOOLEAN_FLAGS)[number], boolean>>;
@@ -110,43 +81,6 @@ function parseFlags(argv: readonly string[]): Flags {
   } catch (error) {
     throw new InputError([`${error instanceof Error ? error.message : String(error)}（--help で使い方を表示）`]);
   }
-}
-
-/** フラグを TaxInput の形（検証前）にする。 */
-function flagsToInput(flags: Flags): Record<string, unknown> {
-  const issues: string[] = [];
-  const input: Record<string, unknown> = {};
-  const amountOf = (flag: string, text: string): number | undefined => {
-    const value = parseAmount(text);
-    if (value === null) issues.push(`--${flag}: 金額として読めません（${JSON.stringify(text)}）`);
-    return value ?? undefined;
-  };
-
-  for (const [flag, key] of Object.entries(AMOUNT_FLAGS)) {
-    const text = flags[flag as keyof typeof AMOUNT_FLAGS];
-    if (text !== undefined) input[key] = amountOf(flag, text);
-  }
-  const dependents: Record<string, unknown> = {};
-  for (const [flag, key] of Object.entries(DEPENDENT_FLAGS)) {
-    const text = flags[flag as keyof typeof DEPENDENT_FLAGS];
-    if (text === undefined) continue;
-    if (/^\d+$/.test(text.trim())) dependents[key] = Number(text.trim());
-    else issues.push(`--${flag}: 人数を整数で指定してください（${JSON.stringify(text)}）`);
-  }
-  if (Object.keys(dependents).length > 0) input["dependents"] = dependents;
-
-  if (flags["spouse-income"] !== undefined) {
-    const income = amountOf("spouse-income", flags["spouse-income"]);
-    input["spouse"] = { income, ...(flags["spouse-70"] ? { age70OrOlder: true } : {}) };
-  } else if (flags["spouse-70"]) {
-    issues.push("--spouse-70: --spouse-income と一緒に指定してください");
-  }
-  if (flags.misc) input["businessIncomeType"] = "misc";
-  if (flags.blue !== undefined) input["blueReturn"] = flags.blue;
-  if (flags.year !== undefined) input["year"] = /^\d+$/.test(flags.year) ? Number(flags.year) : flags.year;
-
-  if (issues.length > 0) throw new InputError(issues);
-  return input;
 }
 
 function readJsonInput(path: string): Record<string, unknown> {

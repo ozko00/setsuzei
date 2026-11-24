@@ -63,6 +63,40 @@ describe("calculate: 節税策ごとの軽減額", () => {
     assert.ok(f.outOfPocket > 2_000);
   });
 
+  it("全部やった場合: まとめて再計算した軽減額（単純な足し算ではない）", () => {
+    const r = calculate({ ...freelancer, idecoPaid: 276_000, furusatoPaid: 30_000 });
+    const { combined, furusato, ideco, kyosai } = r.measures;
+    // 掛金 540,000 + 840,000 円を追加すると、ふるさと納税の上限は 123,000 → 73,000 円に下がる
+    assert.equal(furusato.limit, 123_000);
+    assert.equal(furusato.limitAfterOtherMeasures, 73_000);
+    assert.equal(combined.idecoAdditional, 540_000);
+    assert.equal(combined.kyosaiAdditional, 840_000);
+    assert.equal(combined.furusatoAdditional, 43_000);
+    assert.equal(combined.totalPayment, 1_423_000);
+    // 所得税: 課税所得 5,850,000 − 670,000 − 900,000 − 276,000 − 1,380,000 − 71,000 = 2,553,000 円
+    //   → 2,553,000 × 10% − 97,500 = 157,800 円、復興特別所得税 3,313 円 → 161,100 円（現状 375,400 円）
+    assert.equal(combined.saving.incomeTax, 375_400 - 161_100);
+    // 住民税: 課税所得 5,850,000 − 430,000 − 900,000 − 276,000 − 1,380,000 = 2,864,000 円
+    //   → 286,400 − 調整控除 2,500 = 283,900 円。寄附 73,000 円の控除: 基本分 7,100 円、
+    //   特例分 71,000 × 79.79% = 56,650 円（上限 283,900 × 20% = 56,780 円以内）
+    //   → 283,900 − 63,750 = 220,150 → 220,100 円 + 5,000 円 = 225,100 円（現状 404,600 円）
+    assert.equal(combined.saving.residentTax, 404_600 - 225_100);
+    assert.equal(combined.saving.total, 393_800);
+    assert.equal(combined.totalTax, r.baseline.totalTax - combined.saving.total);
+    // 各策を単独で実行した場合の軽減額の合計（93,000 + 164,300 + 241,700 = 499,000 円）より小さい
+    const naive = furusato.saving.total + ideco.saving.total + kyosai.saving.total;
+    assert.equal(naive, 499_000);
+    assert.ok(combined.saving.total < naive);
+  });
+
+  it("全部やった場合: 税額がなければ軽減額 0。策が 1 つだけならその策の軽減額と一致", () => {
+    assert.equal(calculate({}).measures.combined.saving.total, 0);
+    // 掛金の追加を 0 にすると、ふるさと納税だけを上限まで行う場合と同じ
+    const r = calculate({ ...freelancer, idecoAdditional: 0, kyosaiAdditional: 0 });
+    assert.deepEqual(r.measures.combined.saving, r.measures.furusato.saving);
+    assert.equal(r.measures.combined.furusatoAdditional, r.measures.furusato.remaining);
+  });
+
   it("青色申告特別控除: 10 万 / 55 万 / 65 万の差", () => {
     const r = calculate({ ...freelancer, blueReturn: "10" });
     const byLevel = Object.fromEntries(r.measures.blueReturn.options.map((o) => [o.level, o]));

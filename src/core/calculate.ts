@@ -5,6 +5,7 @@ import type {
   BlueReturn,
   BlueReturnMeasure,
   BlueReturnOption,
+  CombinedMeasure,
   ContributionMeasure,
   FurusatoMeasure,
   Saving,
@@ -206,6 +207,38 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     notes: furusatoNotes,
   };
 
+  // --- まとめて実行した場合 ---
+  // 掛金を増やすと住民税の所得割額が減り、ふるさと納税の上限も下がるので、
+  // 「掛金を追加した後の上限」まで寄附する前提でまとめて再計算する。
+  const combinedDonation = Math.max(limitAfterOtherMeasures, paid);
+  const combinedEstimate = estimate(data, {
+    ...base,
+    mutualAid: base.mutualAid + plannedExtra,
+    donation: combinedDonation,
+  });
+  const combinedNotes = [
+    "3 つをまとめて実行した場合の税額を計算し直した値です。各策の軽減額を足した額とは一致しません。",
+  ];
+  if (limitAfterOtherMeasures < limit) {
+    combinedNotes.push(
+      `ふるさと納税は、掛金を追加した後の上限の目安（${limitAfterOtherMeasures.toLocaleString("ja-JP")} 円）まで寄附する前提です。`,
+    );
+  }
+  if (paid > limitAfterOtherMeasures && plannedExtra > 0 && limit > 0) {
+    combinedNotes.push(
+      "寄附済みの額が、掛金を追加した後の上限の目安を超えます。超えた分は自己負担が増えるので、掛金の追加額とあわせて検討してください。",
+    );
+  }
+  const combined: CombinedMeasure = {
+    idecoAdditional: ideco.additional,
+    kyosaiAdditional: kyosai.additional,
+    furusatoAdditional: combinedDonation - paid,
+    totalPayment: plannedExtra + (combinedDonation - paid),
+    totalTax: combinedEstimate.totalTax,
+    saving: saving(baseline, combinedEstimate),
+    notes: combinedNotes,
+  };
+
   // --- 青色申告特別控除 ---
   let blueReturn: BlueReturnMeasure;
   if (!hasBusiness || !isBusinessIncome) {
@@ -270,7 +303,7 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     residentTaxLabel: data.residentTaxLabel,
     input: normalized,
     baseline,
-    measures: { furusato, ideco, kyosai, blueReturn },
+    measures: { furusato, ideco, kyosai, blueReturn, combined },
     warnings,
     disclaimer: DISCLAIMER,
   };
