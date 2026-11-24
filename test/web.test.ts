@@ -38,6 +38,7 @@ const CASES: readonly (readonly string[])[] = [
   ["--revenue", "3000000", "--expenses", "500000", "--blue", "10", "--social-insurance", "400000", "--kyosai-paid", "120000", "--kyosai-add", "10万", "--ideco-add", "5万", "--other-deductions", "8万"],
   ["--revenue", "2500万", "--expenses", "300万", "--blue", "55", "--social-insurance", "150万", "--furusato-paid", "100万", "--dependents-elderly", "1"],
   ["--salary", "150万"],
+  ["--revenue", "800万", "--expenses", "150万", "--blue", "55", "--social-insurance", "90万", "--nhi-rate", "11.5"],
 ];
 
 describe("ブラウザ版: CLI と同じ入力で同じ数字になる", () => {

@@ -88,19 +88,21 @@
       <input name="ideco-add" inputmode="numeric"></label>
     <label>小規模企業共済に追加する額<span class="sub">空欄なら年間上限までの残り枠</span>
       <input name="kyosai-add" inputmode="numeric"></label>
+    <label>国民健康保険料の所得割率（%）<span class="sub">医療分・支援金分・介護分などの合計。入れると、青色申告の区分による翌年度の国保料（所得割）の差の目安を出します</span>
+      <input name="nhi-rate" inputmode="decimal" placeholder="例: 11.5"></label>
   </details>
 
   <button type="reset" class="link">入力を消す</button>
 </form>
 
-<div class="results">
+<div class="results" id="results">
   <h2>結果</h2>
   <div id="result" aria-live="polite"></div>
 
   <section class="card disclaimer">
     <h3>この結果について</h3>
     <p><strong>概算です。</strong>入力値と簡略化した前提にもとづく目安で、実際の税額は申告内容やお住まいの自治体によって変わります。税理士や税務署・市区町村の判断に代わるものではありません。重要な判断の前に、必ず専門家か所轄の窓口に確認してください。</p>
-    <p>計算していないもの: 国民健康保険料、個人事業税、消費税、住民税の非課税判定、分離課税の所得、住宅ローン控除など。各策の軽減額は、その策だけを実行した場合の額です。</p>
+    <p>計算していないもの: 国民健康保険料の全体額、個人事業税、消費税、住民税の非課税判定、分離課税の所得、住宅ローン控除など。各策の軽減額は、その策だけを実行した場合の額です。</p>
     <details>
       <summary>根拠にした一次情報</summary>
       <ul id="sources" class="sources"></ul>

@@ -31,6 +31,7 @@ const KNOWN_KEYS = new Set([
     "blueReturn",
     "spouse",
     "dependents",
+    "nhiIncomeRatePercent",
 ]);
 /** 金額として扱える上限（1 兆円）。桁の打ち間違いを弾く。 */
 const MAX_AMOUNT = 1_000_000_000_000;
@@ -73,6 +74,20 @@ export function validateInput(raw) {
         const value = checkAmount(raw[key], key, issues);
         if (value !== undefined)
             out[key] = value;
+    }
+    const nhiRate = raw["nhiIncomeRatePercent"];
+    if (nhiRate !== undefined && nhiRate !== null) {
+        // 小数第 3 位まで（0.001% 単位）。計算は整数で行う。
+        const ok = typeof nhiRate === "number" &&
+            Number.isFinite(nhiRate) &&
+            nhiRate > 0 &&
+            nhiRate <= 100 &&
+            Math.abs(nhiRate * 1_000 - Math.round(nhiRate * 1_000)) < 1e-6;
+        if (ok)
+            out.nhiIncomeRatePercent = nhiRate;
+        else {
+            issues.push(`nhiIncomeRatePercent: 0 より大きく 100 以下のパーセント（小数第3位まで。例: 11.5）で指定してください（受け取った値: ${JSON.stringify(nhiRate)}）`);
+        }
     }
     const type = raw["businessIncomeType"];
     if (type !== undefined && type !== null) {

@@ -47,6 +47,8 @@ const HELP = `setsuzei ${VERSION}
   --ideco-limit 金額             iDeCo の年間拠出限度額（省略時は就業形態から推定）
   --ideco-add 金額               iDeCo に追加する額（省略時は限度額までの残り枠）
   --kyosai-add 金額              小規模企業共済に追加する額（省略時は年間上限までの残り枠）
+  --nhi-rate パーセント          国民健康保険料の所得割の料率の合計（例: 11.5）。指定すると、
+                                 青色申告の区分による翌年度の国保料（所得割）の差の目安を出す
   --year 年                      年分（西暦）。対応: ${supportedYears().join(", ")}（既定 ${DEFAULT_YEAR}）
 
 出力:

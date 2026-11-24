@@ -53,6 +53,12 @@ export interface TaxInput {
   readonly otherDeductions?: number;
   /** その他の所得控除の合計（住民税）。省略時は otherDeductions と同額。 */
   readonly otherDeductionsResident?: number;
+  /**
+   * 国民健康保険料（税）の所得割の料率の合計（パーセント。例: 11.5）。
+   * 医療分・後期高齢者支援金分・介護分（40〜64 歳）などを足した率を、自治体の案内で確認して入れる。
+   * 指定したときだけ、所得が変わる策（青色申告特別控除）による翌年度の国保料の差の目安を出す。
+   */
+  readonly nhiIncomeRatePercent?: number;
   /** iDeCo に追加で拠出する額。省略時は限度額までの残り枠。 */
   readonly idecoAdditional?: number;
   /** 小規模企業共済に追加で支払う額。省略時は年間上限までの残り枠。 */
@@ -189,6 +195,25 @@ export interface BlueReturnOption {
   readonly current: boolean;
 }
 
+/** 国民健康保険料（税）の所得割への影響の目安。料率を入力したときだけ計算する。 */
+export interface NationalHealthInsuranceMeasure {
+  /** 入力された所得割の料率（パーセント） */
+  readonly ratePercent: number;
+  /** 所得割の算定基礎（総所得金額等 − 住民税の基礎控除）。現状の値。 */
+  readonly baseIncome: number;
+  /** 現状の所得割額の目安（賦課限度額・均等割・平等割・軽減は考慮しない） */
+  readonly incomeLevy: number;
+  /** 青色申告特別控除の区分ごとの所得割額の目安と、現在の区分との差（プラスは減額）。対象外なら空。 */
+  readonly blueReturnOptions: readonly {
+    readonly level: BlueReturn;
+    readonly baseIncome: number;
+    readonly incomeLevy: number;
+    readonly reductionVsCurrent: number;
+    readonly current: boolean;
+  }[];
+  readonly notes: readonly string[];
+}
+
 export interface BlueReturnMeasure {
   readonly applicable: boolean;
   readonly current: BlueReturn;
@@ -201,7 +226,7 @@ export interface SetsuzeiResult {
   readonly label: string;
   readonly residentTaxLabel: string;
   /** 正規化した入力（省略値を埋めたもの） */
-  readonly input: Required<Omit<TaxInput, "spouse" | "dependents" | "idecoAnnualLimit" | "idecoAdditional" | "kyosaiAdditional">> & {
+  readonly input: Required<Omit<TaxInput, "spouse" | "dependents" | "idecoAnnualLimit" | "idecoAdditional" | "kyosaiAdditional" | "nhiIncomeRatePercent">> & {
     readonly spouse: SpouseInput | null;
     readonly dependents: Required<DependentsInput>;
   };
@@ -214,6 +239,8 @@ export interface SetsuzeiResult {
     readonly blueReturn: BlueReturnMeasure;
     /** ふるさと納税・iDeCo・小規模企業共済をまとめて実行した場合（青色申告の区分は現在のまま） */
     readonly combined: CombinedMeasure;
+    /** 国民健康保険料への影響の目安。nhiIncomeRatePercent を指定しなければ null。 */
+    readonly nationalHealthInsurance: NationalHealthInsuranceMeasure | null;
   };
   /** 計算上の注意（入力に応じて出るもの） */
   readonly warnings: readonly string[];

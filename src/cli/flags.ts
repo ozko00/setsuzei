@@ -35,6 +35,7 @@ export const INPUT_STRING_FLAGS = [
   "spouse-income",
   "blue",
   "year",
+  "nhi-rate",
 ] as const;
 
 /** 真偽値の入力フラグの名前 */
@@ -71,6 +72,11 @@ export function flagsToInput(flags: InputFlags): Record<string, unknown> {
     input["spouse"] = { income, ...(flags["spouse-70"] ? { age70OrOlder: true } : {}) };
   } else if (flags["spouse-70"]) {
     issues.push("--spouse-70: --spouse-income と一緒に指定してください");
+  }
+  if (flags["nhi-rate"] !== undefined) {
+    const text = flags["nhi-rate"].trim().replace(/[%％]$/, "");
+    if (/^\d+(\.\d+)?$/.test(text)) input["nhiIncomeRatePercent"] = Number(text);
+    else issues.push(`--nhi-rate: パーセントの数値で指定してください（例: 11.5。受け取った値: ${JSON.stringify(flags["nhi-rate"])}）`);
   }
   if (flags.misc) input["businessIncomeType"] = "misc";
   if (flags.blue !== undefined) input["blueReturn"] = flags.blue;

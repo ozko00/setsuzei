@@ -140,6 +140,62 @@ describe("calculate: 節税策ごとの軽減額", () => {
   });
 });
 
+describe("calculate: 国民健康保険料（所得割）への影響の目安", () => {
+  // 所得割の算定基礎 = 総所得金額等 − 住民税の基礎控除 43 万円
+  // 出典: 地方税法 第703条の4第6項、国民健康保険法施行令 第29条の7第2項第4号
+  it("料率を入れなければ出さない", () => {
+    assert.equal(calculate(freelancer).measures.nationalHealthInsurance, null);
+  });
+
+  it("所得割額と、青色申告の区分による差", () => {
+    const nhi = calculate({ ...freelancer, blueReturn: "55", nhiIncomeRatePercent: 11.5 }).measures.nationalHealthInsurance;
+    assert.ok(nhi);
+    // 事業所得 800 万 − 150 万 − 55 万 = 595 万円 → 算定基礎 552 万円 × 11.5% = 634,800 円
+    assert.equal(nhi.baseIncome, 5_520_000);
+    assert.equal(nhi.incomeLevy, 634_800);
+    const byLevel = Object.fromEntries(nhi.blueReturnOptions.map((o) => [o.level, o]));
+    // 65 万円にすると所得が 10 万円減る → 10 万 × 11.5% = 11,500 円減
+    assert.equal(byLevel["65"]?.reductionVsCurrent, 11_500);
+    assert.equal(byLevel["55"]?.current, true);
+    assert.equal(byLevel["55"]?.reductionVsCurrent, 0);
+    // 白色にすると所得が 55 万円増える → 63,250 円増
+    assert.equal(byLevel["none"]?.reductionVsCurrent, -63_250);
+    assert.equal(byLevel["none"]?.incomeLevy, 698_050);
+  });
+
+  it("iDeCo・小規模企業共済・ふるさと納税の額は算定基礎に影響しない", () => {
+    const a = calculate({ ...freelancer, nhiIncomeRatePercent: 10.123 }).measures.nationalHealthInsurance;
+    const b = calculate({
+      ...freelancer,
+      nhiIncomeRatePercent: 10.123,
+      idecoPaid: 816_000,
+      kyosaiPaid: 840_000,
+      furusatoPaid: 100_000,
+      socialInsurance: 0,
+      otherDeductions: 500_000,
+    }).measures.nationalHealthInsurance;
+    assert.ok(a && b);
+    assert.equal(a.incomeLevy, b.incomeLevy);
+    // 585 万 − 43 万 = 542 万円 × 10.123% = 548,666.6 → 548,666 円
+    assert.equal(a.incomeLevy, 548_666);
+  });
+
+  it("所得が基礎控除以下なら 0。青色申告の対象外なら区分の比較は出さない", () => {
+    const low = calculate({ businessRevenue: 400_000, nhiIncomeRatePercent: 11.5 }).measures.nationalHealthInsurance;
+    assert.equal(low?.incomeLevy, 0);
+    const salaried = calculate({ salaryRevenue: 5_000_000, nhiIncomeRatePercent: 11.5 }).measures.nationalHealthInsurance;
+    assert.deepEqual(salaried?.blueReturnOptions, []);
+    assert.ok(salaried?.notes.some((n) => n.includes("勤務先の健康保険")));
+  });
+
+  it("料率は 0 より大きく 100 以下・小数第 3 位まで", () => {
+    for (const rate of [0, -1, 100.5, 11.2345, "11.5"]) {
+      assert.throws(() => calculate({ nhiIncomeRatePercent: rate } as never), InputError, String(rate));
+    }
+    assert.ok(calculate({ nhiIncomeRatePercent: 0.001 }).measures.nationalHealthInsurance);
+  });
+});
+
 describe("validateInput", () => {
   const issuesOf = (raw: unknown): readonly string[] => {
     try {

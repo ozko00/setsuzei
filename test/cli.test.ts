@@ -79,6 +79,16 @@ describe("CLI", () => {
     assert.equal(json.baseline.incomeTax.deductions.dependents, 630_000);
   });
 
+  it("--nhi-rate を付けたときだけ国民健康保険料の目安を出す", () => {
+    const base = ["--revenue", "800万", "--expenses", "150万", "--blue", "55", "--social-insurance", "90万"];
+    assert.doesNotMatch(run(base).stdout, /◆ 国民健康保険料/);
+    const r = run([...base, "--nhi-rate", "11.5%"]);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(r.stdout, /◆ 国民健康保険料（所得割 11\.5% として・翌年度の目安）/);
+    assert.match(r.stdout, /青色 65万円\s+623,300 円\s+11,500 円 減/);
+    assert.equal(run([...base, "--nhi-rate", "高い"]).code, 2);
+  });
+
   it("入力の誤りは終了コード 2。--json ならエラーも JSON", () => {
     const bad = run(["--revenue", "たくさん"]);
     assert.equal(bad.code, 2);

@@ -155,6 +155,31 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
   out.push(...bullet(m.blueReturn.notes));
   out.push("");
 
+  const nhi = m.nationalHealthInsurance;
+  if (nhi) {
+    out.push(`  ◆ 国民健康保険料（所得割 ${nhi.ratePercent}% として・翌年度の目安）`);
+    out.push(
+      ...table(
+        [
+          ["所得割の算定基礎（総所得金額等 − 基礎控除）", yen(nhi.baseIncome)],
+          ["所得割額の目安", yen(nhi.incomeLevy)],
+        ],
+        "    ",
+      ),
+    );
+    if (nhi.blueReturnOptions.length > 0) {
+      const nhiRows: string[][] = [["", "所得割額の目安", "現在との差"]];
+      for (const o of nhi.blueReturnOptions) {
+        const diff = o.reductionVsCurrent;
+        const diffText = o.current ? "（現在）" : diff >= 0 ? `${yen(diff)} 減` : `${yen(-diff)} 増`;
+        nhiRows.push([BLUE_LABEL[o.level], yen(o.incomeLevy), diffText]);
+      }
+      out.push(...table(nhiRows, "    "));
+    }
+    out.push(...bullet(nhi.notes));
+    out.push("");
+  }
+
   if (r.warnings.length > 0) {
     out.push("■ 注意");
     out.push(...r.warnings.map((w) => `  ・${w}`));
@@ -163,7 +188,7 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
 
   out.push("■ 免責");
   out.push(`  ${r.disclaimer}`);
-  out.push("  計算していないもの: 国民健康保険料、個人事業税、消費税、住民税の非課税判定、分離課税の所得、住宅ローン控除など。");
+  out.push("  計算していないもの: 国民健康保険料の全体額、個人事業税、消費税、住民税の非課税判定、分離課税の所得、住宅ローン控除など。");
   out.push("  根拠にした一次情報の一覧は `setsuzei --sources` で表示できます。");
   return out.join("\n");
 }

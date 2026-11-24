@@ -300,6 +300,10 @@ export const sources2026 = [
         url: "https://laws.e-gov.go.jp/law/423AC0000000117",
     },
     {
+        title: "e-Gov 国民健康保険法施行令（第29条の7: 保険料の所得割は基礎控除後の総所得金額等に按分。国民健康保険税は地方税法 第703条の4）",
+        url: "https://laws.e-gov.go.jp/law/333CO0000000362",
+    },
+    {
         title: "江戸川区 令和9年度 税制改正の住民税における主な改正点（給与収入への換算の参考）",
         url: "https://www.city.edogawa.tokyo.jp/e013/kurashi/zeikin/juminzei/r9kaisei.html",
     },

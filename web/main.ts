@@ -156,6 +156,25 @@ function renderResult(r: SetsuzeiResult): HTMLElement[] {
     ),
   );
 
+  const nhi = m.nationalHealthInsurance;
+  if (nhi) {
+    out.push(
+      card(
+        `国民健康保険料（所得割 ${nhi.ratePercent}%・翌年度の目安）`,
+        rows([
+          ["所得割の算定基礎", yen(nhi.baseIncome)],
+          ["所得割額の目安", yen(nhi.incomeLevy), "strong"],
+          ...nhi.blueReturnOptions.map((o) => {
+            const diff = o.reductionVsCurrent;
+            const text = o.current ? "現在" : diff >= 0 ? `${yen(diff)} 減` : `${yen(-diff)} 増`;
+            return [`${BLUE_LABEL[o.level]}（${yen(o.incomeLevy)}）`, text, o.current ? "current" : undefined] as const;
+          }),
+        ]),
+        notes(nhi.notes),
+      ),
+    );
+  }
+
   if (r.warnings.length > 0) out.push(card("注意", notes(r.warnings)));
   return out;
 }

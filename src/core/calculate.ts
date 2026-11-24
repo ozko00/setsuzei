@@ -8,6 +8,7 @@ import type {
   CombinedMeasure,
   ContributionMeasure,
   FurusatoMeasure,
+  NationalHealthInsuranceMeasure,
   Saving,
   SetsuzeiResult,
   TaxEstimate,
@@ -275,6 +276,44 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     blueReturn = { applicable: true, current: normalized.blueReturn, options, notes };
   }
 
+  // --- 国民健康保険料（税）の所得割への影響（料率が入力されたときだけ） ---
+  // 所得割は「総所得金額等 − 住民税の基礎控除」（基礎控除後の総所得金額等）に料率を掛ける。
+  // 出典: 地方税法 第703条の4第6項（国民健康保険税）、国民健康保険法施行令 第29条の7第2項第4号（保険料）
+  // 所得控除（iDeCo・小規模企業共済・社会保険料など）や税額控除（ふるさと納税）は算定基礎に影響しない。
+  let nationalHealthInsurance: NationalHealthInsuranceMeasure | null = null;
+  if (input.nhiIncomeRatePercent !== undefined) {
+    const ratePer100k = Math.round(input.nhiIncomeRatePercent * 1_000);
+    const levyOf = (e: TaxEstimate): { baseIncome: number; incomeLevy: number } => {
+      const baseIncome = Math.max(0, e.totalIncome - e.residentTax.deductions.basic);
+      return { baseIncome, incomeLevy: Math.floor((baseIncome * ratePer100k) / 100_000) };
+    };
+    const current = levyOf(baseline);
+    const nhiNotes = [
+      "翌年度の国民健康保険料（税）のうち、あなた自身の所得にかかる所得割だけの目安です。均等割・平等割、世帯のほかの加入者の分、賦課限度額、低所得世帯の軽減は考慮していません。",
+      "すでに賦課限度額に達している場合は、所得が減っても保険料は下がりません。料率や限度額は自治体と年度によって変わるので、お住まいの市区町村の案内で確認してください。",
+      "iDeCo・小規模企業共済の掛金やふるさと納税は、所得割の算定基礎（総所得金額等 − 基礎控除）を減らさないため、国民健康保険料は下がりません。",
+    ];
+    if (hasSalary) {
+      nhiNotes.push("勤務先の健康保険に加入している場合、国民健康保険料はかかりません。国民健康保険に加入している方だけ参考にしてください。");
+    }
+    nationalHealthInsurance = {
+      ratePercent: input.nhiIncomeRatePercent,
+      ...current,
+      blueReturnOptions: blueReturn.applicable
+        ? BLUE_LEVELS.map((level) => {
+            const option = levyOf(estimate(data, { ...base, blueDeduction: blueAmount(level) }));
+            return {
+              level,
+              ...option,
+              reductionVsCurrent: current.incomeLevy - option.incomeLevy,
+              current: level === normalized.blueReturn,
+            };
+          })
+        : [],
+      notes: nhiNotes,
+    };
+  }
+
   // --- 注意 ---
   const warnings: string[] = [];
   if (baseline.totalIncome === 0) {
@@ -303,7 +342,7 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     residentTaxLabel: data.residentTaxLabel,
     input: normalized,
     baseline,
-    measures: { furusato, ideco, kyosai, blueReturn, combined },
+    measures: { furusato, ideco, kyosai, blueReturn, combined, nationalHealthInsurance },
     warnings,
     disclaimer: DISCLAIMER,
   };
