@@ -332,8 +332,13 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
       warnings.push("配偶者の合計所得金額が 133 万円を超えるため、配偶者控除・配偶者特別控除は適用していません。");
     }
   }
-  if (normalized.salaryRevenue > 8_500_000) {
-    warnings.push("給与収入が 850 万円を超える場合の所得金額調整控除は計算に含めていません。");
+  if (normalized.salaryRevenue > data.salary.incomeAdjustment.revenueAbove && !normalized.incomeAdjustment) {
+    // 適用していないときだけ案内する（16 歳未満・16〜18 歳の子は入力から判別できないため）
+    warnings.push(
+      "給与収入が 850 万円を超えています。23 歳未満の扶養親族（16 歳未満の子を含む）か特別障害者がいる場合は、" +
+        "所得金額調整控除の対象です。今回は計算に含めていません。該当する場合は指定してください" +
+        "（CLI は --income-adjustment、JSON は incomeAdjustment、ブラウザ版は「家族」のチェック欄）。",
+    );
   }
   if (normalized.blueReturn !== "none" && baseline.blueDeductionApplied < blueAmount(normalized.blueReturn)) {
     warnings.push("事業所得が青色申告特別控除の枠より小さいため、控除は事業所得の金額までにしています。");

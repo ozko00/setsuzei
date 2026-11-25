@@ -250,6 +250,18 @@ describe("所得金額調整控除の入力", () => {
     assert.equal(calculate({ salaryRevenue: 10_000_000, dependents: { general: 1 } }).baseline.incomeAdjustment, 0);
   });
 
+  it("注意は、適用していないときだけ出す（適用済みなのに「含めていません」と出さない）", () => {
+    const mentions = (input: Parameters<typeof calculate>[0]): boolean =>
+      calculate(input).warnings.some((w) => w.includes("所得金額調整控除"));
+    assert.equal(mentions({ salaryRevenue: 10_000_000 }), true);
+    assert.equal(mentions({ salaryRevenue: 10_000_000, dependents: { general: 1 } }), true);
+    assert.equal(mentions({ salaryRevenue: 10_000_000, incomeAdjustment: true }), false);
+    assert.equal(mentions({ salaryRevenue: 10_000_000, dependents: { specific: 1 } }), false);
+    // 850 万円以下は対象外なので出さない
+    assert.equal(mentions({ salaryRevenue: 8_500_000 }), false);
+    assert.equal(mentions({ salaryRevenue: 8_500_001 }), true);
+  });
+
   it("真偽値以外は入力エラー", () => {
     assert.throws(() => calculate({ incomeAdjustment: "yes" } as never), /incomeAdjustment/);
   });
