@@ -15,12 +15,21 @@ jobs:
       fail-fast: false
       matrix:
         node: [20, 22, 24]
+        npm: [bundled]
+        include:
+          # npm 12 は既定の挙動が変わった（git からの取得の無効化、依存の install スクリプトのブロックなど）ので別に確かめる
+          - node: 26
+            npm: "12"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
           cache: npm
+      - name: npm を指定の版にする
+        if: matrix.npm != 'bundled'
+        run: npm install -g npm@${{ matrix.npm }}
+      - run: node -v && npm -v
       - run: npm ci
       - name: 型チェック
         run: npm run typecheck

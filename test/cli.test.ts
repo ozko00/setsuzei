@@ -131,3 +131,18 @@ describe("CLI", () => {
     assert.match(r.stderr, /給与収入/);
   });
 });
+
+describe("実行手順の記載", () => {
+  // npm 12.0.0 から allow-git の既定値が none になり、git からの取得は --allow-git=all がないと EALLOWGIT で失敗する
+  // https://docs.npmjs.com/cli/v12/using-npm/config#allow-git
+  it("GitHub から npx / npm install する記載には、必ず --allow-git=all を付ける", () => {
+    for (const file of ["README.md", "skills/setsuzei/SKILL.md", "CONTRIBUTING.md", "docs/index.html"]) {
+      const text = readFileSync(new URL(file, root), "utf8");
+      for (const line of text.split("\n")) {
+        if (/\b(npx|npm install)\b.*github:ozko00\/setsuzei/.test(line)) {
+          assert.match(line, /--allow-git=all/, `${file}: ${line.trim()}`);
+        }
+      }
+    }
+  });
+});
