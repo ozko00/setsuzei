@@ -13,7 +13,7 @@ body:
       label: 入力
       description: 実行したコマンド、入力した JSON、またはブラウザ版の URL（`?revenue=800万&...` の部分）
       render: sh
-      placeholder: npx github:ozko00/setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
+      placeholder: node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
     validations:
       required: true
   - type: textarea

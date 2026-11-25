@@ -70,22 +70,30 @@ URL に CLI と同じ名前のパラメータを付けると、入力済みの�
 
 ### CLI
 
-Node.js 20 以上と git が必要です。npm には未公開なので、GitHub から直接実行します（初回は取得とビルドで数秒〜十数秒かかります）。
-
-```sh
-npx github:ozko00/setsuzei          # 対話形式で入力
-npx github:ozko00/setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
-```
-
-以下の例は `setsuzei` と書いています。`npx github:ozko00/setsuzei` に読み替えてください。
-
-ソースを手元に置いて使う場合:
+npm には未公開なので、ソースを取得してビルドします。Node.js 20 以上と git が必要です。
 
 ```sh
 git clone https://github.com/ozko00/setsuzei.git && cd setsuzei
-npm ci                  # 依存の取得とビルド
+npm ci
+npm run build
+node dist/cli.js          # 対話形式で入力
 node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
+
+以下の例は `setsuzei` と書いています。`node dist/cli.js` に読み替えてください。
+
+<details>
+<summary>clone せずに 1 行で実行する（npx）</summary>
+
+```sh
+npx --allow-git=all github:ozko00/setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
+```
+
+- `--allow-git=all` は npm 12 以降で必要です。npm 12.0.0 から、git リポジトリからのパッケージ取得が既定で無効（`allow-git` の既定値が `none`）になり、付けないと `EALLOWGIT` のエラーで止まります（[npm のドキュメント](https://docs.npmjs.com/cli/v12/using-npm/config#allow-git)）。
+- npm 11 以前は付けなくても動きます。付けたままでも動きます（npm 10.8 / 11.19 / 11.20 / 12.2 で確認）。
+- このオプションは、その 1 回のコマンドに限って git からの取得を許可するものです。気になる場合は上の clone の手順を使ってください。
+
+</details>
 
 ## 使い方
 
@@ -132,7 +140,7 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 
 ### ライブラリとして使う
 
-計算コアは実行時依存ゼロの純粋関数です。`npm install github:ozko00/setsuzei` で入ります。
+計算コアは実行時依存ゼロの純粋関数です。`npm install --allow-git=all github:ozko00/setsuzei` で入ります（`--allow-git=all` は npm 12 以降で必要）。
 
 ```ts
 import { calculate } from "setsuzei";
@@ -265,7 +273,7 @@ npm run typecheck   # 型チェック（CLI・ライブラリとブラウザ版�
 npm test            # テスト（node:test）
 npm run build       # dist/ にビルド（CLI・ライブラリ）
 npm run build:site  # docs/js にビルド（ブラウザ版。web/ か src/ を変えたら実行してコミット）
-scripts/verify-docker.sh   # CI と同じ手順を Docker の Node 20 / 22 / 24 で実行
+scripts/verify-docker.sh   # CI と同じ手順を Docker の Node 20 / 22 / 24 / 26（npm 12）で実行
 ```
 
 - 計算コア: [`src/core/`](src/core)（純粋関数、実行時依存なし）

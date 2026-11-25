@@ -49,19 +49,27 @@ description: 日本のフリーランス・副業の人が「年末までに、�
 注意:
 
 - 金額はすべて**年額・円・整数**。「600万」は `6000000` に直す（単位の変換だけは行ってよい）。
-- 配偶者は「年収」ではなく合計所得金額。給与だけの配偶者の年収しかわからない場合は、`npx -y github:ozko00/setsuzei --salary <年収> --json` を実行して `baseline.salaryIncome` を使う（自分で給与所得控除を引かない）。
+- 配偶者は「年収」ではなく合計所得金額。給与だけの配偶者の年収しかわからない場合は、`setsuzei --salary <年収> --json`（実行方法は下の「2. 計算」）を実行して `baseline.salaryIncome` を使う（自分で給与所得控除を引かない）。
 - 16歳未満の子は扶養控除の対象外なので人数に入れない。
 
 ### 2. 計算
 
 入力を JSON にして CLI に渡し、`--json` で結果を受け取る。
 
+npm には未公開なので、最初に 1 回、ソースを取得してビルドする（Node.js 20 以上と git が必要）。
+
 ```sh
-echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","socialInsurance":900000}' \
-  | npx -y github:ozko00/setsuzei --input - --json
+git clone https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei   # 既にあれば git -C ~/.cache/setsuzei pull
+cd ~/.cache/setsuzei && npm ci && npm run build
 ```
 
-- npm には未公開なので、GitHub から直接実行する（Node.js 20 以上と git が必要）。`setsuzei` コマンドがインストール済みならそれを使ってよい。どちらも使えない場合は、リポジトリを取得して `npm ci` のあと `node dist/cli.js --input - --json` を使う。
+```sh
+echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","socialInsurance":900000}' \
+  | node ~/.cache/setsuzei/dist/cli.js --input - --json
+```
+
+- 以下 `setsuzei` と書いているコマンドは `node ~/.cache/setsuzei/dist/cli.js` のこと。`setsuzei` コマンドが既にインストールされていればそれを使ってよい。
+- clone できない環境では `npx -y --allow-git=all github:ozko00/setsuzei --input - --json` でも実行できる。npm 12 以降は `--allow-git=all` がないと `EALLOWGIT` で失敗する（git からの取得が既定で無効になったため）。
 - 終了コード 2 は入力の誤り。標準エラーの `error.issues` を読んで直す。直せなければユーザーに確認する。
 - 「iDeCo をあと10万円だけ」のような条件は `idecoAdditional` / `kyosaiAdditional` で指定して再実行する。条件を変えた比較は、条件ごとに CLI を実行する。差額を自分で按分しない。
 
