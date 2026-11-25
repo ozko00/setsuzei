@@ -4,9 +4,9 @@
 
 **ブラウザ版: <https://ozko00.github.io/setsuzei/>**（インストール不要。入力はブラウザの中だけで処理します）
 
-> A CLI, in-browser calculator, TypeScript library, and Agent Skill that estimates how much Japanese income tax and resident tax a freelancer or side-job worker can still save before year-end.
-> Covers furusato nozei (hometown tax donation) limits, iDeCo, Small Enterprise Mutual Aid, and the blue-return special deduction for tax year 2026 (Reiwa 8).
-> Every rate and threshold is taken from primary sources (National Tax Agency, MIC, e-Gov) and cited in the data file. Estimates only; not tax advice.
+> **Japan income tax & resident tax savings calculator for freelancers and side-job workers** (tax year 2026 / Reiwa 8). Runs in the browser, as a CLI, as a TypeScript library, and as an Agent Skill.
+> Estimates the furusato nozei (hometown tax donation) deduction limit and how much tax iDeCo, Small Enterprise Mutual Aid (shokibo kigyo kyosai), and the blue-return special deduction (aoiro shinkoku) can still save before year-end.
+> Every rate and threshold is taken from primary sources (National Tax Agency, MIC, e-Gov) and cited in the data file. Inputs never leave your machine. Estimates only; not tax advice.
 
 **年末までに、あと何をすればいくら税金が減るか**を概算する道具です。フリーランス・副業のエンジニア向け。令和8年分（2026年分）に対応しています。
 
@@ -66,6 +66,13 @@ setsuzei 0.2.0 ｜ 令和8年分（2026年分）の概算
 
 <https://ozko00.github.io/setsuzei/> を開くだけです。「例を入れてみる」を押すと、上の画面と同じ入力が入ります。
 
+知りたいことが 1 つだけなら、項目を絞ったページもあります。それぞれ計算式と根拠、所得別の計算例の表、よくある質問を載せています。
+
+- [ふるさと納税の上限額を計算する（フリーランス・個人事業主）](https://ozko00.github.io/setsuzei/furusato-nozei-freelance/)
+- [iDeCo の節税額をシミュレーションする（個人事業主・フリーランス）](https://ozko00.github.io/setsuzei/ideco-kojin-jigyonushi/)
+- [小規模企業共済の節税額をシミュレーションする](https://ozko00.github.io/setsuzei/shokibo-kyosai-setsuzei/)
+- [青色申告特別控除 65万・55万・10万の違いを税額で計算する](https://ozko00.github.io/setsuzei/aoiro-shinkoku-65-55-10/)
+
 URL に CLI と同じ名前のパラメータを付けると、入力済みの状態で開けます（例: [`?revenue=800万&expenses=150万&blue=65`](https://ozko00.github.io/setsuzei/?revenue=800万&expenses=150万&blue=65)）。入力内容は保存も送信もしません。
 
 ### CLI
@@ -91,6 +98,7 @@ npx --allow-git=all github:ozko00/setsuzei --revenue 800万 --expenses 150万 --
 
 - `--allow-git=all` は npm 12 以降で必要です。npm 12.0.0 から、git リポジトリからのパッケージ取得が既定で無効（`allow-git` の既定値が `none`）になり、付けないと `EALLOWGIT` のエラーで止まります（[npm のドキュメント](https://docs.npmjs.com/cli/v12/using-npm/config#allow-git)）。
 - npm 11 以前は付けなくても動きます。付けたままでも動きます（npm 10.8 / 11.19 / 11.20 / 12.2 で確認）。
+- npm 12 では `npm warn install-scripts ... setsuzei@0.2.0 (prepare: npm run build)` のような警告が出ることがあります。npm 12 が、依存パッケージのインストール時スクリプトを既定で実行しなくなったことの通知です。setsuzei のビルドは取得の時点で済んでいるので、そのまま使えます。`npm install-scripts approve` を実行する必要はありません。
 - このオプションは、その 1 回のコマンドに限って git からの取得を許可するものです。気になる場合は上の clone の手順を使ってください。
 
 </details>
@@ -140,7 +148,7 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 
 ### ライブラリとして使う
 
-計算コアは実行時依存ゼロの純粋関数です。`npm install --allow-git=all github:ozko00/setsuzei` で入ります（`--allow-git=all` は npm 12 以降で必要）。
+計算コアは実行時依存ゼロの純粋関数です。`npm install --allow-git=all github:ozko00/setsuzei` で入ります（`--allow-git=all` は npm 12 以降で必要。npm 12 で出る `install-scripts` の警告は、上の npx の説明と同じ理由で、そのままで動きます）。
 
 ```ts
 import { calculate } from "setsuzei";
@@ -272,7 +280,7 @@ npm ci
 npm run typecheck   # 型チェック（CLI・ライブラリとブラウザ版）
 npm test            # テスト（node:test）
 npm run build       # dist/ にビルド（CLI・ライブラリ）
-npm run build:site  # docs/js にビルド（ブラウザ版。web/ か src/ を変えたら実行してコミット）
+npm run build:site  # docs/ にビルド（ブラウザ版のスクリプトと説明ページ。web/・site/・src/ を変えたら実行してコミット）
 scripts/verify-docker.sh   # CI と同じ手順を Docker の Node 20 / 22 / 24 / 26（npm 12）で実行
 ```
 
@@ -280,6 +288,7 @@ scripts/verify-docker.sh   # CI と同じ手順を Docker の Node 20 / 22 / 24 
 - 年分ごとの税制データ: [`src/data/`](src/data)
 - CLI: [`src/cli.ts`](src/cli.ts)、[`src/cli/`](src/cli)
 - ブラウザ版: [`web/`](web)（スクリプト）、[`docs/`](docs)（配信する静的ファイル。`docs/js` はビルド結果）
+- 項目を絞った説明ページ: [`site/pages.ts`](site/pages.ts) から生成します（`docs/<名前>/index.html`、`sitemap.xml`、`robots.txt`）。計算例の表の数字は計算コアから作り、コミット済みのファイルと一致することをテストで確かめています。
 
 計算結果がおかしい、数値が古い、対応してほしい制度がある、といった場合は [Issue](https://github.com/ozko00/setsuzei/issues/new/choose) を立ててください。数値を直す変更には一次情報の URL が必要です。手順は [CONTRIBUTING.md](CONTRIBUTING.md) にあります。
 

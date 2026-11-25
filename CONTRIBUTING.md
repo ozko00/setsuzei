@@ -35,7 +35,7 @@ cd setsuzei
 npm ci
 npm run typecheck   # 型チェック
 npm test            # テスト
-npm run build:site  # web/ か src/ を変えたら実行し、docs/js の差分もコミットする
+npm run build:site  # web/・site/・src/ を変えたら実行し、docs/ の差分もコミットする
 ```
 
 - 計算コアは実行時依存ゼロの純粋関数です。実行時の依存パッケージは増やしません。

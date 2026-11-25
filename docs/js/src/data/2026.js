@@ -277,6 +277,10 @@ export const sources2026 = [
         url: "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1155.htm",
     },
     {
+        title: "国税庁 No.2070 青色申告制度（承認申請の期限。ブラウザ版の説明ページで参照）",
+        url: "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2070.htm",
+    },
+    {
         title: "国税庁 No.1411 所得金額調整控除（根拠: 租税特別措置法 第41条の3の11。住民税は地方税法 第313条第2項で同じ計算）",
         url: "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1411.htm",
     },

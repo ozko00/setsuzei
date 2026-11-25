@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ozko00.github.io/setsuzei/sitemap.xml
