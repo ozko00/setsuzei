@@ -70,21 +70,22 @@ URL に CLI と同じ名前のパラメータを付けると、入力済みの�
 
 ### CLI
 
-Node.js 20 以上と git が必要です。npm には未公開なので、GitHub から直接実行します（初回は取得とビルドで 10 秒ほどかかります）。
+Node.js 20 以上と git が必要です。npm には未公開なので、GitHub から直接実行します（初回は取得とビルドで数秒〜十数秒かかります）。
 
 ```sh
 npx github:ozko00/setsuzei          # 対話形式で入力
 npx github:ozko00/setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
-毎回 `npx github:...` と打つのが面倒なら、インストールすると `setsuzei` コマンドとして使えます。
+以下の例は `setsuzei` と書いています。`npx github:ozko00/setsuzei` に読み替えてください。
+
+ソースを手元に置いて使う場合:
 
 ```sh
-npm install -g github:ozko00/setsuzei
-setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
+git clone https://github.com/ozko00/setsuzei.git && cd setsuzei
+npm ci                  # 依存の取得とビルド
+node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
-
-以下の例は `setsuzei` と書いています。インストールしない場合は `npx github:ozko00/setsuzei` に読み替えてください。
 
 ## 使い方
 
