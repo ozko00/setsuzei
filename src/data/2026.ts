@@ -41,6 +41,15 @@ export const taxYear2026: TaxYearData = {
     ],
     // 850 万円以上: 収入 − 195 万円（給与所得控除の上限）
     maxDeduction: 1_950_000,
+    // 所得金額調整控除（子ども・特別障害者等を有する者等）
+    // {給与等の収入金額（1,000 万円超は 1,000 万円）− 850 万円} × 10%（1 円未満切上げ）を給与所得から引く。
+    // 対象: 本人が特別障害者 / 23 歳未満の扶養親族がいる / 特別障害者の同一生計配偶者・扶養親族がいる
+    // 出典: 国税庁 No.1411 所得金額調整控除［令和8年4月1日現在法令等］（2026-11-25 閲覧）
+    // https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1411.htm
+    // 根拠: 租税特別措置法 第41条の3の11 第1項 https://laws.e-gov.go.jp/law/332AC0000000026
+    // 住民税も、総所得金額を所得税の計算の例で求める（地方税法 第313条第2項）ので同じ額が引かれる。
+    // 給与所得と年金所得の双方がある場合の控除（同条第2項）は、年金を扱わないので実装していない。
+    incomeAdjustment: { revenueAbove: 8_500_000, revenueCap: 10_000_000, ratePercent: 10 },
   },
 
   // 青色申告特別控除: 10 万円 / 55 万円 / 65 万円（0 は白色申告）
@@ -298,6 +307,10 @@ export const sources2026: readonly Source[] = [
   {
     title: "国税庁 No.1155 ふるさと納税（寄附金控除）",
     url: "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1155.htm",
+  },
+  {
+    title: "国税庁 No.1411 所得金額調整控除（根拠: 租税特別措置法 第41条の3の11。住民税は地方税法 第313条第2項で同じ計算）",
+    url: "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1411.htm",
   },
   {
     title: "国税庁 No.1191 配偶者控除",

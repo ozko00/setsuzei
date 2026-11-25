@@ -1,0 +1,59 @@
+name: 計算結果がおかしい
+description: 税額・控除額・上限の計算が、公的な資料や自分で確かめた結果と合わない
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ありがとうございます。Issue は誰でも読めるので、**実際の金額をそのまま書く必要はありません**。同じ結果が再現できる範囲で、丸めた金額に置き換えてください。
+        個別の税務相談にはお答えできません。税理士か、所轄の税務署・市区町村の窓口に確認してください。
+  - type: textarea
+    id: input
+    attributes:
+      label: 入力
+      description: 実行したコマンド、入力した JSON、またはブラウザ版の URL（`?revenue=800万&...` の部分）
+      render: sh
+      placeholder: npx github:ozko00/setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 出た結果
+      description: おかしいと思う項目と、その金額
+      placeholder: "例: ふるさと納税の控除上限額の目安が 123,000 円と出る"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 正しいと思う結果と、その根拠
+      description: 正しいと思う金額と、そう考える計算の過程
+      placeholder: "例: 所得割額 × 20% ÷（90% − 20% × 1.021）+ 2,000 円 で 13 万円台になるはず"
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: 一次情報の URL
+      description: 根拠になる国税庁・総務省・e-Gov の条文・自治体などのページ。数値を直す変更には一次情報の URL が必要です（解説記事やコラムは根拠にできません）。見つからない場合は「不明」と書いてください。
+      placeholder: https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/....htm
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: 使ったもの
+      options:
+        - ブラウザ版
+        - CLI
+        - ライブラリ
+        - Agent Skill
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: バージョン
+      description: "`setsuzei --version` の結果、またはブラウザ版の一番下に出ている表示"
+      placeholder: setsuzei 0.2.0

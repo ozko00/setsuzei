@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 個別の税務相談
+    url: https://www.nta.go.jp/taxes/shiraberu/shirabekata/9200.htm
+    about: このリポジトリでは個別の税務相談にお答えできません。国税庁の「税についての相談窓口」か税理士にご相談ください。

@@ -231,3 +231,38 @@ describe("validateInput", () => {
     assert.throws(() => calculate({ salaryRevenue: -5 } as never), InputError);
   });
 });
+
+describe("所得金額調整控除の入力", () => {
+  it("incomeAdjustment: true で適用。特定扶養親族（19〜22 歳）がいれば指定なしでも適用", () => {
+    const plain = calculate({ salaryRevenue: 10_000_000 });
+    assert.equal(plain.input.incomeAdjustment, false);
+    assert.equal(plain.baseline.incomeAdjustment, 0);
+
+    const flagged = calculate({ salaryRevenue: 10_000_000, incomeAdjustment: true });
+    assert.equal(flagged.baseline.incomeAdjustment, 150_000);
+    assert.equal(flagged.baseline.totalIncome, plain.baseline.totalIncome - 150_000);
+
+    const student = calculate({ salaryRevenue: 10_000_000, dependents: { specific: 1 } });
+    assert.equal(student.input.incomeAdjustment, true);
+    assert.equal(student.baseline.incomeAdjustment, 150_000);
+
+    // 一般の扶養親族（16〜18 歳か 23〜69 歳か区別できない）だけでは自動では適用しない
+    assert.equal(calculate({ salaryRevenue: 10_000_000, dependents: { general: 1 } }).baseline.incomeAdjustment, 0);
+  });
+
+  it("注意は、適用していないときだけ出す（適用済みなのに「含めていません」と出さない）", () => {
+    const mentions = (input: Parameters<typeof calculate>[0]): boolean =>
+      calculate(input).warnings.some((w) => w.includes("所得金額調整控除"));
+    assert.equal(mentions({ salaryRevenue: 10_000_000 }), true);
+    assert.equal(mentions({ salaryRevenue: 10_000_000, dependents: { general: 1 } }), true);
+    assert.equal(mentions({ salaryRevenue: 10_000_000, incomeAdjustment: true }), false);
+    assert.equal(mentions({ salaryRevenue: 10_000_000, dependents: { specific: 1 } }), false);
+    // 850 万円以下は対象外なので出さない
+    assert.equal(mentions({ salaryRevenue: 8_500_000 }), false);
+    assert.equal(mentions({ salaryRevenue: 8_500_001 }), true);
+  });
+
+  it("真偽値以外は入力エラー", () => {
+    assert.throws(() => calculate({ incomeAdjustment: "yes" } as never), /incomeAdjustment/);
+  });
+});

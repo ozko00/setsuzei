@@ -20,6 +20,14 @@ describe("parseAmount", () => {
     assert.equal(parseAmount("6000000"), 6_000_000);
     assert.equal(parseAmount("6,000,000"), 6_000_000);
     assert.equal(parseAmount("600万"), 6_000_000);
+    assert.equal(parseAmount("1億"), 100_000_000);
+    assert.equal(parseAmount("1.5億"), 150_000_000);
+    assert.equal(parseAmount("1億2000万"), 120_000_000);
+    assert.equal(parseAmount("１，２００万"), 12_000_000);
+    assert.equal(parseAmount("1億2000"), null);
+    assert.equal(parseAmount("億"), null);
+    assert.equal(parseAmount("万"), null);
+    assert.equal(parseAmount(""), null);
     assert.equal(parseAmount("62.5万"), 625_000);
     assert.equal(parseAmount("６００万円"), 6_000_000);
     assert.equal(parseAmount("0"), 0);

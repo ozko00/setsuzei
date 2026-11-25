@@ -42,6 +42,17 @@ export interface SalaryIncomeRule {
   }[];
   /** 最後の band 以上のときの給与所得控除額（上限）。 */
   readonly maxDeduction: number;
+  /**
+   * 所得金額調整控除（子ども・特別障害者等を有する者等）。
+   * 控除額 =（min(給与収入, revenueCap) − revenueAbove）× ratePercent / 100（1 円未満切上げ）
+   */
+  readonly incomeAdjustment: {
+    /** 給与収入がこの金額を超えると対象 */
+    readonly revenueAbove: number;
+    /** 計算に使う給与収入の上限 */
+    readonly revenueCap: number;
+    readonly ratePercent: number;
+  };
 }
 
 export interface DependentAmounts {

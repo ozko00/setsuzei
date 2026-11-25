@@ -1,6 +1,6 @@
 import { getSources } from "../src/data/index.js";
 import { VERSION } from "../src/version.js";
-import { compute, isBlank, queryToValues } from "./logic.js";
+import { compute, isBlank, queryToValues, splitIssue } from "./logic.js";
 function h(tag, attrs = {}, ...children) {
     const el = document.createElement(tag);
     for (const [key, value] of Object.entries(attrs))
@@ -48,8 +48,10 @@ function renderResult(r) {
     const out = [];
     out.push(h("div", { class: "headline" }, h("div", { class: "figure" }, h("span", { class: "label" }, "いまの見込み税額"), h("strong", {}, yen(b.totalTax))), h("div", { class: "figure accent" }, h("span", { class: "label" }, "全部やると減る税額"), h("strong", {}, yen(m.combined.saving.total)))));
     const income = [];
-    if (r.input.salaryRevenue > 0)
-        income.push(["給与所得", yen(b.salaryIncome)]);
+    if (r.input.salaryRevenue > 0) {
+        const adjusted = b.incomeAdjustment > 0 ? `（所得金額調整控除 ${yen(b.incomeAdjustment)}を控除後）` : "";
+        income.push([`給与所得${adjusted}`, yen(b.salaryIncome)]);
+    }
     if (r.input.businessRevenue > 0 || r.input.businessExpenses > 0) {
         income.push([r.input.businessIncomeType === "business" ? "事業所得" : "雑所得", yen(b.businessIncome)]);
     }
@@ -138,6 +140,29 @@ function fillForm(form, values) {
             el.value = value;
     }
 }
+/** 入力欄の見出し（label の先頭の文言）。見つからなければ null。 */
+function fieldLabel(el) {
+    const label = el.closest("label");
+    for (const node of Array.from(label?.childNodes ?? [])) {
+        const text = node.nodeType === Node.TEXT_NODE ? (node.textContent ?? "").trim() : "";
+        if (text !== "")
+            return text;
+    }
+    return null;
+}
+/** 入力エラーを「欄の見出し: 内容」の形にし、該当する欄に印を付ける。 */
+function showIssues(form, issues) {
+    const lines = issues.map((issue) => {
+        const { field, message } = splitIssue(issue);
+        const el = field === null ? null : form.querySelector(`[name="${field}"]`);
+        if (!el)
+            return message;
+        el.setAttribute("aria-invalid", "true");
+        const label = fieldLabel(el);
+        return label === null ? message : `${label}: ${message}`;
+    });
+    return h("section", { class: "card error", role: "alert" }, h("h3", {}, "入力を確認してください"), notes(lines));
+}
 function start() {
     const form = document.querySelector("#form");
     const output = document.querySelector("#result");
@@ -148,19 +173,35 @@ function start() {
     if (version)
         version.textContent = `setsuzei ${VERSION}`;
     sources.replaceChildren(...getSources().map((s) => h("li", {}, h("a", { href: s.url, rel: "noopener noreferrer", target: "_blank" }, s.title))));
+    const jump = document.querySelector("#jump");
+    const setJump = (text, error = false) => {
+        if (!jump)
+            return;
+        jump.hidden = text === null;
+        jump.textContent = text ?? "";
+        jump.classList.toggle("error", error);
+        document.body.classList.toggle("has-jump", text !== null);
+    };
     const update = () => {
         const values = readForm(form);
         form.classList.toggle("has-spouse", values["has-spouse"] === true);
         form.classList.toggle("is-misc", values["misc"] === true);
+        for (const el of Array.from(form.querySelectorAll("[aria-invalid]")))
+            el.removeAttribute("aria-invalid");
         if (isBlank(values)) {
             output.replaceChildren(h("p", { class: "placeholder" }, "収入を入力すると、ここに結果が出ます。"));
+            setJump(null);
             return;
         }
         const outcome = compute(values);
-        if (outcome.ok)
+        if (outcome.ok) {
             output.replaceChildren(...renderResult(outcome.result));
+            const r = outcome.result;
+            setJump(`税額の見込み ${yen(r.baseline.totalTax)} ／ 全部やると −${yen(r.measures.combined.saving.total)}　結果を見る ↓`);
+        }
         else {
-            output.replaceChildren(h("section", { class: "card error" }, h("h3", {}, "入力を確認してください"), notes(outcome.issues.map((i) => i.replace(/^--/, "")))));
+            output.replaceChildren(showIssues(form, outcome.issues));
+            setJump(`入力を確認してください（${outcome.issues.length} 件）　内容を見る ↓`, true);
         }
     };
     fillForm(form, queryToValues(location.search));

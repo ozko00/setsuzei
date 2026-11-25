@@ -29,6 +29,17 @@ export function salaryIncome(data, revenue) {
     return revenue - rule.maxDeduction;
 }
 /**
+ * 所得金額調整控除（子ども・特別障害者等を有する者等）の額。
+ * {給与収入（上限あり）− 850 万円} × 10%。1 円未満は切り上げる（国税庁 No.1411）。
+ * 対象者かどうかは呼び出し側で判定する。
+ */
+export function incomeAdjustment(data, revenue) {
+    const rule = data.salary.incomeAdjustment;
+    if (revenue <= rule.revenueAbove)
+        return 0;
+    return Math.ceil(((Math.min(revenue, rule.revenueCap) - rule.revenueAbove) * rule.ratePercent) / 100);
+}
+/**
  * 課税される所得金額から所得税・復興特別所得税を求める。
  * 課税所得は 1,000 円未満を切り捨ててから速算表を当てる。
  */
@@ -132,7 +143,8 @@ function specialCreditRatePer100k(data, residentTaxable, adjustmentAmount) {
 /** シナリオ 1 つ分の所得税・住民税を概算する。 */
 export function estimate(data, s) {
     // --- 所得 ---
-    const salary = salaryIncome(data, s.salaryRevenue);
+    const adjustment = s.incomeAdjustmentEligible ? incomeAdjustment(data, s.salaryRevenue) : 0;
+    const salary = salaryIncome(data, s.salaryRevenue) - adjustment;
     const businessNet = s.businessRevenue - s.businessExpenses;
     let blueDeductionApplied = 0;
     let businessIncome;
@@ -217,6 +229,7 @@ export function estimate(data, s) {
     };
     return {
         salaryIncome: salary,
+        incomeAdjustment: adjustment,
         businessIncome,
         blueDeductionApplied,
         totalIncome,

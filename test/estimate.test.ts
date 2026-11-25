@@ -4,6 +4,7 @@ import {
   estimate,
   furusatoLimit,
   getTaxYear,
+  incomeAdjustment,
   incomeTaxOnTaxableIncome,
   salaryIncome,
   type Scenario,
@@ -24,6 +25,7 @@ const scenario = (overrides: Partial<Scenario> = {}): Scenario => ({
   dependents: { general: 0, specific: 0, elderly: 0, elderlyCohabiting: 0 },
   otherDeductions: 0,
   otherDeductionsResident: 0,
+  incomeAdjustmentEligible: false,
   ...overrides,
 });
 
@@ -430,5 +432,35 @@ describe("ふるさと納税（総務省 ふるさと納税ポータルサイト
     // 157 万 −（5 万 + 56 万）= 96 万円 → 5% → 84.895% → 36,397 + 2,000 = 38,397 → 38,000 円
     const low = scenario({ businessRevenue: 3_000_000, businessExpenses: 500_000, blueDeduction: 100_000, socialInsurance: 400_000 });
     assert.equal(furusatoLimit(data, low), 38_000);
+  });
+});
+
+describe("所得金額調整控除（子ども・特別障害者等）", () => {
+  // 国税庁 No.1411: {給与等の収入金額（1,000 万円超は 1,000 万円）− 850 万円} × 10%、1 円未満切上げ
+  it("850 万円以下は 0、超えた分の 10%、1,000 万円で頭打ち（上限 15 万円）", () => {
+    assert.equal(incomeAdjustment(data, 8_500_000), 0);
+    assert.equal(incomeAdjustment(data, 8_500_001), 1); // 0.1 円 → 切上げ
+    assert.equal(incomeAdjustment(data, 8_500_010), 1);
+    assert.equal(incomeAdjustment(data, 8_500_011), 2); // 1.1 円 → 切上げ
+    assert.equal(incomeAdjustment(data, 9_000_000), 50_000);
+    assert.equal(incomeAdjustment(data, 10_000_000), 150_000);
+    assert.equal(incomeAdjustment(data, 20_000_000), 150_000);
+  });
+
+  it("対象者だけ、給与所得・合計所得金額から引かれる（所得税・住民税の両方に効く）", () => {
+    const off = estimate(data, scenario({ salaryRevenue: 9_000_000 }));
+    const on = estimate(data, scenario({ salaryRevenue: 9_000_000, incomeAdjustmentEligible: true }));
+    assert.equal(off.incomeAdjustment, 0);
+    assert.equal(off.salaryIncome, 7_050_000); // 900 万 − 195 万
+    assert.equal(on.incomeAdjustment, 50_000);
+    assert.equal(on.salaryIncome, 7_000_000);
+    assert.equal(on.totalIncome, 7_000_000);
+    assert.equal(off.incomeTax.taxableIncome - on.incomeTax.taxableIncome, 50_000);
+    assert.equal(off.residentTax.taxableIncome - on.residentTax.taxableIncome, 50_000);
+  });
+
+  it("対象者でも給与収入 850 万円以下なら変わらない。事業の売上は対象外", () => {
+    const base = scenario({ salaryRevenue: 8_500_000, businessRevenue: 5_000_000 });
+    assert.deepEqual(estimate(data, { ...base, incomeAdjustmentEligible: true }), estimate(data, base));
   });
 });

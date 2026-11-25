@@ -42,6 +42,9 @@ const HELP = `setsuzei ${VERSION}
   --dependents-specific 人数     特定扶養親族（19〜22 歳）
   --dependents-elderly 人数      老人扶養親族（70 歳以上、同居老親等以外）
   --dependents-elderly-cohabiting 人数   同居老親等
+  --income-adjustment            所得金額調整控除の対象（給与収入 850 万円超で、23 歳未満の扶養親族
+                                 ＜16 歳未満の子を含む＞か特別障害者がいる場合。19〜22 歳の扶養親族を
+                                 入力したときは自動で対象）
 
 試算の条件:
   --ideco-limit 金額             iDeCo の年間拠出限度額（省略時は就業形態から推定）

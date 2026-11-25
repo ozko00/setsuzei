@@ -2,7 +2,7 @@
  * ブラウザ版の計算部分（DOM に触らない純粋関数）。
  * 入力の名前は CLI のフラグ名と同じで、CLI と同じ flagsToInput → calculate を通す。
  */
-import { flagsToInput, INPUT_BOOLEAN_FLAGS, INPUT_STRING_FLAGS, type InputFlags } from "../src/cli/flags.js";
+import { flagsToInput, INPUT_BOOLEAN_FLAGS, INPUT_STRING_FLAGS, issueFlag, type InputFlags } from "../src/cli/flags.js";
 import { calculate } from "../src/core/calculate.js";
 import type { SetsuzeiResult } from "../src/core/types.js";
 import { InputError } from "../src/core/validate.js";
@@ -24,6 +24,8 @@ export function valuesToFlags(values: FormValues): InputFlags {
   for (const name of INPUT_BOOLEAN_FLAGS) {
     if (values[name] === true) flags[name] = true;
   }
+  // 雑所得のときは青色申告特別控除の選択欄を隠しているので、残っている値は使わない
+  if (flags["misc"] === true) delete flags["blue"];
   // 「配偶者がいる」にチェックがなければ配偶者の入力は使わない。チェックありで所得が空欄なら 0 円。
   if (values["has-spouse"] === true) {
     if (flags["spouse-income"] === undefined) flags["spouse-income"] = "0";
@@ -43,6 +45,15 @@ export function compute(values: FormValues): Outcome {
     if (error instanceof RangeError) return { ok: false, issues: [error.message] };
     throw error;
   }
+}
+
+/**
+ * 入力エラーのメッセージを、入力欄の名前（CLI のフラグ名）と本文に分ける。
+ * どの欄のものかわからないメッセージは field が null。
+ */
+export function splitIssue(issue: string): { readonly field: string | null; readonly message: string } {
+  const parsed = issueFlag(issue);
+  return parsed ? { field: parsed.flag, message: parsed.message } : { field: null, message: issue };
 }
 
 /**

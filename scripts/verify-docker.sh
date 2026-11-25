@@ -13,6 +13,8 @@ for v in "${versions[@]}"; do
   if git archive HEAD | docker run --rm -i "node:${v}-slim" bash -euo pipefail -c '
       mkdir /work && cd /work && tar -x
       npm ci --silent >/dev/null 2>&1
+      # README の「ソースを手元に置いて使う」手順: npm ci だけで dist/ ができる（prepare でビルド）
+      node dist/cli.js --version >/dev/null
       npm run --silent typecheck
       npm test --silent >/tmp/test.log 2>&1 || { cat /tmp/test.log; exit 1; }
       npm run --silent build

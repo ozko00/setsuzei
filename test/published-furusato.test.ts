@@ -18,7 +18,7 @@ import { calculate, furusatoLimit, getTaxYear, type Scenario, type TaxYearData }
  * 調整控除、寄附金税額控除の式は当時と同じ。
  *
  * 資料には計算の前提が書かれていないため、次の前提を置いた:
- *   - 社会保険料は給与収入の 15%
+ *   - 社会保険料は給与収入の 15%（どの行も同じ。行ごとに合わせ込まない）
  *   - 「夫婦」は配偶者に所得がなく配偶者控除を受ける
  *   - 「子1人」は高校生（一般の扶養親族）、「子2人」は大学生（特定扶養親族）と高校生
  */
@@ -39,7 +39,7 @@ const tableEra: TaxYearData = {
 
 type Family = "single" | "coupleChild1" | "coupleChild2";
 
-function scenario(salary: number, family: Family, socialInsurance: number, incomeAdjustment = 0): Scenario {
+function scenario(salary: number, family: Family, socialInsurance: number, incomeAdjustmentEligible = family !== "single"): Scenario {
   return {
     salaryRevenue: salary,
     businessRevenue: 0,
@@ -56,9 +56,10 @@ function scenario(salary: number, family: Family, socialInsurance: number, incom
       elderly: 0,
       elderlyCohabiting: 0,
     },
-    // 所得金額調整控除は未実装なので、突き合わせでは同額を所得控除として入れて代用する
-    otherDeductions: incomeAdjustment,
-    otherDeductionsResident: incomeAdjustment,
+    otherDeductions: 0,
+    otherDeductionsResident: 0,
+    // 子（23 歳未満の扶養親族）がいれば所得金額調整控除の対象（給与収入 850 万円超のときだけ効く）
+    incomeAdjustmentEligible,
   };
 }
 
@@ -75,27 +76,90 @@ describe("総務省の年間上限の目安の表との突き合わせ（表と�
       });
     }
   }
+});
 
-  // 給与収入 1,000 万円・2,000 万円の行は、社会保険料 15% では一致しない（独身で 17.7 万円 / 52.0 万円）。
-  // 表は高収入で社会保険料を 15% より低く置いているとみられ、独身の値から逆算すると
-  // 1,000 万円で 137〜140 万円、2,000 万円で 161〜163 万円になる。
-  // その社会保険料と、子がいる場合の所得金額調整控除（15 万円。未実装）を入れると、
-  // 残りの「夫婦＋子」の 4 マスも一致する。前提を逆算しているので、独立した検証は子ありの 4 マスだけ。
-  const highRows: [number, number, Record<Family, number>][] = [
-    [10_000_000, 1_390_000, { single: 180_000, coupleChild1: 157_000, coupleChild2: 144_000 }],
-    [20_000_000, 1_620_000, { single: 569_000, coupleChild1: 552_000, coupleChild2: 536_000 }],
+/**
+ * 給与収入 1,000 万円・2,000 万円の行。
+ *
+ * 表の社会保険料の前提は資料に書かれていない。ここでは 500 万・750 万円の行と同じ「給与収入の 15%」の
+ * ままで計算し、前提を表に合わせて動かすことはしない。残る差はそのまま期待値として固定する。
+ *
+ *                      公表値     所得金額調整控除なし   あり（実装後）
+ *   1,000万 独身       18.0万円   17.7万円（−3,000）     17.7万円（−3,000）
+ *   1,000万 夫婦+子1   15.7万円   15.8万円（+1,000）     15.3万円（−4,000）
+ *   1,000万 夫婦+子2   14.4万円   14.5万円（+1,000）     14.0万円（−4,000）
+ *   2,000万 独身       56.9万円   52.0万円（−49,000）    52.0万円（−49,000）
+ *   2,000万 夫婦+子1   55.2万円   50.8万円（−44,000）    50.3万円（−49,000）
+ *   2,000万 夫婦+子2   53.6万円   49.2万円（−44,000）    48.7万円（−49,000）
+ *
+ * 所得金額調整控除を入れても、公表値との差そのものは小さくならない（子ありのマスはむしろ 5,000 円下がる）。
+ * 変わるのは差の出方で、独身と子ありで食い違っていた差が行ごとにほぼ同じ額にそろう。
+ * つまり「独身との差」（家族構成による上限の下がり方）は表と合うようになり、
+ * 残る差は家族構成によらない要因（社会保険料の前提とみられるが、資料からは確認できない）に絞られる。
+ */
+describe("総務省の目安の表: 給与収入 1,000 万・2,000 万円の行（社会保険料 15% のまま、前提は合わせ込まない）", () => {
+  const families = ["single", "coupleChild1", "coupleChild2"] as const;
+  const highRows: {
+    salary: number;
+    published: Record<Family, number>;
+    /** 所得金額調整控除を入れない場合の「計算値 − 公表値」 */
+    gapWithout: Record<Family, number>;
+    /** 入れた場合（実装後）の「計算値 − 公表値」 */
+    gapWith: Record<Family, number>;
+  }[] = [
+    {
+      salary: 10_000_000,
+      published: { single: 180_000, coupleChild1: 157_000, coupleChild2: 144_000 },
+      gapWithout: { single: -3_000, coupleChild1: 1_000, coupleChild2: 1_000 },
+      gapWith: { single: -3_000, coupleChild1: -4_000, coupleChild2: -4_000 },
+    },
+    {
+      salary: 20_000_000,
+      published: { single: 569_000, coupleChild1: 552_000, coupleChild2: 536_000 },
+      gapWithout: { single: -49_000, coupleChild1: -44_000, coupleChild2: -44_000 },
+      gapWith: { single: -49_000, coupleChild1: -49_000, coupleChild2: -49_000 },
+    },
   ];
-  for (const [salary, socialInsurance, expected] of highRows) {
-    it(`給与収入 ${salary / 10_000} 万円: 社会保険料を逆算し、所得金額調整控除を代用すると 3 マスとも一致`, () => {
-      assert.equal(furusatoLimit(tableEra, scenario(salary, "single", socialInsurance)), expected.single);
+
+  for (const row of highRows) {
+    const man = row.salary / 10_000;
+    const limit = (family: Family, eligible: boolean): number =>
+      furusatoLimit(tableEra, scenario(row.salary, family, row.salary * 0.15, eligible));
+
+    it(`給与収入 ${man} 万円: 公表値との差（実装後）は 3 マスとも固定した値どおり`, () => {
+      for (const family of families) {
+        assert.equal(limit(family, family !== "single") - row.published[family], row.gapWith[family], family);
+      }
+    });
+
+    it(`給与収入 ${man} 万円: 所得金額調整控除がないと、独身と子ありで差の出方が食い違う`, () => {
+      for (const family of families) {
+        assert.equal(limit(family, false) - row.published[family], row.gapWithout[family], family);
+      }
+    });
+
+    it(`給与収入 ${man} 万円: 「独身との差」は実装後に表と 1,000 円以内で合う（実装前は 4,000〜5,000 円ずれる）`, () => {
       for (const family of ["coupleChild1", "coupleChild2"] as const) {
-        assert.equal(furusatoLimit(tableEra, scenario(salary, family, socialInsurance, 150_000)), expected[family]);
-        // 所得金額調整控除を入れないと 4,000〜6,000 円高く出る（未実装による既知のずれ）
-        const without = furusatoLimit(tableEra, scenario(salary, family, socialInsurance));
-        assert.ok(without > expected[family] && without - expected[family] <= 6_000, `${family}: ${without}`);
+        const publishedDrop = row.published.single - row.published[family];
+        const withDrop = limit("single", false) - limit(family, true);
+        const withoutDrop = limit("single", false) - limit(family, false);
+        assert.ok(Math.abs(withDrop - publishedDrop) <= 1_000, `${family}: ${withDrop} vs ${publishedDrop}`);
+        const before = Math.abs(withoutDrop - publishedDrop);
+        assert.ok(before >= 4_000 && before <= 5_000, `${family}: ${withoutDrop} vs ${publishedDrop}`);
       }
     });
   }
+
+  it("給与収入 850 万円以下の行では所得金額調整控除は効かない（500 万・750 万円の 6 マスは対象にしても同じ）", () => {
+    for (const salary of [5_000_000, 7_500_000]) {
+      for (const family of families) {
+        assert.equal(
+          furusatoLimit(tableEra, scenario(salary, family, salary * 0.15, true)),
+          furusatoLimit(tableEra, scenario(salary, family, salary * 0.15, false)),
+        );
+      }
+    }
+  });
 });
 
 describe("令和 8 年分では、同じ前提でも上限が表と変わる場合がある", () => {
