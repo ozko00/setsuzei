@@ -1,0 +1,9 @@
+{
+  "salaryRevenue": 6000000,
+  "businessRevenue": 1200000,
+  "businessExpenses": 200000,
+  "businessIncomeType": "misc",
+  "socialInsurance": 880000,
+  "spouse": { "income": 0 },
+  "dependents": { "general": 1 }
+}

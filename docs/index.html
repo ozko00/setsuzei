@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>setsuzei ｜ 年末までに、あと何をすればいくら税金が減るか</title>
+<meta name="description" content="フリーランス・副業向け。ふるさと納税・iDeCo・小規模企業共済・青色申告特別控除で、年末までにいくら税金が減るかを概算します（令和8年分）。入力はブラウザの中だけで処理します。">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site">
+  <h1>setsuzei</h1>
+  <p class="lead">年末までに、あと何をすればいくら税金が減るか。<br>フリーランス・副業向けの概算（令和8年分）。</p>
+  <p class="privacy">入力した内容はこのページの中だけで計算します。どこにも送信・保存しません。</p>
+</header>
+
+<main>
+<form id="form" autocomplete="off" novalidate>
+  <p class="hint">すべて<strong>年間の見込み額</strong>を入れます。<code>600万</code> / <code>6,000,000</code> のどちらでも書けます。わからない欄は空のままで構いません。
+    <button type="button" id="example" class="link">例を入れてみる</button></p>
+
+  <fieldset>
+    <legend>収入</legend>
+    <label>給与収入<span class="sub">会社員・副業の方。源泉徴収票の「支払金額」</span>
+      <input name="salary" inputmode="numeric" placeholder="例: 600万"></label>
+    <label>フリーランス・副業の売上
+      <input name="revenue" inputmode="numeric" placeholder="例: 800万"></label>
+    <label>その必要経費
+      <input name="expenses" inputmode="numeric" placeholder="例: 150万"></label>
+    <div class="field">
+      <span class="field-label">売上の所得区分</span>
+      <div class="choices">
+        <label class="inline"><input type="radio" name="income-type" value="business" checked> 事業所得</label>
+        <label class="inline"><input type="radio" name="income-type" value="misc"> 雑所得</label>
+      </div>
+    </div>
+    <label class="only-business">青色申告特別控除（現在の見込み）
+      <select name="blue">
+        <option value="none">白色申告（控除なし）</option>
+        <option value="10">青色 10万円</option>
+        <option value="55">青色 55万円</option>
+        <option value="65">青色 65万円</option>
+      </select></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>支払い済み・支払う予定のもの</legend>
+    <label>社会保険料<span class="sub">国民健康保険・国民年金・給与天引き分などの年額</span>
+      <input name="social-insurance" inputmode="numeric" placeholder="例: 90万"></label>
+    <label>iDeCo の掛金<span class="sub">年末までの拠出見込み</span>
+      <input name="ideco-paid" inputmode="numeric" placeholder="例: 27.6万"></label>
+    <label>小規模企業共済の掛金<span class="sub">年末までの支払見込み</span>
+      <input name="kyosai-paid" inputmode="numeric"></label>
+    <label>ふるさと納税の寄附済み額
+      <input name="furusato-paid" inputmode="numeric" placeholder="例: 3万"></label>
+    <label>その他の所得控除の合計<span class="sub">医療費控除・生命保険料控除など</span>
+      <input name="other-deductions" inputmode="numeric"></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>家族</legend>
+    <label class="inline"><input type="checkbox" name="has-spouse"> 生計を一にする配偶者がいる</label>
+    <div class="only-spouse">
+      <label>配偶者の合計所得金額<span class="sub">所得がなければ 0。給与のみなら「年収 − 給与所得控除」</span>
+        <input name="spouse-income" inputmode="numeric" placeholder="0"></label>
+      <label class="inline"><input type="checkbox" name="spouse-70"> 配偶者は 70 歳以上</label>
+    </div>
+    <p class="field-label">扶養親族の人数<span class="sub">16 歳未満の子は対象外</span></p>
+    <div class="grid2">
+      <label>16〜18 歳・23〜69 歳
+        <input name="dependents" inputmode="numeric" placeholder="0"></label>
+      <label>19〜22 歳
+        <input name="dependents-specific" inputmode="numeric" placeholder="0"></label>
+      <label>70 歳以上（同居の父母・祖父母など）
+        <input name="dependents-elderly-cohabiting" inputmode="numeric" placeholder="0"></label>
+      <label>70 歳以上（それ以外）
+        <input name="dependents-elderly" inputmode="numeric" placeholder="0"></label>
+    </div>
+  </fieldset>
+
+  <details>
+    <summary>試算の条件を変える</summary>
+    <label>iDeCo の年間拠出限度額<span class="sub">空欄なら就業形態から推定。企業年金がある方・公務員の方は入力</span>
+      <input name="ideco-limit" inputmode="numeric"></label>
+    <label>iDeCo に追加する額<span class="sub">空欄なら限度額までの残り枠</span>
+      <input name="ideco-add" inputmode="numeric"></label>
+    <label>小規模企業共済に追加する額<span class="sub">空欄なら年間上限までの残り枠</span>
+      <input name="kyosai-add" inputmode="numeric"></label>
+    <label>国民健康保険料の所得割率（%）<span class="sub">医療分・支援金分・介護分などの合計。入れると、青色申告の区分による翌年度の国保料（所得割）の差の目安を出します</span>
+      <input name="nhi-rate" inputmode="decimal" placeholder="例: 11.5"></label>
+  </details>
+
+  <button type="reset" class="link">入力を消す</button>
+</form>
+
+<div class="results" id="results">
+  <h2>結果</h2>
+  <div id="result" aria-live="polite"></div>
+
+  <section class="card disclaimer">
+    <h3>この結果について</h3>
+    <p><strong>概算です。</strong>入力値と簡略化した前提にもとづく目安で、実際の税額は申告内容やお住まいの自治体によって変わります。税理士や税務署・市区町村の判断に代わるものではありません。重要な判断の前に、必ず専門家か所轄の窓口に確認してください。</p>
+    <p>計算していないもの: 国民健康保険料の全体額、個人事業税、消費税、住民税の非課税判定、分離課税の所得、住宅ローン控除など。各策の軽減額は、その策だけを実行した場合の額です。</p>
+    <details>
+      <summary>根拠にした一次情報</summary>
+      <ul id="sources" class="sources"></ul>
+    </details>
+  </section>
+</div>
+</main>
+
+<footer class="site">
+  <p><span id="version">setsuzei</span> ・ MIT License ・ 同じ計算をコマンドラインでも実行できます（<code>npx setsuzei</code>）。</p>
+</footer>
+<noscript><p class="card error">このページの計算には JavaScript が必要です。</p></noscript>
+<script type="module" src="js/web/main.js"></script>
+</body>
+</html>
