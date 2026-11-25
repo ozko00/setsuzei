@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>iDeCo の節税額シミュレーション（個人事業主・フリーランス）令和8年分 ｜ setsuzei</title>
+<meta name="description" content="iDeCo の節税額を、個人事業主・フリーランスの売上と経費からシミュレーションします。所得税と住民税の両方を、令和8年分の税率と基礎控除で計算。年末までの残り枠でいくら減るかがわかります。入力は送信しません。">
+<link rel="canonical" href="https://ozko00.github.io/setsuzei/ideco-kojin-jigyonushi/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="setsuzei">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:url" content="https://ozko00.github.io/setsuzei/ideco-kojin-jigyonushi/">
+<meta property="og:title" content="iDeCo の節税額シミュレーション（個人事業主・フリーランス）令和8年分 ｜ setsuzei">
+<meta property="og:description" content="iDeCo の節税額を、個人事業主・フリーランスの売上と経費からシミュレーションします。所得税と住民税の両方を、令和8年分の税率と基礎控除で計算。年末までの残り枠でいくら減るかがわかります。入力は送信しません。">
+<meta property="og:image" content="https://ozko00.github.io/setsuzei/img/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b6b57">
+<link rel="icon" href="../img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../style.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"iDeCo の節税額をシミュレーションする（個人事業主・フリーランス）","url":"https://ozko00.github.io/setsuzei/ideco-kojin-jigyonushi/","description":"iDeCo の節税額を、個人事業主・フリーランスの売上と経費からシミュレーションします。所得税と住民税の両方を、令和8年分の税率と基礎控除で計算。年末までの残り枠でいくら減るかがわかります。入力は送信しません。","inLanguage":"ja","applicationCategory":"FinanceApplication","operatingSystem":"Any","browserRequirements":"JavaScript が必要です","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"JPY"},"license":"https://opensource.org/license/mit","codeRepository":"https://github.com/ozko00/setsuzei"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"個人事業主の iDeCo は、いくら節税になりますか？","acceptedAnswer":{"@type":"Answer","text":"所得と掛金で決まります。上の表の前提で所得 500 万円の場合、上限の月 68,000 円（年 81.6 万円）を拠出すると、所得税と住民税を合わせて年 154,400 円 減ります。iDeCo の資産は基本的に 60 歳にならないと引き出せないので（iDeCo公式サイト iDeCoをはじめるまでの4つのポイント）、手元の資金と相談して決めてください。"}},{"@type":"Question","name":"2026 年 12 月に上限が上がると聞きました。令和8年分の節税額は増えますか？","acceptedAnswer":{"@type":"Answer","text":"増えません。第1号被保険者の上限は 2026 年 12 月から月額 75,000 円に上がりますが（厚生労働省の案内）、12 月分の掛金が口座から引き落とされるのは翌年 1 月です（iDeCo公式サイト iDeCoをはじめるまでの4つのポイント）。その年に納付した掛金がその年の控除になるので、令和8年分（2026 年 1〜12 月の納付）は月額 68,000 円 のままで計算しています。"}},{"@type":"Question","name":"iDeCo で国民健康保険料は下がりますか？","acceptedAnswer":{"@type":"Answer","text":"下がりません。国民健康保険料の所得割は「総所得金額等 − 基礎控除」をもとに計算され、iDeCo などの所得控除は引かれないためです（国民健康保険法施行令 第29条の7、地方税法 第703条の4）。減るのは所得税と住民税です。"}},{"@type":"Question","name":"所得が少ない年も、iDeCo で税金は減りますか？","acceptedAnswer":{"@type":"Answer","text":"課税所得がなければ減りません。たとえば所得 120 万円（上の表と同じ前提）では、所得税の課税所得は 0 円 で、上限まで拠出しても減る税額は 0 円 です。所得控除は、引く前の税額までしか効きません。"}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"setsuzei","item":"https://ozko00.github.io/setsuzei/"},{"@type":"ListItem","position":2,"name":"iDeCo の節税額（個人事業主）","item":"https://ozko00.github.io/setsuzei/ideco-kojin-jigyonushi/"}]}</script>
+</head>
+<body class="article">
+<header class="site">
+  <p class="crumbs"><a href="../">setsuzei</a> › iDeCo の節税額（個人事業主）</p>
+  <h1>iDeCo の節税額をシミュレーションする（個人事業主・フリーランス）</h1>
+  <p class="lead">個人事業主（国民年金の第1号被保険者）の iDeCo の掛金は、月額 68,000 円（年 81.6 万円）が上限です。掛金は全額が所得控除になるので、売上と経費を入れると、所得税と住民税がいくら減るかを出します。</p>
+  <p class="privacy">令和8年分（2026年分）の概算です。入力した内容はこのページの中だけで計算し、どこにも送信・保存しません。</p>
+</header>
+
+<main>
+<form id="form" autocomplete="off" novalidate data-kind="ideco">
+  <p class="hint">すべて<strong>年間の見込み額</strong>を入れます。<code>600万</code> / <code>6,000,000</code> のどちらでも書けます。はじめは例の数字が入っています。</p>
+  <fieldset>
+    <legend>売上と経費</legend>
+    <label>フリーランス・個人事業の売上
+      <input name="revenue" inputmode="numeric" placeholder="例: 800万" value="800万"></label>
+    <label>その必要経費
+      <input name="expenses" inputmode="numeric" placeholder="例: 150万" value="150万"></label>
+    <label>青色申告特別控除
+      <select name="blue">
+        <option value="none">白色申告（控除なし）</option>
+        <option value="10">青色 10万円</option>
+        <option value="55">青色 55万円</option>
+        <option value="65" selected>青色 65万円</option>
+      </select></label>
+    <label>社会保険料<span class="sub">国民健康保険・国民年金などの年額</span>
+      <input name="social-insurance" inputmode="numeric" placeholder="例: 90万" value="90万"></label>
+  </fieldset>
+  <fieldset>
+    <legend>掛金・寄附</legend>
+    <label>iDeCo の掛金（支払済み・支払予定）<span class="sub">年末までの拠出見込み</span>
+      <input name="ideco-paid" inputmode="numeric" placeholder="例: 27.6万"></label>
+    <label>追加で拠出する額<span class="sub">空欄なら年間上限までの残り枠</span>
+      <input name="ideco-add" inputmode="numeric"></label>
+  </fieldset>
+  <p class="hint">給与収入がある方、配偶者や扶養親族がいる方は、<a id="full" href="../">すべての項目を入れられる計算ページ</a>を使ってください。</p>
+</form>
+
+<div class="results" id="results">
+  <h2>結果</h2>
+  <div id="result" aria-live="polite"><p class="placeholder">売上を入力すると、ここに結果が出ます。</p></div>
+  <noscript><p class="card error">計算機には JavaScript が必要です。下の計算例の表は JavaScript なしで読めます。</p></noscript>
+  <section class="card disclaimer">
+    <h3>この結果について</h3>
+    <p><strong>概算です。</strong>入力値と簡略化した前提にもとづく目安で、実際の税額は申告内容やお住まいの自治体によって変わります。税理士や税務署・市区町村の判断に代わるものではありません。重要な判断の前に、必ず専門家か所轄の窓口に確認してください。</p>
+  </section>
+</div>
+</main>
+
+<article class="prose">
+<section>
+  <h2>計算式と根拠</h2>
+  <p>減る税額は、掛金を入れる前と入れた後の税額をそれぞれ計算し、その差で出しています。</p>
+  <p class="formula">減る税額 ≒ 掛金 ×（所得税率 × 1.021 + 住民税 10%）</p>
+  <ul>
+    <li>iDeCo の掛金は、全額が小規模企業共済等掛金控除として所得から引かれます（<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1135.htm" rel="noopener noreferrer">国税庁 No.1135 小規模企業共済等掛金控除</a>）。</li>
+    <li>所得税率は課税所得に応じて 5%〜45% です（<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2260.htm" rel="noopener noreferrer">国税庁 No.2260 所得税の税率</a>）。掛金を引いた結果、税率の段階が下がる場合は、上の式より少し小さくなります。計算機はその分も含めて計算します。</li>
+    <li>住民税の所得割は一律 10% です（<a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/150790_06.html" rel="noopener noreferrer">総務省 個人住民税</a>）。住民税が減るのは翌年度（令和9年度）です。</li>
+    <li>上限は、国民年金基金の掛金や付加保険料と合算した額です（<a href="https://www.ideco-koushiki.jp/start/" rel="noopener noreferrer">iDeCo公式サイト iDeCoをはじめるまでの4つのポイント</a>）。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>計算例</h2>
+  <div class="table-wrap">
+    <table class="examples">
+      <caption>所得・掛金別の iDeCo の節税額（年額。所得税 + 住民税。令和8年分）</caption>
+      <thead><tr><th scope="col">所得（売上 − 経費）</th><th scope="col">所得税率</th><th scope="col">月 10,000 円</th><th scope="col">月 23,000 円</th><th scope="col">月 50,000 円</th><th scope="col">月 68,000 円</th></tr></thead>
+      <tbody>
+      <tr><th scope="row">300 万円</th><td>5%</td><td>18,200 円</td><td>41,700 円</td><td>90,700 円</td><td>123,300 円</td></tr>
+      <tr><th scope="row">400 万円</th><td>5%</td><td>18,100 円</td><td>41,600 円</td><td>90,600 円</td><td>123,200 円</td></tr>
+      <tr><th scope="row">500 万円</th><td>10%</td><td>24,300 円</td><td>55,800 円</td><td>121,300 円</td><td>154,400 円</td></tr>
+      <tr><th scope="row">600 万円</th><td>20%</td><td>36,500 円</td><td>83,900 円</td><td>170,200 円</td><td>213,900 円</td></tr>
+      <tr><th scope="row">800 万円</th><td>20%</td><td>36,500 円</td><td>84,000 円</td><td>182,500 円</td><td>248,200 円</td></tr>
+      <tr><th scope="row">1,000 万円</th><td>23%</td><td>40,200 円</td><td>92,400 円</td><td>191,100 円</td><td>256,800 円</td></tr>
+      <tr><th scope="row">1,500 万円</th><td>33%</td><td>52,500 円</td><td>120,600 円</td><td>262,200 円</td><td>356,600 円</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">表の前提: 給与収入のないフリーランス、青色申告特別控除 65 万円、扶養親族なし、社会保険料は所得（売上 − 経費）の 15% と仮定。令和8年分の所得税と、令和9年度の住民税で計算しています。社会保険料や家族構成で結果は変わるので、自分の数字は上の計算機に入れてください。 掛金は 12 か月分を拠出した場合の額です。</p>
+</section>
+
+<section>
+  <h2>よくある質問</h2>
+  <h3>個人事業主の iDeCo は、いくら節税になりますか？</h3>
+  <p>所得と掛金で決まります。上の表の前提で所得 500 万円の場合、上限の月 68,000 円（年 81.6 万円）を拠出すると、所得税と住民税を合わせて年 154,400 円 減ります。iDeCo の資産は基本的に 60 歳にならないと引き出せないので（<a href="https://www.ideco-koushiki.jp/start/" rel="noopener noreferrer">iDeCo公式サイト iDeCoをはじめるまでの4つのポイント</a>）、手元の資金と相談して決めてください。</p>
+  <h3>2026 年 12 月に上限が上がると聞きました。令和8年分の節税額は増えますか？</h3>
+  <p>増えません。第1号被保険者の上限は 2026 年 12 月から月額 75,000 円に上がりますが（<a href="https://www.mhlw.go.jp/web_magazine/column/20261020.html" rel="noopener noreferrer">厚生労働省の案内</a>）、12 月分の掛金が口座から引き落とされるのは翌年 1 月です（<a href="https://www.ideco-koushiki.jp/start/" rel="noopener noreferrer">iDeCo公式サイト iDeCoをはじめるまでの4つのポイント</a>）。その年に納付した掛金がその年の控除になるので、令和8年分（2026 年 1〜12 月の納付）は月額 68,000 円 のままで計算しています。</p>
+  <h3>iDeCo で国民健康保険料は下がりますか？</h3>
+  <p>下がりません。国民健康保険料の所得割は「総所得金額等 − 基礎控除」をもとに計算され、iDeCo などの所得控除は引かれないためです（<a href="https://laws.e-gov.go.jp/law/333CO0000000362" rel="noopener noreferrer">国民健康保険法施行令 第29条の7</a>、<a href="https://laws.e-gov.go.jp/law/325AC0000000226" rel="noopener noreferrer">地方税法 第703条の4</a>）。減るのは所得税と住民税です。</p>
+  <h3>所得が少ない年も、iDeCo で税金は減りますか？</h3>
+  <p>課税所得がなければ減りません。たとえば所得 120 万円（上の表と同じ前提）では、所得税の課税所得は 0 円 で、上限まで拠出しても減る税額は 0 円 です。所得控除は、引く前の税額までしか効きません。</p>
+</section>
+
+<section>
+  <h2>根拠にした一次情報</h2>
+  <ul class="sources">
+    <li><a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1135.htm" rel="noopener noreferrer">国税庁 No.1135 小規模企業共済等掛金控除</a></li>
+    <li><a href="https://www.mhlw.go.jp/web_magazine/column/20261020.html" rel="noopener noreferrer">厚生労働省 2026年12月からiDeCoがパワーアップ！ 制度改正の3つのポイント</a></li>
+    <li><a href="https://www.ideco-koushiki.jp/start/" rel="noopener noreferrer">iDeCo公式サイト iDeCoをはじめるまでの4つのポイント</a></li>
+    <li><a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2260.htm" rel="noopener noreferrer">国税庁 No.2260 所得税の税率</a></li>
+    <li><a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/150790_06.html" rel="noopener noreferrer">総務省 個人住民税</a></li>
+    <li><a href="https://laws.e-gov.go.jp/law/333CO0000000362" rel="noopener noreferrer">e-Gov 国民健康保険法施行令</a></li>
+    <li><a href="https://laws.e-gov.go.jp/law/325AC0000000226" rel="noopener noreferrer">e-Gov 地方税法</a></li>
+  </ul>
+  <p class="note">数値はすべて一次情報で確かめ、<a href="https://github.com/ozko00/setsuzei/blob/main/src/data/2026.ts" rel="noopener">出典の URL を付けたデータファイル</a>にまとめています。計算の前提と、計算していないものは <a href="https://github.com/ozko00/setsuzei#何を計算し何を計算しないか" rel="noopener">README</a> にあります。内容の最終確認日: 2026-11-25。</p>
+</section>
+
+<nav class="related" aria-label="ほかの計算">
+  <h2>ほかの計算</h2>
+  <ul>
+    <li><a href="../">全部まとめて計算する（ふるさと納税 + iDeCo + 小規模企業共済 + 青色申告）</a></li>
+    <li><a href="../furusato-nozei-freelance/">ふるさと納税の上限額を計算する（フリーランス・個人事業主）</a></li>
+    <li><a href="../shokibo-kyosai-setsuzei/">小規模企業共済の節税額をシミュレーションする</a></li>
+    <li><a href="../aoiro-shinkoku-65-55-10/">青色申告特別控除 65万・55万・10万の違いを税額で計算する</a></li>
+  </ul>
+</nav>
+</article>
+
+<a id="jump" class="jump" href="#results" hidden></a>
+
+<footer class="site">
+  <p>setsuzei ・ MIT License ・ <a href="https://github.com/ozko00/setsuzei" rel="noopener">実行方法・ソースコード・計算の前提（GitHub）</a></p>
+</footer>
+<script type="module" src="../js/web/page.js"></script>
+</body>
+</html>

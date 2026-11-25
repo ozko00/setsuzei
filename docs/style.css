@@ -138,3 +138,26 @@ footer.site { padding-bottom: 32px; }
 .jump[hidden] { display: none; }
 @media (max-width: 899px) { body.has-jump footer.site { padding-bottom: 88px; } }
 @media (min-width: 900px) { .jump { display: none; } }
+/* 検索語ごとの説明ページ */
+.crumbs { margin: 0 0 6px; font-size: 0.875rem; color: var(--muted); }
+body.article h1 { font-size: 1.45rem; line-height: 1.4; }
+.prose { max-width: 1080px; margin: 0 auto; padding: 0 16px 32px; }
+.prose section, .prose nav { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.prose h2 { margin-bottom: 10px; }
+.prose h3 { margin: 18px 0 4px; }
+.prose p, .prose ul { margin: 0 0 10px; }
+.prose ul { padding-left: 1.3em; }
+.prose li + li { margin-top: 6px; }
+.prose .note { color: var(--muted); font-size: 0.85rem; }
+.formula { padding: 10px 12px; background: var(--bg); border-left: 3px solid var(--accent); border-radius: 4px; font-weight: 700; }
+.table-wrap { overflow-x: auto; margin-bottom: 8px; }
+table.examples { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+table.examples caption { text-align: left; font-weight: 700; padding-bottom: 6px; }
+table.examples th, table.examples td { border: 1px solid var(--border); padding: 6px 10px; text-align: right; white-space: nowrap; }
+table.examples thead th { background: var(--bg); white-space: normal; text-align: center; }
+table.examples tbody th { text-align: left; font-weight: 400; }
+.about { max-width: 1080px; margin: 0 auto; padding: 0 16px 24px; }
+.about section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.about p, .about ul { margin: 0 0 10px; font-size: 0.95rem; }
+.about ul { padding-left: 1.3em; }
+.about li + li { margin-top: 4px; }
