@@ -6,7 +6,7 @@ import { join, relative } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { INPUT_BOOLEAN_FLAGS, INPUT_STRING_FLAGS } from "../src/cli/flags.js";
-import { compute, isBlank, queryToValues, valuesToFlags } from "../web/logic.js";
+import { compute, isBlank, queryToValues, splitIssue, valuesToFlags, type FormValues } from "../web/logic.js";
 
 // コンパイル後は .test-dist/test/ にあるので、リポジトリのルートは 2 つ上
 const root = fileURLToPath(new URL("../../", import.meta.url));
@@ -38,6 +38,7 @@ const CASES: readonly (readonly string[])[] = [
   ["--revenue", "3000000", "--expenses", "500000", "--blue", "10", "--social-insurance", "400000", "--kyosai-paid", "120000", "--kyosai-add", "10万", "--ideco-add", "5万", "--other-deductions", "8万"],
   ["--revenue", "2500万", "--expenses", "300万", "--blue", "55", "--social-insurance", "150万", "--furusato-paid", "100万", "--dependents-elderly", "1"],
   ["--salary", "150万"],
+  ["--salary", "1200万", "--social-insurance", "150万", "--spouse-income", "0", "--dependents", "1", "--income-adjustment"],
   ["--revenue", "800万", "--expenses", "150万", "--blue", "55", "--social-insurance", "90万", "--nhi-rate", "11.5"],
 ];
 
@@ -89,6 +90,42 @@ describe("ブラウザ版: フォームの値の扱い", () => {
     assert.deepEqual(queryToValues(""), {});
   });
 
+  it("雑所得を選んだら、隠れている青色申告の選択は使わない（エラーにしない）", () => {
+    assert.deepEqual(valuesToFlags({ revenue: "100万", misc: true, blue: "65" }), { revenue: "100万", misc: true });
+    assert.equal(compute({ revenue: "100万", misc: true, blue: "65" }).ok, true);
+  });
+
+  it("おかしな入力は、どの欄のことかわかる形で返す", () => {
+    const issuesOf = (values: FormValues): readonly { field: string | null; message: string }[] => {
+      const outcome = compute(values);
+      assert.equal(outcome.ok, false);
+      return outcome.ok ? [] : outcome.issues.map(splitIssue);
+    };
+    // 文字、マイナス、小数の円、指数表記
+    for (const text of ["abc", "-500万", "800.5", "1e7"]) {
+      const [issue] = issuesOf({ revenue: text });
+      assert.equal(issue?.field, "revenue", text);
+      assert.match(issue?.message ?? "", /金額として読めません/);
+    }
+    // 桁の打ち間違い（1 兆円超）は、内部のキー名ではなく欄の名前で返る
+    assert.equal(issuesOf({ revenue: "99999999999999" })[0]?.field, "revenue");
+    assert.equal(issuesOf({ revenue: "800万", dependents: "1.5" })[0]?.field, "dependents");
+    assert.equal(issuesOf({ revenue: "800万", "nhi-rate": "abc" })[0]?.field, "nhi-rate");
+    // 複数の欄が誤っていれば全部返す
+    assert.deepEqual(issuesOf({ revenue: "x", expenses: "y" }).map((i) => i.field), ["revenue", "expenses"]);
+  });
+
+  it("全角の数字・「円」・「億」も読む", () => {
+    const total = (values: FormValues): number => {
+      const outcome = compute(values);
+      assert.equal(outcome.ok, true);
+      return outcome.ok ? outcome.result.baseline.totalTax : -1;
+    };
+    const expected = total({ revenue: "8000000", dependents: "1" });
+    assert.equal(total({ revenue: "８００万円", dependents: "１" }), expected);
+    assert.equal(total({ revenue: "1億2000万" }), total({ revenue: "120000000" }));
+  });
+
   it("収入が空なら案内を出す", () => {
     assert.equal(isBlank({ "social-insurance": "90万" }), true);
     assert.equal(isBlank({ salary: "600万" }), false);
@@ -123,8 +160,9 @@ describe("ブラウザ版: 公開する静的ファイル（docs/）", () => {
     assert.match(html, /Content-Security-Policy[^>]*connect-src 'none'/);
     assert.match(html, /Content-Security-Policy[^>]*form-action 'none'/);
     // 読み込むファイルは同じ場所の相対パスだけ
-    const loaded = [...html.matchAll(/<(?:script|link|img)[^>]*\b(?:src|href)="([^"]+)"/g)].map((m) => m[1] ?? "");
-    assert.deepEqual(loaded.sort(), ["js/web/main.js", "style.css"]);
+    // （rel="canonical" は読み込みではなく、このページ自身の URL の宣言なので除く）
+    const loaded = [...html.matchAll(/<(?:script|link|img)(?![^>]*rel="canonical")[^>]*\b(?:src|href)="([^"]+)"/g)].map((m) => m[1] ?? "");
+    assert.deepEqual(loaded.sort(), ["img/favicon.svg", "js/web/main.js", "style.css"]);
     const css = readFileSync(join(root, "docs/style.css"), "utf8");
     assert.doesNotMatch(css, /url\(|@import/);
     for (const file of listFiles(join(root, "docs/js"))) {
@@ -133,6 +171,27 @@ describe("ブラウザ版: 公開する静的ファイル（docs/）", () => {
       // Node 専用のモジュールを読み込んでいない
       assert.doesNotMatch(js, /from "node:/, file);
     }
+  });
+
+  it("共有されたときの表示（OGP）: タイトル・説明・画像があり、画像は 1200×630 の実ファイル", () => {
+    const meta = (property: string): string => {
+      const m = new RegExp(`<meta property="${property}" content="([^"]*)"`).exec(html);
+      assert.ok(m, `${property} がない`);
+      return m[1] ?? "";
+    };
+    const site = "https://ozko00.github.io/setsuzei/";
+    assert.equal(meta("og:url"), site);
+    assert.match(meta("og:title"), /setsuzei/);
+    assert.ok(meta("og:description").length >= 40);
+    assert.match(html, /<meta name="twitter:card" content="summary_large_image">/);
+    // 画像は絶対 URL で指定し、docs/ の中に実体がある
+    const image = meta("og:image");
+    assert.ok(image.startsWith(site));
+    const png = readFileSync(join(root, "docs", image.slice(site.length)));
+    assert.equal(png.subarray(1, 4).toString("latin1"), "PNG");
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 630]);
+    assert.equal(meta("og:image:width"), "1200");
+    assert.equal(meta("og:image:height"), "630");
   });
 
   it("結果の近くに概算である旨と出典を出す", () => {

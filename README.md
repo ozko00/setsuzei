@@ -1,5 +1,9 @@
 # setsuzei
 
+[![CI](https://github.com/ozko00/setsuzei/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ozko00/setsuzei/actions/workflows/ci.yml)
+
+**ブラウザ版: <https://ozko00.github.io/setsuzei/>**（インストール不要。入力はブラウザの中だけで処理します）
+
 > A CLI, in-browser calculator, TypeScript library, and Agent Skill that estimates how much Japanese income tax and resident tax a freelancer or side-job worker can still save before year-end.
 > Covers furusato nozei (hometown tax donation) limits, iDeCo, Small Enterprise Mutual Aid, and the blue-return special deduction for tax year 2026 (Reiwa 8).
 > Every rate and threshold is taken from primary sources (National Tax Agency, MIC, e-Gov) and cited in the data file. Estimates only; not tax advice.
@@ -10,14 +14,14 @@
 
 <p>
   <img src="docs/img/desktop.png" alt="ブラウザ版の画面（PC 幅）。左に入力欄、右に「いまの見込み税額 780,000 円」「全部やると減る税額 393,800 円」と内訳が並ぶ" width="68%">
-  <img src="docs/img/mobile.png" alt="ブラウザ版の画面（スマホ幅）。結果のカードが縦に並ぶ" width="26%">
+  <img src="docs/img/mobile.png" alt="ブラウザ版の画面（スマホ幅）。入力欄の下に「税額の見込み 780,000 円 ／ 全部やると −393,800 円」の帯が出る" width="26%">
 </p>
 
 上はブラウザ版の実際の画面、下は同じ入力をコマンドラインで実行した結果です。どちらも同じ計算コアを使い、同じ数字になります。
 
 ```console
 $ setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万 --ideco-paid 27.6万 --furusato-paid 3万
-setsuzei 0.1.0 ｜ 令和8年分（2026年分）の概算
+setsuzei 0.2.0 ｜ 令和8年分（2026年分）の概算
 
 ■ 現状の見込み
   事業所得（青色申告特別控除 650,000 円を控除後）  5,850,000 円
@@ -58,40 +62,29 @@ setsuzei 0.1.0 ｜ 令和8年分（2026年分）の概算
 
 ## 30 秒で試す
 
-> **現在は npm にも GitHub Pages にも未公開です。** 公開までは、下の「ソースから」の手順で試してください。
-
 ### ブラウザ版
 
-インストール不要の 1 ページです（[`docs/`](docs)）。GitHub Pages を有効にすると、そのまま配信できます（Settings → Pages → Deploy from a branch → `main` の `/docs`）。
+<https://ozko00.github.io/setsuzei/> を開くだけです。「例を入れてみる」を押すと、上の画面と同じ入力が入ります。
 
-手元で開く場合:
-
-```sh
-git clone https://github.com/ozko00/setsuzei.git && cd setsuzei
-npm run serve:site      # http://127.0.0.1:8080/ を開く（Python 3 の http.server を使います）
-```
-
-URL に CLI と同じ名前のパラメータを付けると、入力済みの状態で開けます（例: `?revenue=800万&expenses=150万&blue=65`）。入力内容は保存も送信もしません。
+URL に CLI と同じ名前のパラメータを付けると、入力済みの状態で開けます（例: [`?revenue=800万&expenses=150万&blue=65`](https://ozko00.github.io/setsuzei/?revenue=800万&expenses=150万&blue=65)）。入力内容は保存も送信もしません。
 
 ### CLI
 
-Node.js 20 以上が必要です。npm への公開後は、インストールなしで実行できます。
+Node.js 20 以上と git が必要です。npm には未公開なので、GitHub から直接実行します（初回は取得とビルドで 10 秒ほどかかります）。
 
 ```sh
-npx setsuzei          # 対話形式で入力
-npx setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
+npx github:ozko00/setsuzei          # 対話形式で入力
+npx github:ozko00/setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
-ソースから（公開前はこちら）:
+毎回 `npx github:...` と打つのが面倒なら、インストールすると `setsuzei` コマンドとして使えます。
 
 ```sh
-git clone https://github.com/ozko00/setsuzei.git
-cd setsuzei
-npm ci && npm run build
-node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
+npm install -g github:ozko00/setsuzei
+setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
-以下の例の `setsuzei` は、公開前は `node dist/cli.js` に読み替えてください。
+以下の例は `setsuzei` と書いています。インストールしない場合は `npx github:ozko00/setsuzei` に読み替えてください。
 
 ## 使い方
 
@@ -115,6 +108,7 @@ setsuzei --salary 600万 --revenue 120万 --expenses 20万 --misc \
 | `--ideco-paid` / `--kyosai-paid` | iDeCo / 小規模企業共済の掛金（年末までの支払見込み） |
 | `--furusato-paid` | ふるさと納税の寄附済み額 |
 | `--spouse-income` / `--spouse-70` | 配偶者の合計所得金額 / 配偶者が 70 歳以上 |
+| `--income-adjustment` | 所得金額調整控除の対象（給与収入 850 万円超で、23 歳未満の扶養親族＜16 歳未満の子を含む＞か特別障害者がいる場合）。19〜22 歳の扶養親族を入力したときは自動で対象になります |
 | `--dependents` / `--dependents-specific` / `--dependents-elderly` / `--dependents-elderly-cohabiting` | 扶養親族の人数（16〜18 歳・23〜69 歳 / 19〜22 歳 / 70 歳以上 / 同居老親等） |
 | `--other-deductions` | その他の所得控除の合計（医療費控除・生命保険料控除など） |
 | `--ideco-limit` | iDeCo の年間拠出限度額（省略時は就業形態から推定） |
@@ -137,7 +131,7 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 
 ### ライブラリとして使う
 
-計算コアは実行時依存ゼロの純粋関数です。
+計算コアは実行時依存ゼロの純粋関数です。`npm install github:ozko00/setsuzei` で入ります。
 
 ```ts
 import { calculate } from "setsuzei";
@@ -170,7 +164,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 
 ### 計算するもの
 
-- 給与所得（給与所得控除）、事業所得・雑所得、合計所得金額
+- 給与所得（給与所得控除、子ども・特別障害者等がいる場合の所得金額調整控除）、事業所得・雑所得、合計所得金額
 - 所得税と復興特別所得税（令和8年分）
 - 住民税の所得割・調整控除・均等割・森林環境税（令和8年中の所得に課される令和9年度分）
 - 所得控除: 基礎控除、配偶者控除・配偶者特別控除、扶養控除、社会保険料控除（入力値）、小規模企業共済等掛金控除、寄附金控除、その他（入力値）
@@ -186,7 +180,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 - 個人事業税、消費税（インボイス・2割特例など）、源泉徴収税額・予定納税の精算
 - 住民税の非課税判定、自治体独自の均等割の上乗せや減免
 - 分離課税の所得（株式・配当・不動産の譲渡など）、不動産所得、退職所得、一時所得、年金
-- 住宅ローン控除などの税額控除、所得金額調整控除、特定親族特別控除、障害者・ひとり親・寡婦・勤労学生控除（所得控除は「その他の所得控除」に金額を入れれば反映できます）
+- 住宅ローン控除などの税額控除、給与と年金の両方がある場合の所得金額調整控除、特定親族特別控除、障害者・ひとり親・寡婦・勤労学生控除（所得控除は「その他の所得控除」に金額を入れれば反映できます）
 - 損失の繰越控除、青色事業専従者給与、家事按分の妥当性
 - iDeCo・小規模企業共済の受取時の課税、運用成績、手数料
 
@@ -206,12 +200,12 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 - 青色申告の区分の比較は税額の差だけを出します。その区分の要件（承認申請、複式簿記、e-Tax など）を満たせるかは判定しません。
 - 各策の軽減額は、その策だけを実行した場合の額です。「全部やった場合」は、iDeCo と小規模企業共済を追加したうえで、下がった後の上限までふるさと納税をする前提でまとめて計算し直します。青色申告の区分は現在のままです。
 - 国民健康保険料は自治体ごとに料率が違うため、料率は入力値です。所得割は「総所得金額等 − 住民税の基礎控除 43 万円」に料率を掛けた額で、賦課限度額には当てません。iDeCo・小規模企業共済・ふるさと納税はこの算定基礎を減らさないので、国保料が変わるのは青色申告の区分を変えた場合だけです。
-- 給与収入が 850 万円を超え、23 歳未満の扶養親族などがいる場合の所得金額調整控除は計算していません。該当する場合、税額はやや高め、ふるさと納税の上限は数千円高めに出ます。
+- 所得金額調整控除（給与収入が 850 万円を超え、23 歳未満の扶養親族か特別障害者がいる場合に、850 万円を超える部分＜1,000 万円まで＞の 10% を給与所得から引く）は、`--income-adjustment` を付けたときと、19〜22 歳の扶養親族を入力したときに適用します。16 歳未満や 16〜18 歳の子だけがいる場合は入力から判別できないので、`--income-adjustment` を付けてください。付け忘れると、税額はやや高め、ふるさと納税の上限は数千円高めに出ます。
 - 配偶者・扶養親族は、入力された人数・所得がそのまま控除の要件（生計を一にする、所得要件、年齢など）を満たすものとして扱います。
 
 ## 根拠にした一次情報
 
-税率・控除額・上限などの数値は [`src/data/2026.ts`](src/data/2026.ts) にまとめ、数値ごとに出典の URL をコメントで付けています（2026-11-24 閲覧）。`setsuzei --sources` でも一覧を表示できます。
+税率・控除額・上限などの数値は [`src/data/2026.ts`](src/data/2026.ts) にまとめ、数値ごとに出典の URL をコメントで付けています（2026-11-24・25 閲覧）。`setsuzei --sources` でも一覧を表示できます。
 
 | 内容 | 出典 |
 | --- | --- |
@@ -219,6 +213,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 | 所得税の税率・復興特別所得税 | [国税庁 No.2260](https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2260.htm)、[復興財源確保法 第13条](https://laws.e-gov.go.jp/law/423AC0000000117) |
 | 基礎控除 | [国税庁 No.1199](https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1199.htm) |
 | 給与所得控除 | [国税庁 No.1410](https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1410.htm) |
+| 所得金額調整控除 | [国税庁 No.1411](https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1411.htm)、[租税特別措置法](https://laws.e-gov.go.jp/law/332AC0000000026) 第41条の3の11（住民税は [地方税法](https://laws.e-gov.go.jp/law/325AC0000000226) 第313条第2項により同じ計算） |
 | 青色申告特別控除 | [国税庁 No.2072](https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2072.htm) |
 | 小規模企業共済等掛金控除 | [国税庁 No.1135](https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1135.htm) |
 | ふるさと納税（所得税） | [国税庁 No.1155](https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1155.htm) |
@@ -239,9 +234,27 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 
 - 国税庁: 所得税の具体例（No.2260）、給与所得の表（No.1410）、「源泉所得税の改正のあらまし」の基礎控除と給与収入の対応表
 - 中小機構: 掛金の節税額一覧表（課税所得 5 通り × 掛金 4 通り）
-- 総務省: 「全額控除されるふるさと納税額（年間上限の目安）」の表（[資料](https://www.soumu.go.jp/main_content/000816463.pdf)）。表は当時の税制で作られているので、所得税の基礎控除だけ当時の額に戻して計算し、給与収入 500 万円・750 万円の 6 マスが千円単位まで一致することを確認しています。1,000 万円・2,000 万円の行は、社会保険料の前提を逆算し、所得金額調整控除を補ったうえで一致します。
+- 総務省: 「全額控除されるふるさと納税額（年間上限の目安）」の表（[資料](https://www.soumu.go.jp/main_content/000816463.pdf)）。下の「総務省の目安の表との差」を見てください。
 
-このほか、税率や控除額が切り替わる境界値と、条文の式から手計算した期待値のテストがあります。なお、令和8年分は基礎控除が引き上げられたため、同じ収入でも総務省の表より上限が低く出ることがあります（例: 給与収入 500 万円・独身は 6.1 万円 → 5.7 万円。所得税率が 10% から 5% に下がるためです）。
+このほか、税率や控除額が切り替わる境界値と、条文の式から手計算した期待値のテストがあります。
+
+### 総務省の目安の表との差
+
+総務省の表は当時の税制（所得税の基礎控除 48 万円）で作られているので、基礎控除だけ当時の額に戻して計算し、表と比べています（[`test/published-furusato.test.ts`](test/published-furusato.test.ts)）。資料には計算の前提が書かれていないため、社会保険料はどの行も「給与収入の 15%」、子 1 人は高校生、子 2 人は大学生と高校生と置いています。
+
+| 給与収入 | 独身 | 夫婦＋子 1 人 | 夫婦＋子 2 人 |
+| --- | --- | --- | --- |
+| 500 万円 | 一致（6.1 万円） | 一致（4.0 万円） | 一致（2.8 万円） |
+| 750 万円 | 一致（11.8 万円） | 一致（8.7 万円） | 一致（7.6 万円） |
+| 1,000 万円 | 17.7 万円（表 18.0 万円、−3,000 円） | 15.3 万円（表 15.7 万円、−4,000 円） | 14.0 万円（表 14.4 万円、−4,000 円） |
+| 2,000 万円 | 52.0 万円（表 56.9 万円、−49,000 円） | 50.3 万円（表 55.2 万円、−49,000 円） | 48.7 万円（表 53.6 万円、−49,000 円） |
+
+- 500 万・750 万円の 6 マスは千円単位まで一致します。
+- 1,000 万・2,000 万円の行には差が残ります。所得金額調整控除を実装しても、**表との差そのものは小さくなっていません**（子ありのマスは実装前 +1,000 円 / −44,000 円 → 実装後 −4,000 円 / −49,000 円）。
+- 実装で変わったのは差の出方です。実装前は独身と子ありで差が食い違っていましたが、実装後は行ごとにほぼ同じ額にそろいました。「独身と比べて子がいるといくら上限が下がるか」は、表と 1,000 円以内で合います。
+- 残る差は家族構成によらない要因で、高収入の行で表が社会保険料を 15% より低く置いていることが原因とみられます。ただし資料に前提の記載がなく確認できないので、前提を表に合わせて動かすことはしていません。社会保険料は入力値をそのまま使うので、実際の額を入れれば、この前提の違いは利用時の結果には影響しません。
+
+なお、令和8年分は基礎控除が引き上げられたため、同じ収入でも総務省の表より上限が低く出ることがあります（例: 給与収入 500 万円・独身は 6.1 万円 → 5.7 万円。所得税率が 10% から 5% に下がるためです）。
 
 ## 開発
 
@@ -259,7 +272,7 @@ scripts/verify-docker.sh   # CI と同じ手順を Docker の Node 20 / 22 / 24 
 - CLI: [`src/cli.ts`](src/cli.ts)、[`src/cli/`](src/cli)
 - ブラウザ版: [`web/`](web)（スクリプト）、[`docs/`](docs)（配信する静的ファイル。`docs/js` はビルド結果）
 
-数値の誤りや法令改正への追随漏れを見つけたら、一次情報の URL を添えて Issue を立ててください。
+計算結果がおかしい、数値が古い、対応してほしい制度がある、といった場合は [Issue](https://github.com/ozko00/setsuzei/issues/new/choose) を立ててください。数値を直す変更には一次情報の URL が必要です。手順は [CONTRIBUTING.md](CONTRIBUTING.md) にあります。
 
 ## 免責
 

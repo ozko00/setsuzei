@@ -49,6 +49,13 @@ export interface TaxInput {
   readonly spouse?: SpouseInput;
   /** 扶養親族の人数 */
   readonly dependents?: DependentsInput;
+  /**
+   * 所得金額調整控除（子ども・特別障害者等）の対象かどうか。
+   * 給与収入が 850 万円を超え、次のどれかに当たる場合に true にする:
+   * 23 歳未満の扶養親族がいる（16 歳未満の子を含む）/ 本人が特別障害者 / 特別障害者の同一生計配偶者・扶養親族がいる。
+   * 特定扶養親族（19〜22 歳）を 1 人以上入力した場合は、指定しなくても対象として扱う。
+   */
+  readonly incomeAdjustment?: boolean;
   /** その他の所得控除の合計（所得税）。医療費控除・生命保険料控除など。 */
   readonly otherDeductions?: number;
   /** その他の所得控除の合計（住民税）。省略時は otherDeductions と同額。 */
@@ -114,8 +121,10 @@ export interface ResidentTaxResult {
 
 /** ある前提での税額の概算 */
 export interface TaxEstimate {
-  /** 給与所得 */
+  /** 給与所得（所得金額調整控除を引いた後） */
   readonly salaryIncome: number;
+  /** 給与所得から引いた所得金額調整控除額（対象外なら 0） */
+  readonly incomeAdjustment: number;
   /** 事業所得または雑所得（青色申告特別控除後） */
   readonly businessIncome: number;
   /** 適用した青色申告特別控除額 */

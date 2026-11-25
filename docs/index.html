@@ -7,6 +7,20 @@
 <meta name="referrer" content="no-referrer">
 <title>setsuzei ｜ 年末までに、あと何をすればいくら税金が減るか</title>
 <meta name="description" content="フリーランス・副業向け。ふるさと納税・iDeCo・小規模企業共済・青色申告特別控除で、年末までにいくら税金が減るかを概算します（令和8年分）。入力はブラウザの中だけで処理します。">
+<link rel="canonical" href="https://ozko00.github.io/setsuzei/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="setsuzei">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:url" content="https://ozko00.github.io/setsuzei/">
+<meta property="og:title" content="setsuzei ｜ 年末までに、あと何をすればいくら税金が減るか">
+<meta property="og:description" content="フリーランス・副業向け。ふるさと納税・iDeCo・小規模企業共済・青色申告特別控除で、年末までにいくら税金が減るかを概算します（令和8年分）。入力はブラウザの中だけで処理します。">
+<meta property="og:image" content="https://ozko00.github.io/setsuzei/img/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="setsuzei: 年末までに、あと何をすればいくら税金が減るか。フリーランス・副業向けの概算（令和8年分）">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b6b57">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -78,6 +92,7 @@
       <label>70 歳以上（それ以外）
         <input name="dependents-elderly" inputmode="numeric" placeholder="0"></label>
     </div>
+    <label class="inline"><input type="checkbox" name="income-adjustment"> <span>23 歳未満の扶養親族（16 歳未満の子を含む）か特別障害者がいる<span class="sub">給与収入が 850 万円を超える場合だけ関係します（所得金額調整控除）</span></span></label>
   </fieldset>
 
   <details>
@@ -111,8 +126,10 @@
 </div>
 </main>
 
+<a id="jump" class="jump" href="#results" hidden></a>
+
 <footer class="site">
-  <p><span id="version">setsuzei</span> ・ MIT License ・ 同じ計算をコマンドラインでも実行できます（<code>npx setsuzei</code>）。</p>
+  <p><span id="version">setsuzei</span> ・ MIT License ・ 同じ計算をコマンドラインでも実行できます（<code>npx github:ozko00/setsuzei</code>）。 ・ <a href="https://github.com/ozko00/setsuzei" rel="noopener">ソースコードと計算の前提（GitHub）</a></p>
 </footer>
 <noscript><p class="card error">このページの計算には JavaScript が必要です。</p></noscript>
 <script type="module" src="js/web/main.js"></script>

@@ -92,6 +92,8 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
       elderly: input.dependents?.elderly ?? 0,
       elderlyCohabiting: input.dependents?.elderlyCohabiting ?? 0,
     },
+    // 特定扶養親族（19〜22 歳）は必ず 23 歳未満なので、いれば対象
+    incomeAdjustment: input.incomeAdjustment === true || (input.dependents?.specific ?? 0) > 0,
     otherDeductions: input.otherDeductions ?? 0,
     otherDeductionsResident: input.otherDeductionsResident ?? input.otherDeductions ?? 0,
   };
@@ -109,6 +111,7 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     dependents: normalized.dependents,
     otherDeductions: normalized.otherDeductions,
     otherDeductionsResident: normalized.otherDeductionsResident,
+    incomeAdjustmentEligible: normalized.incomeAdjustment,
   };
   const baseline = estimate(data, base);
   const hasSalary = normalized.salaryRevenue > 0;

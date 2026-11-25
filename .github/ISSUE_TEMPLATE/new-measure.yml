@@ -1,0 +1,37 @@
+name: 対応してほしい制度
+description: まだ計算していない控除・制度・年分に対応してほしい
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        いま計算しているもの・していないものは、README の「[何を計算し、何を計算しないか](https://github.com/ozko00/setsuzei#何を計算し何を計算しないか)」にまとめています。
+        数値を一次情報で確認できた制度だけを実装します。
+  - type: input
+    id: name
+    attributes:
+      label: 制度・控除の名前
+      placeholder: "例: 特定親族特別控除"
+    validations:
+      required: true
+  - type: textarea
+    id: who
+    attributes:
+      label: どんな人に関係するか
+      description: 対象になる人と、年末までの行動で税額が変わるかどうか
+      placeholder: "例: 19〜22 歳で年収 123 万円を超える子を扶養しているフリーランス"
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: 一次情報の URL
+      description: 金額・要件・適用開始の年分が書かれている国税庁・総務省・e-Gov の条文・運営主体などのページ。わからなければ「不明」と書いてください。
+      placeholder: https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/....htm
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: 公表されている計算例（あれば）
+      description: 公的機関が出している計算例や早見表があれば、テストの期待値に使えます

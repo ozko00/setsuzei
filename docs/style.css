@@ -118,6 +118,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .notes { margin: 10px 0 0; padding-left: 1.2em; color: var(--muted); font-size: 0.85rem; }
 .notes li + li { margin-top: 4px; }
 .placeholder { color: var(--muted); padding: 24px 0; text-align: center; }
+input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--error); border-width: 2px; }
 .card.error { border-color: var(--error); background: var(--error-bg); }
 .card.error h3, .card.error .notes { color: var(--error); }
 .disclaimer p { margin: 0 0 8px; font-size: 0.9rem; }
@@ -125,3 +126,15 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .sources { padding-left: 1.2em; font-size: 0.85rem; }
 a { color: var(--accent); }
 footer.site { padding-bottom: 32px; }
+/* 画面が狭いと結果が入力欄のずっと下になるので、要点を画面の下に出して結果へ飛べるようにする */
+.jump {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1;
+  display: block; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: var(--accent); color: var(--surface);
+  font-size: 0.9rem; font-weight: 700; text-align: center; text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+.jump.error { background: var(--error); }
+.jump[hidden] { display: none; }
+@media (max-width: 899px) { body.has-jump footer.site { padding-bottom: 88px; } }
+@media (min-width: 900px) { .jump { display: none; } }

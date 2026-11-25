@@ -32,6 +32,7 @@ const KNOWN_KEYS = new Set([
     "spouse",
     "dependents",
     "nhiIncomeRatePercent",
+    "incomeAdjustment",
 ]);
 /** 金額として扱える上限（1 兆円）。桁の打ち間違いを弾く。 */
 const MAX_AMOUNT = 1_000_000_000_000;
@@ -41,7 +42,11 @@ function isPlainObject(value) {
 function checkAmount(value, name, issues, max = MAX_AMOUNT) {
     if (value === undefined || value === null)
         return undefined;
-    if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > max) {
+    if (typeof value === "number" && Number.isInteger(value) && value > max) {
+        issues.push(`${name}: 大きすぎます。${max.toLocaleString("ja-JP")} 以下で指定してください（受け取った値: ${value.toLocaleString("ja-JP")}）`);
+        return undefined;
+    }
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
         issues.push(`${name}: 0 以上の整数（円）で指定してください（受け取った値: ${JSON.stringify(value)}）`);
         return undefined;
     }
@@ -88,6 +93,13 @@ export function validateInput(raw) {
         else {
             issues.push(`nhiIncomeRatePercent: 0 より大きく 100 以下のパーセント（小数第3位まで。例: 11.5）で指定してください（受け取った値: ${JSON.stringify(nhiRate)}）`);
         }
+    }
+    const adjustment = raw["incomeAdjustment"];
+    if (adjustment !== undefined && adjustment !== null) {
+        if (typeof adjustment === "boolean")
+            out.incomeAdjustment = adjustment;
+        else
+            issues.push("incomeAdjustment: true / false で指定してください");
     }
     const type = raw["businessIncomeType"];
     if (type !== undefined && type !== null) {

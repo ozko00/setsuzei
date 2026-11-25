@@ -59,7 +59,10 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
   out.push("");
   out.push("■ 現状の見込み");
   const income: string[][] = [];
-  if (r.input.salaryRevenue > 0) income.push(["給与所得", yen(b.salaryIncome)]);
+  if (r.input.salaryRevenue > 0) {
+    const adjusted = b.incomeAdjustment > 0 ? `（所得金額調整控除 ${yen(b.incomeAdjustment)}を控除後）` : "";
+    income.push([`給与所得${adjusted}`, yen(b.salaryIncome)]);
+  }
   if (r.input.businessRevenue > 0 || r.input.businessExpenses > 0) {
     const kind = r.input.businessIncomeType === "business" ? "事業所得" : "雑所得";
     const blue = b.blueDeductionApplied > 0 ? `（青色申告特別控除 ${yen(b.blueDeductionApplied)}を控除後）` : "";

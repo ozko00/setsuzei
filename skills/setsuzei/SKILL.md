@@ -41,6 +41,7 @@ description: 日本のフリーランス・副業の人が「年末までに、�
 | ふるさと納税の寄附済み額 | `furusatoPaid` |
 | 生計を一にする配偶者の**合計所得金額**と、70歳以上か | `spouse`: `{ "income": 0, "age70OrOlder": false }` |
 | 扶養親族の人数（16〜18歳・23〜69歳 / 19〜22歳 / 70歳以上 / 70歳以上で同居の父母・祖父母） | `dependents`: `{ "general", "specific", "elderly", "elderlyCohabiting" }` |
+| 給与収入が 850 万円を超える人だけ: 23 歳未満の扶養親族（16 歳未満の子を含む）か、特別障害者（本人・同一生計配偶者・扶養親族）がいるか | `incomeAdjustment`: `true` |
 | その他の所得控除の合計（医療費控除・生命保険料控除など、金額がわかる場合） | `otherDeductions` |
 | iDeCo の年間上限（勤務先に企業年金がある人・公務員は上限が違うので本人に確認） | `idecoAnnualLimit` |
 | 国民健康保険料の所得割の料率の合計（%。国保加入者で、自治体の料率がわかる場合だけ。推測で入れない） | `nhiIncomeRatePercent` |
@@ -48,7 +49,7 @@ description: 日本のフリーランス・副業の人が「年末までに、�
 注意:
 
 - 金額はすべて**年額・円・整数**。「600万」は `6000000` に直す（単位の変換だけは行ってよい）。
-- 配偶者は「年収」ではなく合計所得金額。給与だけの配偶者の年収しかわからない場合は、`setsuzei --salary <年収> --json` を実行して `baseline.salaryIncome` を使う（自分で給与所得控除を引かない）。
+- 配偶者は「年収」ではなく合計所得金額。給与だけの配偶者の年収しかわからない場合は、`npx -y github:ozko00/setsuzei --salary <年収> --json` を実行して `baseline.salaryIncome` を使う（自分で給与所得控除を引かない）。
 - 16歳未満の子は扶養控除の対象外なので人数に入れない。
 
 ### 2. 計算
@@ -57,10 +58,10 @@ description: 日本のフリーランス・副業の人が「年末までに、�
 
 ```sh
 echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","socialInsurance":900000}' \
-  | npx setsuzei --input - --json
+  | npx -y github:ozko00/setsuzei --input - --json
 ```
 
-- `npx setsuzei` が使えない場合（npm に未公開など）は、リポジトリを取得して `npm ci && npm run build` のあと `node dist/cli.js --input - --json` を使う。
+- npm には未公開なので、GitHub から直接実行する（Node.js 20 以上と git が必要）。`setsuzei` コマンドがインストール済みならそれを使ってよい。どちらも使えない場合は、リポジトリを取得して `npm ci` のあと `node dist/cli.js --input - --json` を使う。
 - 終了コード 2 は入力の誤り。標準エラーの `error.issues` を読んで直す。直せなければユーザーに確認する。
 - 「iDeCo をあと10万円だけ」のような条件は `idecoAdditional` / `kyosaiAdditional` で指定して再実行する。条件を変えた比較は、条件ごとに CLI を実行する。差額を自分で按分しない。
 

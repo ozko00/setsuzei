@@ -94,6 +94,11 @@ export async function askInteractively(
         elderly: await count("70 歳以上（上記以外）"),
       };
     }
+    if (result.salaryRevenue > 8_500_000 && !((result.dependents?.specific ?? 0) > 0)) {
+      result.incomeAdjustment = await yesNo(
+        "23 歳未満の扶養親族（16 歳未満の子を含む）か、特別障害者（本人・同一生計配偶者・扶養親族）はいますか",
+      );
+    }
     result.otherDeductions = await amount("その他の所得控除の合計（医療費控除・生命保険料控除など）");
     say("");
     return result;

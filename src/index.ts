@@ -2,6 +2,7 @@ export { calculate, DISCLAIMER } from "./core/calculate.js";
 export {
   estimate,
   furusatoLimit,
+  incomeAdjustment,
   incomeTaxOnTaxableIncome,
   salaryIncome,
   type Scenario,

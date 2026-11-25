@@ -39,10 +39,37 @@ export const INPUT_STRING_FLAGS = [
 ] as const;
 
 /** 真偽値の入力フラグの名前 */
-export const INPUT_BOOLEAN_FLAGS = ["misc", "spouse-70"] as const;
+export const INPUT_BOOLEAN_FLAGS = ["misc", "spouse-70", "income-adjustment"] as const;
 
 export type InputFlags = Partial<Record<(typeof INPUT_STRING_FLAGS)[number], string>> &
   Partial<Record<(typeof INPUT_BOOLEAN_FLAGS)[number], boolean>>;
+
+function toHalfWidthDigits(text: string): string {
+  return text.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+}
+
+const KEY_TO_FLAG: Readonly<Record<string, string>> = {
+  ...Object.fromEntries(Object.entries(AMOUNT_FLAGS).map(([flag, key]) => [key, flag])),
+  ...Object.fromEntries(Object.entries(DEPENDENT_FLAGS).map(([flag, key]) => [`dependents.${key}`, flag])),
+  "spouse.income": "spouse-income",
+  "spouse.age70OrOlder": "spouse-70",
+  blueReturn: "blue",
+  businessIncomeType: "misc",
+  nhiIncomeRatePercent: "nhi-rate",
+  incomeAdjustment: "income-adjustment",
+  year: "year",
+};
+
+/**
+ * 入力エラーのメッセージ（「--revenue: …」「businessRevenue: …」）が、どのフラグについてのものかを返す。
+ * ブラウザ版が、該当する入力欄を示すのに使う。わからなければ null。
+ */
+export function issueFlag(issue: string): { readonly flag: string; readonly message: string } | null {
+  const match = /^(--)?([A-Za-z0-9.-]+): (.*)$/s.exec(issue);
+  if (!match || match[2] === undefined || match[3] === undefined) return null;
+  const flag = match[1] ? match[2] : KEY_TO_FLAG[match[2]];
+  return flag === undefined ? null : { flag, message: match[3] };
+}
 
 /** フラグを TaxInput の形（検証前）にする。 */
 export function flagsToInput(flags: InputFlags): Record<string, unknown> {
@@ -62,7 +89,8 @@ export function flagsToInput(flags: InputFlags): Record<string, unknown> {
   for (const [flag, key] of Object.entries(DEPENDENT_FLAGS)) {
     const text = flags[flag as keyof typeof DEPENDENT_FLAGS];
     if (text === undefined) continue;
-    if (/^\d+$/.test(text.trim())) dependents[key] = Number(text.trim());
+    const count = toHalfWidthDigits(text.trim());
+    if (/^\d+$/.test(count)) dependents[key] = Number(count);
     else issues.push(`--${flag}: 人数を整数で指定してください（${JSON.stringify(text)}）`);
   }
   if (Object.keys(dependents).length > 0) input["dependents"] = dependents;
@@ -78,6 +106,7 @@ export function flagsToInput(flags: InputFlags): Record<string, unknown> {
     if (/^\d+(\.\d+)?$/.test(text)) input["nhiIncomeRatePercent"] = Number(text);
     else issues.push(`--nhi-rate: パーセントの数値で指定してください（例: 11.5。受け取った値: ${JSON.stringify(flags["nhi-rate"])}）`);
   }
+  if (flags["income-adjustment"]) input["incomeAdjustment"] = true;
   if (flags.misc) input["businessIncomeType"] = "misc";
   if (flags.blue !== undefined) input["blueReturn"] = flags.blue;
   if (flags.year !== undefined) input["year"] = /^\d+$/.test(flags.year) ? Number(flags.year) : flags.year;

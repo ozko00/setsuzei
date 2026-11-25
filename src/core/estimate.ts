@@ -25,6 +25,8 @@ export interface Scenario {
   readonly dependents: Required<DependentsInput>;
   readonly otherDeductions: number;
   readonly otherDeductionsResident: number;
+  /** 所得金額調整控除（子ども・特別障害者等）の対象者かどうか */
+  readonly incomeAdjustmentEligible: boolean;
 }
 
 export function floorTo(amount: number, unit: number): number {
@@ -54,6 +56,17 @@ export function salaryIncome(data: TaxYearData, revenue: number): number {
     }
   }
   return revenue - rule.maxDeduction;
+}
+
+/**
+ * 所得金額調整控除（子ども・特別障害者等を有する者等）の額。
+ * {給与収入（上限あり）− 850 万円} × 10%。1 円未満は切り上げる（国税庁 No.1411）。
+ * 対象者かどうかは呼び出し側で判定する。
+ */
+export function incomeAdjustment(data: TaxYearData, revenue: number): number {
+  const rule = data.salary.incomeAdjustment;
+  if (revenue <= rule.revenueAbove) return 0;
+  return Math.ceil(((Math.min(revenue, rule.revenueCap) - rule.revenueAbove) * rule.ratePercent) / 100);
 }
 
 /**
@@ -173,7 +186,8 @@ function specialCreditRatePer100k(data: TaxYearData, residentTaxable: number, ad
 /** シナリオ 1 つ分の所得税・住民税を概算する。 */
 export function estimate(data: TaxYearData, s: Scenario): TaxEstimate {
   // --- 所得 ---
-  const salary = salaryIncome(data, s.salaryRevenue);
+  const adjustment = s.incomeAdjustmentEligible ? incomeAdjustment(data, s.salaryRevenue) : 0;
+  const salary = salaryIncome(data, s.salaryRevenue) - adjustment;
   const businessNet = s.businessRevenue - s.businessExpenses;
   let blueDeductionApplied = 0;
   let businessIncome: number;
@@ -271,6 +285,7 @@ export function estimate(data: TaxYearData, s: Scenario): TaxEstimate {
 
   return {
     salaryIncome: salary,
+    incomeAdjustment: adjustment,
     businessIncome,
     blueDeductionApplied,
     totalIncome,

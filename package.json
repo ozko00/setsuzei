@@ -1,6 +1,6 @@
 {
   "name": "setsuzei",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "年末までに、あと何をすればいくら税金が減るかを概算する CLI / ライブラリ / Agent Skill（フリーランス・副業向け、令和8年分）",
   "license": "MIT",
   "author": "Kosuke Ozawa",
@@ -44,7 +44,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "test": "tsc -p tsconfig.test.json && node --test .test-dist/test/*.test.js",
-    "prepack": "npm run build",
+    "prepare": "npm run build",
     "build:site": "tsc -p tsconfig.web.json",
     "serve:site": "python3 -m http.server 8080 --bind 127.0.0.1 --directory docs"
   },
