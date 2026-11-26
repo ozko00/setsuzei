@@ -4,7 +4,7 @@ import { parseArgs } from "node:util";
 import { calculate } from "./core/calculate.js";
 import type { TaxInput } from "./core/types.js";
 import { InputError, validateInput } from "./core/validate.js";
-import { flagsToInput, INPUT_BOOLEAN_FLAGS, INPUT_STRING_FLAGS } from "./cli/flags.js";
+import { flagsToInput, INPUT_BOOLEAN_FLAGS, INPUT_STRING_FLAGS, issueWithFlagName } from "./cli/flags.js";
 import { formatResult } from "./cli/format.js";
 import { askInteractively } from "./cli/interactive.js";
 import { DEFAULT_YEAR, getSources, supportedYears } from "./data/index.js";
@@ -38,18 +38,23 @@ const HELP = `setsuzei ${VERSION}
 家族:
   --spouse-income 金額           配偶者の合計所得金額（配偶者がいる場合のみ。所得なしは 0）
   --spouse-70                    配偶者が 70 歳以上
+  --dependents-under16 人数      16 歳未満の扶養親族（扶養控除はないが、住民税の所得割がかからなくなる
+                                 所得の上限に関わる）
   --dependents 人数              扶養親族（16〜18 歳、23〜69 歳）
   --dependents-specific 人数     特定扶養親族（19〜22 歳）
   --dependents-elderly 人数      老人扶養親族（70 歳以上、同居老親等以外）
   --dependents-elderly-cohabiting 人数   同居老親等
   --income-adjustment            所得金額調整控除の対象（給与収入 850 万円超で、23 歳未満の扶養親族
-                                 ＜16 歳未満の子を含む＞か特別障害者がいる場合。19〜22 歳の扶養親族を
-                                 入力したときは自動で対象）
+                                 ＜16 歳未満の子を含む＞か特別障害者がいる場合。16 歳未満か 19〜22 歳の
+                                 扶養親族を入力したときは自動で対象）
 
 試算の条件:
   --ideco-limit 金額             iDeCo の年間拠出限度額（省略時は就業形態から推定）
-  --ideco-add 金額               iDeCo に追加する額（省略時は限度額までの残り枠）
+  --ideco-add 金額               iDeCo に年内に追加できる額。指定したときだけ「まとめて実行した場合」の
+                                 合計に含める（省略時は残り枠で単独の試算だけを出す。掛金額の変更は
+                                 年 1 回で、年内に増やせるかは加入先と時期しだいのため）
   --kyosai-add 金額              小規模企業共済に追加する額（省略時は年間上限までの残り枠）
+                                 どちらも、税額が減らなくなる額を超える分は計算に含めない
   --nhi-rate パーセント          国民健康保険料の所得割の料率の合計（例: 11.5）。指定すると、
                                  青色申告の区分による翌年度の国保料（所得割）の差の目安を出す
   --year 年                      年分（西暦）。対応: ${supportedYears().join(", ")}（既定 ${DEFAULT_YEAR}）
@@ -81,11 +86,38 @@ function parseFlags(argv: readonly string[]): Flags {
   options["help"] = { type: "boolean", short: "h" };
   options["version"] = { type: "boolean", short: "v" };
   options["interactive"] = { type: "boolean", short: "i" };
+  // 「--revenue -100万」は、Node の parseArgs が値をオプションと取り違えて英語のエラーにするので先に弾く
+  for (const [i, arg] of argv.entries()) {
+    const next = argv[i + 1];
+    if (!arg.startsWith("--") || next === undefined) continue;
+    if (!(STRING_FLAGS as readonly string[]).includes(arg.slice(2))) continue;
+    if (/^[-−ー－]\s*[0-9０-９.,，]/.test(next)) {
+      throw new InputError([`${arg}: 0 以上の値で指定してください（受け取った値: ${JSON.stringify(next)}）`]);
+    }
+  }
   try {
     return parseArgs({ args: [...argv], options, strict: true, allowPositionals: false }).values as Flags;
   } catch (error) {
-    throw new InputError([`${error instanceof Error ? error.message : String(error)}（--help で使い方を表示）`]);
+    throw new InputError([`${describeParseError(error)}（--help で使い方を表示）`]);
   }
+}
+
+/** Node の parseArgs のエラー（英語）を日本語にする。 */
+function describeParseError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
+  const option = /'(-{1,2}[^\s'=<]+)/.exec(message)?.[1];
+  if (code === "ERR_PARSE_ARGS_UNKNOWN_OPTION" && option) return `${option}: 知らないオプションです`;
+  if (code === "ERR_PARSE_ARGS_INVALID_OPTION_VALUE" && option) {
+    return /does not take an argument/.test(message)
+      ? `${option}: 値を取らないオプションです`
+      : `${option}: 値を指定してください`;
+  }
+  if (code === "ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL") {
+    const value = /'([^']*)'/.exec(message)?.[1];
+    return `オプションの付いていない値は指定できません${value === undefined ? "" : `（${JSON.stringify(value)}）`}`;
+  }
+  return `オプションを読めません（${message}）`;
 }
 
 function readJsonInput(path: string): Record<string, unknown> {
@@ -153,9 +185,13 @@ async function main(argv: readonly string[]): Promise<number> {
     return 0;
   } catch (error) {
     const known = error instanceof InputError || error instanceof RangeError;
-    const message = error instanceof Error ? error.message : String(error);
+    // フラグで入力した人には、項目名を JSON のキーではなくフラグ名で伝える（--input の JSON はキーのまま）
+    const usesJsonInput = argv.some((arg) => arg === "--input" || arg.startsWith("--input="));
+    const shown =
+      error instanceof InputError && !usesJsonInput ? new InputError(error.issues.map(issueWithFlagName)) : error;
+    const message = shown instanceof Error ? shown.message : String(shown);
     if (wantsJson) {
-      const issues = error instanceof InputError ? error.issues : [message];
+      const issues = shown instanceof InputError ? shown.issues : [message];
       process.stderr.write(`${JSON.stringify({ error: { message, issues } }, null, 2)}\n`);
     } else {
       process.stderr.write(`${known ? message : `予期しないエラー: ${message}`}\n`);

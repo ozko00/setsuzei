@@ -101,12 +101,16 @@ describe("ブラウザ版: フォームの値の扱い", () => {
       assert.equal(outcome.ok, false);
       return outcome.ok ? [] : outcome.issues.map(splitIssue);
     };
-    // 文字、マイナス、小数の円、指数表記
-    for (const text of ["abc", "-500万", "800.5", "1e7"]) {
+    // 文字、小数の円、指数表記
+    for (const text of ["abc", "800.5", "1e7"]) {
       const [issue] = issuesOf({ revenue: text });
       assert.equal(issue?.field, "revenue", text);
       assert.match(issue?.message ?? "", /金額として読めません/);
     }
+    // マイナスは、0 以上で入れるよう伝える
+    const [negative] = issuesOf({ revenue: "-500万" });
+    assert.equal(negative?.field, "revenue");
+    assert.match(negative?.message ?? "", /0 以上の金額で指定してください/);
     // 桁の打ち間違い（1 兆円超）は、内部のキー名ではなく欄の名前で返る
     assert.equal(issuesOf({ revenue: "99999999999999" })[0]?.field, "revenue");
     assert.equal(issuesOf({ revenue: "800万", dependents: "1.5" })[0]?.field, "dependents");
@@ -124,6 +128,21 @@ describe("ブラウザ版: フォームの値の扱い", () => {
     const expected = total({ revenue: "8000000", dependents: "1" });
     assert.equal(total({ revenue: "８００万円", dependents: "１" }), expected);
     assert.equal(total({ revenue: "1億2000万" }), total({ revenue: "120000000" }));
+  });
+
+  it("16 歳未満の扶養親族の欄があり、CLI と同じ結果になる", () => {
+    const outcome = compute({
+      revenue: "215万",
+      "social-insurance": "35万",
+      "has-spouse": true,
+      "dependents-under16": "3",
+    });
+    assert.equal(outcome.ok, true);
+    if (outcome.ok) {
+      assert.equal(outcome.result.input.dependents.under16, 3);
+      assert.equal(outcome.result.baseline.residentTax.total, 5_000);
+    }
+    assert.equal(queryToValues("?revenue=215万&dependents-under16=3")["dependents-under16"], "3");
   });
 
   it("収入が空なら案内を出す", () => {

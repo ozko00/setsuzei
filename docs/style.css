@@ -100,7 +100,8 @@ form > button.link { margin-top: 8px; }
 .hint { margin: 0; }
 .hint button.link { min-height: 0; padding: 4px 0; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
-.headline { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+.headline { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.headline-notes { margin: 0 0 12px; }
 .headline .figure { padding: 12px 14px; }
 .headline .label { display: block; color: var(--muted); font-size: 0.8rem; }
 .headline strong { display: block; font-size: clamp(1.15rem, 5vw, 1.6rem); font-variant-numeric: tabular-nums; line-height: 1.3; }

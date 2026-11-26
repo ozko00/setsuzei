@@ -135,6 +135,21 @@ export const taxYear2026 = {
         // 出典: 総務省 個人住民税（自治体が独自に上乗せしている場合がある）
         perCapita: 4_000,
         forestTax: 1_000,
+        // 所得割の非課税限度額（全国一律）
+        //   35 万円 ×（同一生計配偶者 + 扶養親族の数 + 1）+ 10 万円
+        //   同一生計配偶者か扶養親族がいる場合は、さらに + 32 万円
+        //   扶養親族は「16 歳未満の者」と控除対象扶養親族。総所得金額等がこの額以下なら所得割を課さない。
+        //   限度額を少し超える場合は、税引後の所得が限度額を下回らないよう所得割を減額する（同条第2項・第5項）。
+        // 出典: 地方税法 附則第3条の3（令和 9 年 1 月 1 日時点の条文で確認）
+        // https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002
+        incomeLevyExemption: { perPerson: 35 * MAN, addition: 10 * MAN, familyAddition: 32 * MAN },
+        // 均等割の非課税限度額は、基本額 35 万円・加算額 21 万円を上限に、生活保護の級地に応じた率を
+        // 掛けて市区町村の条例で定める（1 級地でこの額）。級地で変わるので計算には使わない。
+        // 出典: 地方税法 第295条第3項、地方税法施行令 第47条の3（令和 9 年 1 月 1 日時点の条文で確認）
+        // https://laws.e-gov.go.jp/law/325CO0000000245/20270101_508CO0000000083
+        perCapitaExemptionMax: { perPerson: 35 * MAN, addition: 10 * MAN, familyAddition: 21 * MAN },
+        // 出典: 地方税法 第295条第1項第2号
+        specialExemptIncomeLimit: 135 * MAN,
         // 基礎控除（住民税は令和 8 年度税制改正でも据え置き）
         // 出典: 地方税法 第314条の2第2項
         // https://laws.e-gov.go.jp/law/325AC0000000226
@@ -229,6 +244,8 @@ export const taxYear2026 = {
         // 令和 8 年分（2026 年 1〜12 月に納付する掛金）に適用される拠出限度額。
         // 第 1 号 月額 75,000 円・第 2 号 月額 62,000 円への引上げは 2026 年 12 月施行で、
         // 12 月分の掛金は翌年 1 月に納付するため、2026 年分の控除には影響しない。
+        // 出典: 国民年金基金連合会の案内「2026年12月分（2027年１月引き落とし分）からiDeCoの拠出限度額が引き上げられます」
+        // https://www.ideco-koushiki.jp/library/pdf/notice202612-02.pdf
         // 出典: 厚生労働省 Web マガジン「2026年12月からiDeCoがパワーアップ！ 制度改正の3つのポイント」
         // https://www.mhlw.go.jp/web_magazine/column/20261020.html
         // 出典: iDeCo 公式サイト「iDeCo をはじめるまでの 4 つのポイント」（掛金は 12 月分〜翌年 11 月分、納付は 1〜12 月）
@@ -309,8 +326,12 @@ export const sources2026 = [
         url: "https://laws.e-gov.go.jp/law/325AC0000000226",
     },
     {
-        title: "e-Gov 地方税法 令和9年1月1日施行の条文（第292条第1項第7号・第9号: 配偶者・扶養親族の所得要件 62 万円）と令和8年法律第2号 附則",
+        title: "e-Gov 地方税法 令和9年1月1日施行の条文（第292条第1項第7号・第9号: 配偶者・扶養親族の所得要件 62 万円、第295条: 非課税の範囲、附則第3条の3: 所得割の非課税限度額）と令和8年法律第2号 附則",
         url: "https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002",
+    },
+    {
+        title: "e-Gov 地方税法施行令 令和9年1月1日施行の条文（第47条の3: 均等割の非課税限度額の基準。注意の表示にだけ使用）",
+        url: "https://laws.e-gov.go.jp/law/325CO0000000245/20270101_508CO0000000083",
     },
     {
         title: "e-Gov 復興財源確保法（第13条）",
@@ -331,6 +352,42 @@ export const sources2026 = [
     {
         title: "iDeCo公式サイト iDeCoをはじめるまでの4つのポイント",
         url: "https://www.ideco-koushiki.jp/start/",
+    },
+    {
+        title: "iDeCo公式サイト iDeCoの特徴（原則 60 歳まで引き出せない、手数料がかかる、課税所得がなければ所得控除は受けられない）",
+        url: "https://www.ideco-koushiki.jp/guide/",
+    },
+    {
+        title: "iDeCo公式サイト iDeCoの加入資格・掛金・受取方法等（掛金額の変更は 12 月分〜翌年 11 月分の 1 年に 1 回）",
+        url: "https://www.ideco-koushiki.jp/guide/structure.html",
+    },
+    {
+        title: "国民年金基金連合会 掛金の年単位拠出について（事前の届出が必要、反映は申請の翌月分〈翌々月納付〉以降、前納・追納はできない）",
+        url: "https://www.ideco-koushiki.jp/library/pdf/annual_unit_contribution_291201revision.pdf",
+    },
+    {
+        title: "国民年金基金連合会 iDeCoの拠出限度額の引き上げにあわせた掛金額変更の案内（2026年12月分＝2027年1月引き落とし分から引上げ）",
+        url: "https://www.ideco-koushiki.jp/library/pdf/notice202612-02.pdf",
+    },
+    {
+        title: "iDeCo公式サイト iDeCoのメリット（受取時は公的年金等控除・退職所得控除の対象）",
+        url: "https://www.ideco-koushiki.jp/guide/good.html",
+    },
+    {
+        title: "国税庁 No.1420 退職金を受け取ったとき（確定拠出年金の老齢給付金の一時金は退職所得）",
+        url: "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1420.htm",
+    },
+    {
+        title: "中小機構 小規模企業共済の共済金等の請求（受取時の税法上の取扱い、任意解約は掛金納付月数 240 か月未満で掛金合計額を下回る）",
+        url: "https://kyosai-web.smrj.go.jp/customer/skyosai/claim/index.html",
+    },
+    {
+        title: "財務省 令和8年度改正関係資料（納税環境整備関係）: 青色申告特別控除の見直し（令和9年分以後。この計算は令和8年分なので未反映）",
+        url: "https://www.mof.go.jp/tax_policy/summary/tins/r8kaiseinoukan.pdf",
+    },
+    {
+        title: "国税庁 令和9年分以後の 10 万円の青色申告特別控除の要件の見直し（リーフレット）",
+        url: "https://www.nta.go.jp/taxes/shiraberu/shinkoku/kojin_jigyo/0026004-012.pdf",
     },
     {
         title: "中小機構 小規模企業共済の掛金",

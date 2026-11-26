@@ -62,7 +62,7 @@ function contributionCards(title: string, m: ContributionMeasure): HTMLElement[]
     h(
       "div",
       { class: "headline" },
-      h("div", { class: "figure" }, h("span", { class: "label" }, "追加する掛金"), h("strong", {}, yen(m.additional))),
+      h("div", { class: "figure" }, h("span", { class: "label" }, "追加で支払う掛金"), h("strong", {}, yen(m.additional))),
       h("div", { class: "figure accent" }, h("span", { class: "label" }, "減る税額"), h("strong", {}, yen(m.saving.total))),
     ),
     card(
@@ -71,7 +71,7 @@ function contributionCards(title: string, m: ContributionMeasure): HTMLElement[]
         ["年間上限", yen(m.annualLimit)],
         ["支払済み・支払予定", yen(m.paid)],
         ["残り枠", yen(m.remaining)],
-        ["追加する額", yen(m.additional)],
+        ["試算した追加額（追加で支払う額）", yen(m.additional)],
         ...savingRows(m.saving),
       ]),
       notes(m.notes),
@@ -92,7 +92,8 @@ function render(kind: string, r: SetsuzeiResult): { cards: HTMLElement[]; summar
           "div",
           { class: "headline" },
           h("div", { class: "figure accent" }, h("span", { class: "label" }, "上限の目安（年間）"), h("strong", {}, yen(f.limit))),
-          h("div", { class: "figure" }, h("span", { class: "label" }, "あと寄附できる額"), h("strong", {}, yen(f.remaining))),
+          h("div", { class: "figure" }, h("span", { class: "label" }, "あと寄附できる額（支払う額）"), h("strong", {}, yen(f.remaining))),
+          h("div", { class: "figure" }, h("span", { class: "label" }, "それで減る税額"), h("strong", {}, yen(f.saving.total))),
         ),
         card(
           "ふるさと納税",

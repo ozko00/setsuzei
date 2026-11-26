@@ -37,16 +37,60 @@ function contributionCard(title, m) {
         ["年間上限", yen(m.annualLimit)],
         ["支払済み", yen(m.paid)],
         ["残り枠", yen(m.remaining)],
-        [`追加する額`, yen(m.additional)],
+        ["試算した追加額（追加で支払う額）", yen(m.additional), "strong"],
         ...savingRows(m.saving),
     ]), notes(m.notes));
+}
+/** まとめて実行した場合に含まれる策の名前 */
+function combinedParts(c) {
+    return [
+        ...(c.furusatoAdditional > 0 ? ["ふるさと納税"] : []),
+        ...(c.kyosaiAdditional > 0 ? ["小規模企業共済"] : []),
+        ...(c.idecoAdditional > 0 ? ["iDeCo"] : []),
+    ];
+}
+function combinedCard(title, c) {
+    return card(`${title}（${combinedParts(c).join(" + ")}）`, rows([
+        ...(c.furusatoAdditional > 0 ? [["ふるさと納税の追加", yen(c.furusatoAdditional)]] : []),
+        ...(c.kyosaiAdditional > 0 ? [["小規模企業共済の追加", yen(c.kyosaiAdditional)]] : []),
+        ...(c.idecoAdditional > 0 ? [["iDeCo の追加", yen(c.idecoAdditional)]] : []),
+        ["追加で支払う額の合計", yen(c.totalPayment), "strong"],
+        ["減る税額の合計", yen(c.saving.total), "strong"],
+        ...(c.furusatoAdditional > 0
+            ? [
+                ["　うち掛金の追加による分", yen(c.savingFromContributions.total)],
+                ["　うちふるさと納税による分（寄附と引き換え）", yen(c.savingFromFurusato.total)],
+            ]
+            : []),
+        ["　（所得税）", yen(c.saving.incomeTax)],
+        ["　（住民税）", yen(c.saving.residentTax)],
+        ["税額の合計（実行後）", yen(c.totalTax)],
+    ]), notes(c.notes));
 }
 const BLUE_LABEL = { none: "白色申告", "10": "青色 10万円", "55": "青色 55万円", "65": "青色 65万円" };
 function renderResult(r) {
     const b = r.baseline;
     const m = r.measures;
     const out = [];
-    out.push(h("div", { class: "headline" }, h("div", { class: "figure" }, h("span", { class: "label" }, "いまの見込み税額"), h("strong", {}, yen(b.totalTax))), h("div", { class: "figure accent" }, h("span", { class: "label" }, "全部やると減る税額"), h("strong", {}, yen(m.combined.saving.total)))));
+    out.push(h("div", { class: "headline" }, h("div", { class: "figure" }, h("span", { class: "label" }, "いまの見込み税額"), h("strong", {}, yen(b.totalTax))), h("div", { class: "figure accent" }, h("span", { class: "label" }, "まとめて実行すると減る税額"), h("strong", {}, yen(m.combined.saving.total))), h("div", { class: "figure" }, h("span", { class: "label" }, "そのために追加で支払う額"), h("strong", {}, yen(m.combined.totalPayment)))));
+    const headNotes = [];
+    if (m.combined.totalPayment === 0) {
+        headNotes.push("いまの見込みでは、年内に追加して税額が減る策はありません（下の各項目に理由があります）。");
+    }
+    else {
+        headNotes.push(`内訳: ${combinedParts(m.combined).join(" + ")}。減る税額は、追加で支払う額と引き換えです。`);
+    }
+    if (m.combined.furusatoAdditional > 0) {
+        headNotes.push(`減る税額のうち ${yen(m.combined.savingFromFurusato.total)}はふるさと納税による分です。寄附した額とほぼ同じだけ税が減る仕組みで、手元のお金は増えません（得になるのは返礼品の分）。`);
+    }
+    if (!m.combined.includesIdeco && m.ideco.additional > 0) {
+        headNotes.push("iDeCo の追加は合計に含めていません。掛金額の変更は年 1 回で、年内に増やせるかどうかは加入先と時期しだいです。増やせる額がわかっている場合は「試算の条件を変える」に入力してください。");
+    }
+    const head = notes(headNotes);
+    if (head) {
+        head.classList.add("headline-notes");
+        out.push(head);
+    }
     const income = [];
     if (r.input.salaryRevenue > 0) {
         const adjusted = b.incomeAdjustment > 0 ? `（所得金額調整控除 ${yen(b.incomeAdjustment)}を控除後）` : "";
@@ -58,27 +102,21 @@ function renderResult(r) {
     income.push(["合計所得金額", yen(b.totalIncome)], [`所得税の課税所得（税率 ${b.incomeTax.marginalRatePercent}%）`, yen(b.incomeTax.taxableIncome)], ["所得税 + 復興特別所得税", yen(b.incomeTax.total)], [`住民税（${r.residentTaxLabel}）`, yen(b.residentTax.total)], ["税額の合計", yen(b.totalTax), "strong"]);
     out.push(card(`現状の見込み（${r.label}）`, rows(income)));
     const c = m.combined;
-    if (c.totalPayment > 0) {
-        out.push(card("全部やった場合", rows([
-            ...(c.furusatoAdditional > 0 ? [["ふるさと納税の追加", yen(c.furusatoAdditional)]] : []),
-            ...(c.idecoAdditional > 0 ? [["iDeCo の追加", yen(c.idecoAdditional)]] : []),
-            ...(c.kyosaiAdditional > 0 ? [["小規模企業共済の追加", yen(c.kyosaiAdditional)]] : []),
-            ["追加で支払う額の合計", yen(c.totalPayment)],
-            ["税額の合計（実行後）", yen(c.totalTax)],
-            ...savingRows(c.saving),
-        ]), notes(c.notes)));
-    }
+    if (c.totalPayment > 0)
+        out.push(combinedCard("まとめて実行した場合", c));
+    if (m.combinedWithIdeco)
+        out.push(combinedCard("iDeCo の追加も年内に間に合う場合", m.combinedWithIdeco));
     const f = m.furusato;
     out.push(card("ふるさと納税", f.limit > 0
         ? rows([
             ["控除上限額の目安（年間）", yen(f.limit), "strong"],
             ["寄附済み", yen(f.paid)],
-            ["上限までの残り", yen(f.remaining)],
+            ["上限までの残り（追加で寄附する額）", yen(f.remaining)],
+            ...savingRows(f.saving),
             ["上限まで寄附した場合の自己負担", yen(f.outOfPocket)],
             ...(f.limitAfterOtherMeasures !== f.limit
-                ? [["iDeCo・共済を追加した場合の上限", yen(f.limitAfterOtherMeasures)]]
+                ? [["掛金を追加した場合の上限（まとめて実行した場合）", yen(f.limitAfterOtherMeasures)]]
                 : []),
-            ...savingRows(f.saving),
         ])
         : null, notes(f.notes)));
     out.push(contributionCard("iDeCo（個人型確定拠出年金）", m.ideco));
@@ -197,7 +235,8 @@ function start() {
         if (outcome.ok) {
             output.replaceChildren(...renderResult(outcome.result));
             const r = outcome.result;
-            setJump(`税額の見込み ${yen(r.baseline.totalTax)} ／ 全部やると −${yen(r.measures.combined.saving.total)}　結果を見る ↓`);
+            const c = r.measures.combined;
+            setJump(`税額の見込み ${yen(r.baseline.totalTax)} ／ ${yen(c.totalPayment)}支払うと −${yen(c.saving.total)}　結果を見る ↓`);
         }
         else {
             output.replaceChildren(showIssues(form, outcome.issues));

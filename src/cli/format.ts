@@ -1,4 +1,4 @@
-import type { ContributionMeasure, Saving, SetsuzeiResult } from "../core/types.js";
+import type { CombinedMeasure, Saving, SetsuzeiResult } from "../core/types.js";
 
 const yen = (n: number): string => `${n.toLocaleString("ja-JP")} 円`;
 
@@ -43,8 +43,34 @@ function bullet(notes: readonly string[]): string[] {
   return notes.map((n) => `    ・${n}`);
 }
 
-function contributionRow(name: string, m: ContributionMeasure): string[] {
-  return [`${name}（あと ${yen(m.additional)}）`, ...savingCells(m.saving)];
+/** まとめて実行した場合に含まれる策の名前（「ふるさと納税 + 小規模企業共済」）。 */
+export function combinedParts(c: CombinedMeasure): string[] {
+  return [
+    ...(c.furusatoAdditional > 0 ? ["ふるさと納税"] : []),
+    ...(c.kyosaiAdditional > 0 ? ["小規模企業共済"] : []),
+    ...(c.idecoAdditional > 0 ? ["iDeCo"] : []),
+  ];
+}
+
+function combinedSection(title: string, c: CombinedMeasure): string[] {
+  const out = [`  ◆ ${title}（${combinedParts(c).join(" + ")}）`];
+  const parts: string[][] = [];
+  if (c.furusatoAdditional > 0) parts.push(["ふるさと納税の追加", yen(c.furusatoAdditional)]);
+  if (c.kyosaiAdditional > 0) parts.push(["小規模企業共済の追加", yen(c.kyosaiAdditional)]);
+  if (c.idecoAdditional > 0) parts.push(["iDeCo の追加", yen(c.idecoAdditional)]);
+  parts.push(["追加で支払う額の合計", yen(c.totalPayment)]);
+  parts.push(["減る税額の合計", yen(c.saving.total)]);
+  if (c.furusatoAdditional > 0) {
+    parts.push(["　うち掛金の追加による分", yen(c.savingFromContributions.total)]);
+    parts.push(["　うちふるさと納税による分", yen(c.savingFromFurusato.total)]);
+  }
+  parts.push(["　（所得税）", yen(c.saving.incomeTax)]);
+  parts.push(["　（住民税）", yen(c.saving.residentTax)]);
+  parts.push(["税額の合計（実行後）", yen(c.totalTax)]);
+  out.push(...table(parts, "    "));
+  out.push(...bullet(c.notes));
+  out.push("");
+  return out;
 }
 
 const BLUE_LABEL = { none: "白色申告（控除なし）", "10": "青色 10万円", "55": "青色 55万円", "65": "青色 65万円" } as const;
@@ -76,30 +102,50 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
   out.push(...table(income));
   out.push("");
 
-  out.push("■ 年末までにできることと、減る税額の目安");
-  const rows: string[][] = [["", "合計", "所得税", "住民税"]];
+  out.push("■ 年末までにできることと、支払う額・減る税額の目安");
+  const rows: string[][] = [["", "追加で支払う額", "減る税額", "うち所得税", "うち住民税"]];
   const f = m.furusato;
-  if (f.limit > 0) rows.push([`ふるさと納税（あと ${yen(f.remaining)}）`, ...savingCells(f.saving)]);
-  if (m.ideco.applicable) rows.push(contributionRow("iDeCo", m.ideco));
-  if (m.kyosai.applicable) rows.push(contributionRow("小規模企業共済", m.kyosai));
-  if (rows.length > 1) out.push(...table(rows));
-  out.push("  ※ それぞれ単独で実行した場合の軽減額です。まとめて実行した場合の合計は下の「全部やった場合」を見てください。");
+  const idecoIncluded = m.combined.includesIdeco;
+  if (f.remaining > 0 && f.saving.total > 0) rows.push(["ふるさと納税", yen(f.remaining), ...savingCells(f.saving)]);
+  if (m.kyosai.applicable && m.kyosai.additional > 0) {
+    rows.push(["小規模企業共済", yen(m.kyosai.additional), ...savingCells(m.kyosai.saving)]);
+  }
+  if (m.ideco.applicable && m.ideco.additional > 0) {
+    rows.push([
+      idecoIncluded ? "iDeCo" : "iDeCo（年内に増やせる場合）",
+      yen(m.ideco.additional),
+      ...savingCells(m.ideco.saving),
+    ]);
+  }
+  if (rows.length > 1) {
+    out.push(...table(rows));
+    out.push("  ※ それぞれ単独で実行した場合です。減る税額は、追加で支払う額と引き換えです。");
+    if (f.remaining > 0 && f.saving.total > 0) {
+      out.push("  ※ ふるさと納税は、寄附した額とほぼ同じだけ税が減る仕組みです。手元のお金は増えません（得になるのは返礼品の分）。");
+    }
+    if (m.ideco.applicable && m.ideco.additional > 0) {
+      out.push(
+        idecoIncluded
+          ? "  ※ iDeCo は原則 60 歳まで引き出せません。年内に増やせるかどうかは加入先に確認してください。"
+          : "  ※ iDeCo は原則 60 歳まで引き出せません。掛金額の変更は年 1 回で、年内に増やせるかどうかは加入先と時期しだいです。",
+      );
+    }
+  } else {
+    out.push("  いまの見込みでは、年内に追加して税額が減る策はありません（下の各項目に理由があります）。");
+  }
   out.push("");
 
   const c = m.combined;
-  if (c.totalPayment > 0) {
-    out.push("  ◆ 全部やった場合（ふるさと納税 + iDeCo + 小規模企業共済）");
-    const parts: string[][] = [];
-    if (c.furusatoAdditional > 0) parts.push(["ふるさと納税の追加", yen(c.furusatoAdditional)]);
-    if (c.idecoAdditional > 0) parts.push(["iDeCo の追加", yen(c.idecoAdditional)]);
-    if (c.kyosaiAdditional > 0) parts.push(["小規模企業共済の追加", yen(c.kyosaiAdditional)]);
-    parts.push(["追加で支払う額の合計", yen(c.totalPayment)]);
-    parts.push(["税額の合計（実行後）", yen(c.totalTax)]);
-    parts.push(["減る税額の合計", yen(c.saving.total)]);
-    parts.push(["　うち所得税", yen(c.saving.incomeTax)]);
-    parts.push(["　うち住民税", yen(c.saving.residentTax)]);
-    out.push(...table(parts, "    "));
-    out.push(...bullet(c.notes));
+  // 上の表に、まとめの対象になる行が 2 つ以上あるときは、足し算されないようにまとめを必ず出す
+  const planRows = rows.length - 1 - (m.ideco.applicable && m.ideco.additional > 0 && !idecoIncluded ? 1 : 0);
+  const showCombined = c.totalPayment > 0 && (combinedParts(c).length >= 2 || planRows >= 2);
+  if (showCombined) out.push(...combinedSection("まとめて実行した場合", c));
+  const withIdeco = m.combinedWithIdeco;
+  if (withIdeco && (combinedParts(withIdeco).length >= 2 || planRows >= 1)) {
+    out.push(...combinedSection("iDeCo の追加も年内に間に合う場合", withIdeco));
+  } else if (!showCombined && !idecoIncluded && m.ideco.additional > 0 && c.totalPayment > 0) {
+    // まとめの欄を出さないときも、iDeCo を合計に含めていない理由は伝える
+    out.push(...bullet(c.notes.filter((n) => n.startsWith("iDeCo の追加は"))).map((line) => line.slice(2)));
     out.push("");
   }
 
@@ -111,9 +157,10 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
           ["控除上限額の目安（年間）", yen(f.limit)],
           ["寄附済み", yen(f.paid)],
           ["上限までの残り", yen(f.remaining)],
+          ["上限まで寄附した場合に減る税額（残りの分）", yen(f.saving.total)],
           ["上限まで寄附した場合の自己負担", yen(f.outOfPocket)],
           ...(f.limitAfterOtherMeasures !== f.limit
-            ? [["下の iDeCo・共済を追加した場合の上限", yen(f.limitAfterOtherMeasures)]]
+            ? [["掛金を追加した場合の上限（まとめて実行した場合）", yen(f.limitAfterOtherMeasures)]]
             : []),
         ],
         "    ",
@@ -135,7 +182,8 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
             ["年間上限", yen(k.annualLimit)],
             ["支払済み", yen(k.paid)],
             ["残り枠", yen(k.remaining)],
-            [`${yen(k.additional)}を追加した場合の軽減額`, yen(k.saving.total)],
+            ["試算した追加額（追加で支払う額）", yen(k.additional)],
+            ["その場合に減る税額", yen(k.saving.total)],
           ],
           "    ",
         ),
@@ -191,7 +239,7 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
 
   out.push("■ 免責");
   out.push(`  ${r.disclaimer}`);
-  out.push("  計算していないもの: 国民健康保険料の全体額、個人事業税、消費税、住民税の非課税判定、分離課税の所得、住宅ローン控除など。");
+  out.push("  計算していないもの: 国民健康保険料の全体額、個人事業税、消費税、住民税の均等割の非課税判定、分離課税の所得、住宅ローン控除など。");
   out.push("  根拠にした一次情報の一覧は `setsuzei --sources` で表示できます。");
   return out.join("\n");
 }

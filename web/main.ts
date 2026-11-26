@@ -1,7 +1,7 @@
 /**
  * ブラウザ版の画面まわり。入力はこのページの中だけで処理し、どこにも送信しない。
  */
-import type { ContributionMeasure, Saving, SetsuzeiResult } from "../src/core/types.js";
+import type { CombinedMeasure, ContributionMeasure, Saving, SetsuzeiResult } from "../src/core/types.js";
 import { getSources } from "../src/data/index.js";
 import { VERSION } from "../src/version.js";
 import { compute, isBlank, queryToValues, splitIssue, type FormValues } from "./logic.js";
@@ -58,10 +58,42 @@ function contributionCard(title: string, m: ContributionMeasure): HTMLElement {
       ["年間上限", yen(m.annualLimit)],
       ["支払済み", yen(m.paid)],
       ["残り枠", yen(m.remaining)],
-      [`追加する額`, yen(m.additional)],
+      ["試算した追加額（追加で支払う額）", yen(m.additional), "strong"],
       ...savingRows(m.saving),
     ]),
     notes(m.notes),
+  );
+}
+
+/** まとめて実行した場合に含まれる策の名前 */
+function combinedParts(c: CombinedMeasure): string[] {
+  return [
+    ...(c.furusatoAdditional > 0 ? ["ふるさと納税"] : []),
+    ...(c.kyosaiAdditional > 0 ? ["小規模企業共済"] : []),
+    ...(c.idecoAdditional > 0 ? ["iDeCo"] : []),
+  ];
+}
+
+function combinedCard(title: string, c: CombinedMeasure): HTMLElement {
+  return card(
+    `${title}（${combinedParts(c).join(" + ")}）`,
+    rows([
+      ...(c.furusatoAdditional > 0 ? [["ふるさと納税の追加", yen(c.furusatoAdditional)] as const] : []),
+      ...(c.kyosaiAdditional > 0 ? [["小規模企業共済の追加", yen(c.kyosaiAdditional)] as const] : []),
+      ...(c.idecoAdditional > 0 ? [["iDeCo の追加", yen(c.idecoAdditional)] as const] : []),
+      ["追加で支払う額の合計", yen(c.totalPayment), "strong"],
+      ["減る税額の合計", yen(c.saving.total), "strong"],
+      ...(c.furusatoAdditional > 0
+        ? [
+            ["　うち掛金の追加による分", yen(c.savingFromContributions.total)] as const,
+            ["　うちふるさと納税による分（寄附と引き換え）", yen(c.savingFromFurusato.total)] as const,
+          ]
+        : []),
+      ["　（所得税）", yen(c.saving.incomeTax)],
+      ["　（住民税）", yen(c.saving.residentTax)],
+      ["税額の合計（実行後）", yen(c.totalTax)],
+    ]),
+    notes(c.notes),
   );
 }
 
@@ -80,11 +112,38 @@ function renderResult(r: SetsuzeiResult): HTMLElement[] {
       h(
         "div",
         { class: "figure accent" },
-        h("span", { class: "label" }, "全部やると減る税額"),
+        h("span", { class: "label" }, "まとめて実行すると減る税額"),
         h("strong", {}, yen(m.combined.saving.total)),
+      ),
+      h(
+        "div",
+        { class: "figure" },
+        h("span", { class: "label" }, "そのために追加で支払う額"),
+        h("strong", {}, yen(m.combined.totalPayment)),
       ),
     ),
   );
+  const headNotes: string[] = [];
+  if (m.combined.totalPayment === 0) {
+    headNotes.push("いまの見込みでは、年内に追加して税額が減る策はありません（下の各項目に理由があります）。");
+  } else {
+    headNotes.push(`内訳: ${combinedParts(m.combined).join(" + ")}。減る税額は、追加で支払う額と引き換えです。`);
+  }
+  if (m.combined.furusatoAdditional > 0) {
+    headNotes.push(
+      `減る税額のうち ${yen(m.combined.savingFromFurusato.total)}はふるさと納税による分です。寄附した額とほぼ同じだけ税が減る仕組みで、手元のお金は増えません（得になるのは返礼品の分）。`,
+    );
+  }
+  if (!m.combined.includesIdeco && m.ideco.additional > 0) {
+    headNotes.push(
+      "iDeCo の追加は合計に含めていません。掛金額の変更は年 1 回で、年内に増やせるかどうかは加入先と時期しだいです。増やせる額がわかっている場合は「試算の条件を変える」に入力してください。",
+    );
+  }
+  const head = notes(headNotes);
+  if (head) {
+    head.classList.add("headline-notes");
+    out.push(head);
+  }
 
   const income: Row[] = [];
   if (r.input.salaryRevenue > 0) {
@@ -104,22 +163,8 @@ function renderResult(r: SetsuzeiResult): HTMLElement[] {
   out.push(card(`現状の見込み（${r.label}）`, rows(income)));
 
   const c = m.combined;
-  if (c.totalPayment > 0) {
-    out.push(
-      card(
-        "全部やった場合",
-        rows([
-          ...(c.furusatoAdditional > 0 ? [["ふるさと納税の追加", yen(c.furusatoAdditional)] as const] : []),
-          ...(c.idecoAdditional > 0 ? [["iDeCo の追加", yen(c.idecoAdditional)] as const] : []),
-          ...(c.kyosaiAdditional > 0 ? [["小規模企業共済の追加", yen(c.kyosaiAdditional)] as const] : []),
-          ["追加で支払う額の合計", yen(c.totalPayment)],
-          ["税額の合計（実行後）", yen(c.totalTax)],
-          ...savingRows(c.saving),
-        ]),
-        notes(c.notes),
-      ),
-    );
-  }
+  if (c.totalPayment > 0) out.push(combinedCard("まとめて実行した場合", c));
+  if (m.combinedWithIdeco) out.push(combinedCard("iDeCo の追加も年内に間に合う場合", m.combinedWithIdeco));
 
   const f = m.furusato;
   out.push(
@@ -129,12 +174,12 @@ function renderResult(r: SetsuzeiResult): HTMLElement[] {
         ? rows([
             ["控除上限額の目安（年間）", yen(f.limit), "strong"],
             ["寄附済み", yen(f.paid)],
-            ["上限までの残り", yen(f.remaining)],
+            ["上限までの残り（追加で寄附する額）", yen(f.remaining)],
+            ...savingRows(f.saving),
             ["上限まで寄附した場合の自己負担", yen(f.outOfPocket)],
             ...(f.limitAfterOtherMeasures !== f.limit
-              ? [["iDeCo・共済を追加した場合の上限", yen(f.limitAfterOtherMeasures)] as const]
+              ? [["掛金を追加した場合の上限（まとめて実行した場合）", yen(f.limitAfterOtherMeasures)] as const]
               : []),
-            ...savingRows(f.saving),
           ])
         : null,
       notes(f.notes),
@@ -265,7 +310,10 @@ function start(): void {
     if (outcome.ok) {
       output.replaceChildren(...renderResult(outcome.result));
       const r = outcome.result;
-      setJump(`税額の見込み ${yen(r.baseline.totalTax)} ／ 全部やると −${yen(r.measures.combined.saving.total)}　結果を見る ↓`);
+      const c = r.measures.combined;
+      setJump(
+        `税額の見込み ${yen(r.baseline.totalTax)} ／ ${yen(c.totalPayment)}支払うと −${yen(c.saving.total)}　結果を見る ↓`,
+      );
     } else {
       output.replaceChildren(showIssues(form, outcome.issues));
       setJump(`入力を確認してください（${outcome.issues.length} 件）　内容を見る ↓`, true);

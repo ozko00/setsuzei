@@ -55,6 +55,7 @@ function scenario(salary: number, family: Family, socialInsurance: number, incom
       specific: family === "coupleChild2" ? 1 : 0,
       elderly: 0,
       elderlyCohabiting: 0,
+      under16: 0,
     },
     otherDeductions: 0,
     otherDeductionsResident: 0,

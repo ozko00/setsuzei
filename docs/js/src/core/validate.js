@@ -22,7 +22,7 @@ const AMOUNT_KEYS = [
     "idecoAdditional",
     "kyosaiAdditional",
 ];
-const DEPENDENT_KEYS = ["general", "specific", "elderly", "elderlyCohabiting"];
+const DEPENDENT_KEYS = ["general", "specific", "elderly", "elderlyCohabiting", "under16"];
 const BLUE_VALUES = ["none", "10", "55", "65"];
 const KNOWN_KEYS = new Set([
     ...AMOUNT_KEYS,
@@ -147,7 +147,7 @@ export function validateInput(raw) {
     const dependents = raw["dependents"];
     if (dependents !== undefined && dependents !== null) {
         if (!isPlainObject(dependents)) {
-            issues.push("dependents: { general, specific, elderly, elderlyCohabiting } の形で人数を指定してください");
+            issues.push("dependents: { general, specific, elderly, elderlyCohabiting, under16 } の形で人数を指定してください");
         }
         else {
             const d = {};
@@ -164,7 +164,7 @@ export function validateInput(raw) {
         }
     }
     if (out.blueReturn && out.blueReturn !== "none" && out.businessIncomeType === "misc") {
-        issues.push("blueReturn: 雑所得（businessIncomeType: misc）には青色申告特別控除を適用できません");
+        issues.push("blueReturn: 雑所得には青色申告特別控除を適用できません");
     }
     if (issues.length > 0)
         throw new InputError(issues);
