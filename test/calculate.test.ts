@@ -161,6 +161,25 @@ describe("calculate: 節税策ごとの軽減額", () => {
     assert.equal(r.measures.combined.totalPayment, 769_000);
     assert.equal(r.measures.combined.saving.total, 82_600);
     assert.equal(r.measures.combinedWithIdeco, null);
+    // 単独では税額が減らなくなる額でも、合わせると減る場合がある。まとめは、頭打ちにする前の額から計算する。
+    //   所得 220 万円・配偶者と 16 歳未満の子 3 人（非課税限度額 217 万円）: 所得割は減額後 30,000 円で、
+    //   調整控除後の所得割 104,000 円が 30,000 円を下回るまで（掛金 74 万円超）住民税は横ばいになる。
+    //   50 万円ずつでは所得税の分（課税所得 430,000 円）しか減らないが、合わせて 100 万円なら住民税も減る。
+    //   住民税の課税所得 1,090,000 − 1,000,000 = 90,000 円 → 9,000 − 4,500 = 4,500 円（+ 均等割等 5,000 円）
+    const band = calculate({
+      businessRevenue: 2_200_000,
+      socialInsurance: 350_000,
+      spouse: { income: 0 },
+      dependents: { under16: 3 },
+      idecoAdditional: 500_000,
+      kyosaiAdditional: 500_000,
+    });
+    assert.equal(band.baseline.totalTax, 56_900);
+    assert.equal(band.measures.ideco.additional, 429_000);
+    assert.equal(band.measures.kyosai.additional, 429_000);
+    // 999,000 円でも課税所得 91,000 円 → 9,100 − 4,550 = 4,550 → 4,500 円で同じ税額なので、そこで止まる
+    assert.equal(band.measures.combined.idecoAdditional + band.measures.combined.kyosaiAdditional, 999_000);
+    assert.equal(band.measures.combined.savingFromContributions.total, 56_900 - 9_500);
     // 収入がなければ、追加の提案は 0 円
     const none = calculate({ businessRevenue: 0 });
     assert.equal(none.measures.ideco.additional, 0);

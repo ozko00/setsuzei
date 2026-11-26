@@ -60,7 +60,7 @@ function contribution(
   base: Scenario,
   baseline: TaxEstimate,
   opts: { annualLimit: number; paid: number; requested: number | undefined; notes: string[] },
-): ContributionMeasure {
+): ContributionMeasure & { wanted: number } {
   const remaining = Math.max(0, opts.annualLimit - opts.paid);
   const notes = [...opts.notes];
   let additional = opts.requested ?? remaining;
@@ -73,6 +73,8 @@ function contribution(
   if (opts.paid > opts.annualLimit) {
     notes.push("支払済みの額が年間上限を超えています。入力値か上限額を確認してください。");
   }
+  // 頭打ちにする前の額（残り枠か、指定された額）。まとめて実行した場合の計算はこちらから始める
+  const wanted = additional;
   // 税額が減らなくなる額を超えた掛金は提案しない
   let noEffectBeyond: number | null = null;
   const effective = effectiveAdditional(data, base, additional);
@@ -96,7 +98,13 @@ function contribution(
     noEffectBeyond,
     saving: additional > 0 ? saving(baseline, after) : NO_SAVING,
     notes,
+    wanted,
   };
+}
+
+/** 計算の途中でだけ使う wanted を外す */
+function publish({ wanted: _wanted, ...measure }: ContributionMeasure & { wanted: number }): ContributionMeasure {
+  return measure;
 }
 
 /**
@@ -182,16 +190,18 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     "原則 60 歳まで引き出せません。受け取るときは、一時金なら退職所得、年金なら公的年金等として課税の対象になります（それぞれ控除があります）。" +
       "口座管理などの手数料がかかります（金額は金融機関によって異なります）。運用の結果によっては、受け取る額が掛金の合計を下回ることがあります。",
   );
-  const ideco = contribution(data, base, baseline, {
+  const idecoPlan = contribution(data, base, baseline, {
     annualLimit: idecoLimit,
     paid: normalized.idecoPaid,
     requested: input.idecoAdditional,
     notes: idecoNotes,
   });
+  const ideco = publish(idecoPlan);
 
   // --- 小規模企業共済 ---
   const kyosaiLimit = data.kyosai.monthlyLimit * 12;
   let kyosai: ContributionMeasure;
+  let kyosaiWanted = 0;
   const kyosaiBlocked = hasSalary
     ? "給与収入があるため計算していません。事業を兼業している給与所得者（常時雇用関係にある方）は小規模企業共済に加入できません。"
     : !hasBusiness
@@ -211,7 +221,7 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
       notes: [kyosaiBlocked],
     };
   } else {
-    kyosai = contribution(data, base, baseline, {
+    const kyosaiPlan = contribution(data, base, baseline, {
       annualLimit: kyosaiLimit,
       paid: normalized.kyosaiPaid,
       requested: input.kyosaiAdditional,
@@ -222,6 +232,8 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
           "任意解約は、掛金納付月数が 240 か月（20 年）未満だと受取額が掛金の合計を下回り、12 か月未満だと掛け捨てになります。",
       ],
     });
+    kyosai = publish(kyosaiPlan);
+    kyosaiWanted = kyosaiPlan.wanted;
   }
 
   // --- まとめて実行した場合の掛金 ---
@@ -232,7 +244,10 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
   const paid = normalized.furusatoPaid;
   const idecoRequested = input.idecoAdditional !== undefined;
   const combine = (includesIdeco: boolean): CombinedMeasure & { limitAfter: number } => {
-    const wanted = kyosai.additional + (includesIdeco ? ideco.additional : 0);
+    // 単独では税額が減らなくなる額でも、合わせると減ることがある（所得割の非課税限度額による減額で
+    // 税額が横ばいになる範囲を越える場合）。単独で頭打ちにした額ではなく、残り枠・指定された額から始める。
+    const idecoWanted = includesIdeco ? idecoPlan.wanted : 0;
+    const wanted = kyosaiWanted + idecoWanted;
     // 合わせた掛金でも、税額が減らなくなる額を超える分は含めない
     const total = effectiveAdditional(data, base, wanted);
     // 額を指定された iDeCo を先に、そうでなければ小規模企業共済を先に割り当てる
@@ -240,8 +255,8 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     const idecoAdditional = !includesIdeco
       ? 0
       : idecoFirst
-        ? Math.min(ideco.additional, total)
-        : total - Math.min(kyosai.additional, total);
+        ? Math.min(idecoWanted, total)
+        : total - Math.min(kyosaiWanted, total);
     const kyosaiAdditional = total - idecoAdditional;
     const limitAfter = total > 0 ? furusatoLimit(data, { ...base, mutualAid: base.mutualAid + total }) : limit;
     const donation = Math.max(limitAfter, paid);
@@ -300,9 +315,9 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
   const combinedPlan = combine(idecoRequested);
   const combined = strip(combinedPlan);
   let combinedWithIdeco: CombinedMeasure | null = null;
-  if (!idecoRequested && ideco.additional > 0) {
+  if (!idecoRequested && idecoPlan.wanted > 0) {
     const withIdeco = combine(true);
-    if (withIdeco.idecoAdditional > 0) {
+    if (withIdeco.idecoAdditional > 0 && withIdeco.saving.total > combined.saving.total) {
       combinedWithIdeco = {
         ...strip(withIdeco),
         notes: [
