@@ -63,30 +63,111 @@ describe("calculate: 節税策ごとの軽減額", () => {
     assert.ok(f.outOfPocket > 2_000);
   });
 
-  it("全部やった場合: まとめて再計算した軽減額（単純な足し算ではない）", () => {
+  it("まとめて実行した場合: 既定では iDeCo の追加を含めず、まとめて再計算する", () => {
     const r = calculate({ ...freelancer, idecoPaid: 276_000, furusatoPaid: 30_000 });
     const { combined, furusato, ideco, kyosai } = r.measures;
-    // 掛金 540,000 + 840,000 円を追加すると、ふるさと納税の上限は 123,000 → 73,000 円に下がる
+    // 小規模企業共済 840,000 円を追加すると、ふるさと納税の上限は 123,000 → 86,000 円に下がる
+    //   住民税の課税所得 5,850,000 − 430,000 − 900,000 − 276,000 − 840,000 = 3,404,000 円
+    //   → 340,400 − 調整控除 2,500 = 337,900 円。特例分の上限 337,900 × 20% = 67,580 円
+    //   → 67,580 ÷ 79.79% = 84,697 円 + 2,000 円 = 86,697 → 86,000 円
     assert.equal(furusato.limit, 123_000);
-    assert.equal(furusato.limitAfterOtherMeasures, 73_000);
-    assert.equal(combined.idecoAdditional, 540_000);
+    assert.equal(furusato.limitAfterOtherMeasures, 86_000);
+    assert.equal(combined.includesIdeco, false);
+    assert.equal(combined.idecoAdditional, 0);
     assert.equal(combined.kyosaiAdditional, 840_000);
-    assert.equal(combined.furusatoAdditional, 43_000);
-    assert.equal(combined.totalPayment, 1_423_000);
+    assert.equal(combined.furusatoAdditional, 56_000);
+    assert.equal(combined.totalPayment, 896_000);
+    // 所得税: 課税所得 3,976,000 − 840,000 − 56,000 = 3,080,000 円
+    //   → 3,080,000 × 10% − 97,500 = 210,500 円、復興特別所得税 4,420 円 → 214,900 円（現状 375,400 円）
+    assert.equal(combined.saving.incomeTax, 375_400 - 214_900);
+    // 住民税: 所得割 337,900 円。寄附 86,000 円の控除: 基本分 8,400 円、
+    //   特例分 84,000 × 79.79% = 67,023 円（上限 67,580 円以内）
+    //   → 337,900 − 75,423 = 262,477 → 262,400 円 + 5,000 円 = 267,400 円（現状 404,600 円）
+    assert.equal(combined.saving.residentTax, 404_600 - 267_400);
+    assert.equal(combined.saving.total, 297_700);
+    assert.equal(combined.totalTax, r.baseline.totalTax - combined.saving.total);
+    // 内訳: 掛金による分は共済を単独で追加した場合と同じ。残りがふるさと納税による分（寄附 56,000 円とほぼ同額）
+    assert.deepEqual(combined.savingFromContributions, kyosai.saving);
+    assert.equal(combined.savingFromContributions.total, 241_700);
+    assert.equal(combined.savingFromFurusato.total, 56_000);
+    assert.equal(combined.savingFromContributions.total + combined.savingFromFurusato.total, combined.saving.total);
+    // 各策を単独で実行した場合の軽減額の合計（93,000 + 241,700 = 334,700 円）より小さい
+    assert.equal(furusato.saving.total + kyosai.saving.total, 334_700);
+    assert.ok(combined.notes.some((n) => n.includes("iDeCo の追加は、この合計に含めていません")));
+    assert.equal(ideco.additional, 540_000);
+  });
+
+  it("まとめて実行した場合: iDeCo も間に合う場合の合計を別に出す", () => {
+    const r = calculate({ ...freelancer, idecoPaid: 276_000, furusatoPaid: 30_000 });
+    const all = r.measures.combinedWithIdeco;
+    assert.ok(all);
+    // 掛金 540,000 + 840,000 円を追加すると、ふるさと納税の上限は 123,000 → 73,000 円に下がる
+    assert.equal(all.includesIdeco, true);
+    assert.equal(all.idecoAdditional, 540_000);
+    assert.equal(all.kyosaiAdditional, 840_000);
+    assert.equal(all.furusatoAdditional, 43_000);
+    assert.equal(all.totalPayment, 1_423_000);
     // 所得税: 課税所得 5,850,000 − 670,000 − 900,000 − 276,000 − 1,380,000 − 71,000 = 2,553,000 円
     //   → 2,553,000 × 10% − 97,500 = 157,800 円、復興特別所得税 3,313 円 → 161,100 円（現状 375,400 円）
-    assert.equal(combined.saving.incomeTax, 375_400 - 161_100);
+    assert.equal(all.saving.incomeTax, 375_400 - 161_100);
     // 住民税: 課税所得 5,850,000 − 430,000 − 900,000 − 276,000 − 1,380,000 = 2,864,000 円
     //   → 286,400 − 調整控除 2,500 = 283,900 円。寄附 73,000 円の控除: 基本分 7,100 円、
     //   特例分 71,000 × 79.79% = 56,650 円（上限 283,900 × 20% = 56,780 円以内）
     //   → 283,900 − 63,750 = 220,150 → 220,100 円 + 5,000 円 = 225,100 円（現状 404,600 円）
-    assert.equal(combined.saving.residentTax, 404_600 - 225_100);
-    assert.equal(combined.saving.total, 393_800);
-    assert.equal(combined.totalTax, r.baseline.totalTax - combined.saving.total);
-    // 各策を単独で実行した場合の軽減額の合計（93,000 + 164,300 + 241,700 = 499,000 円）より小さい
-    const naive = furusato.saving.total + ideco.saving.total + kyosai.saving.total;
-    assert.equal(naive, 499_000);
-    assert.ok(combined.saving.total < naive);
+    assert.equal(all.saving.residentTax, 404_600 - 225_100);
+    assert.equal(all.saving.total, 393_800);
+    assert.ok(all.notes[0]?.includes("年内に間に合う場合"));
+  });
+
+  it("まとめて実行した場合: iDeCo の追加額を指定したときは合計に含める", () => {
+    const r = calculate({ ...freelancer, idecoPaid: 276_000, furusatoPaid: 30_000, idecoAdditional: 540_000 });
+    assert.equal(r.measures.combined.includesIdeco, true);
+    assert.equal(r.measures.combined.idecoAdditional, 540_000);
+    assert.equal(r.measures.combined.saving.total, 393_800);
+    assert.equal(r.measures.furusato.limitAfterOtherMeasures, 73_000);
+    assert.equal(r.measures.combinedWithIdeco, null);
+    // 給与所得者は共済の対象外。iDeCo を指定しなければ、まとめはふるさと納税だけ
+    const employee = calculate({ salaryRevenue: 6_000_000, socialInsurance: 880_000 });
+    assert.equal(employee.measures.combined.kyosaiAdditional, 0);
+    assert.equal(employee.measures.combined.idecoAdditional, 0);
+    assert.deepEqual(employee.measures.combined.saving, employee.measures.furusato.saving);
+    assert.ok((employee.measures.combinedWithIdeco?.idecoAdditional ?? 0) > 0);
+  });
+
+  it("掛金: 税額が減らなくなる額を超える分は提案しない", () => {
+    // 所得 150 万円、社会保険料 30 万円
+    //   所得税の課税所得 160,000 円（所得税 8,100 円）。
+    //   住民税の課税所得 1,500,000 − 430,000 − 300,000 = 770,000 円 → 所得割 77,000 − 2,500 = 74,500 円。
+    //   掛金 768,001 円以上で住民税の課税所得が 1,000 円（所得割 50 円 → 100 円未満切捨てで 0 円）になり、
+    //   それ以上は減らない。1,000 円単位に切り上げて 769,000 円。
+    const input = { businessRevenue: 2_000_000, businessExpenses: 500_000, socialInsurance: 300_000 } as const;
+    const r = calculate(input);
+    assert.equal(r.baseline.totalTax, 87_600);
+    for (const m of [r.measures.kyosai, r.measures.ideco]) {
+      assert.equal(m.additional, 769_000);
+      assert.equal(m.noEffectBeyond, 769_000);
+      assert.deepEqual(m.saving, { incomeTax: 8_100, residentTax: 74_500, total: 82_600 });
+      assert.ok(m.notes[0]?.includes("769,000 円より多く追加しても"));
+    }
+    // 1,000 円少ないと、まだ税額が残る
+    assert.equal(calculate({ ...input, kyosaiAdditional: 768_000 }).measures.kyosai.saving.total, 82_500);
+    // 枠いっぱいまで効くときは null
+    assert.equal(calculate(freelancer).measures.kyosai.noEffectBeyond, null);
+    // 指定された追加額も同じ扱い
+    const requested = calculate({ ...input, kyosaiAdditional: 840_000 }).measures.kyosai;
+    assert.equal(requested.additional, 769_000);
+    assert.ok(requested.notes[0]?.includes("指定された額は 840,000 円"));
+    // まとめても、共済と iDeCo の両方で二重に数えない（監査の指摘: 1,656,000 円を提案していた）
+    assert.equal(r.measures.combined.totalPayment, 769_000);
+    assert.equal(r.measures.combined.saving.total, 82_600);
+    assert.equal(r.measures.combinedWithIdeco, null);
+    // 収入がなければ、追加の提案は 0 円
+    const none = calculate({ businessRevenue: 0 });
+    assert.equal(none.measures.ideco.additional, 0);
+    assert.equal(none.measures.ideco.noEffectBeyond, 0);
+    assert.equal(none.measures.ideco.saving.total, 0);
+    assert.ok(none.measures.ideco.notes[0]?.includes("掛金を追加しても税額は減りません"));
+    assert.equal(none.measures.combined.totalPayment, 0);
   });
 
   it("全部やった場合: 税額がなければ軽減額 0。策が 1 つだけならその策の軽減額と一致", () => {
@@ -120,7 +201,7 @@ describe("calculate: 節税策ごとの軽減額", () => {
 
   it("軽減額は現状の税額を超えない。所得 0 でも壊れない", () => {
     const r = calculate({});
-    assert.equal(r.baseline.totalTax, 5_000); // 均等割 + 森林環境税のみ（非課税判定はしない）
+    assert.equal(r.baseline.totalTax, 5_000); // 均等割 + 森林環境税のみ（均等割の非課税判定はしない）
     assert.equal(r.measures.furusato.limit, 0);
     assert.equal(r.measures.ideco.saving.total, 0);
     assert.ok(r.warnings.length > 0);
@@ -128,6 +209,20 @@ describe("calculate: 節税策ごとの軽減額", () => {
     for (const s of [small.measures.ideco.saving, small.measures.kyosai.saving, small.measures.furusato.saving]) {
       assert.ok(s.total >= 0 && s.total <= small.baseline.totalTax);
     }
+  });
+
+  it("注意事項: 受取時の課税・資金の拘束・年内に増やせるかを策ごとに出す", () => {
+    const m = calculate(freelancer).measures;
+    const ideco = m.ideco.notes.join("\n");
+    assert.match(ideco, /原則 60 歳まで引き出せません/);
+    assert.match(ideco, /退職所得/);
+    assert.match(ideco, /手数料/);
+    assert.match(ideco, /1 年（12 月分〜翌年 11 月分）に 1 回/);
+    const kyosai = m.kyosai.notes.join("\n");
+    assert.match(kyosai, /受け取るときに課税/);
+    assert.match(kyosai, /240 か月（20 年）未満/);
+    assert.match(m.furusato.notes.join("\n"), /手元のお金は増えません/);
+    assert.match(m.blueReturn.notes.join("\n"), /令和9年分からは見直されます/);
   });
 
   it("結果に免責と年分を含む", () => {

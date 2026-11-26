@@ -42,6 +42,28 @@ const SRC = {
   nhi: ["e-Gov 国民健康保険法施行令", "https://laws.e-gov.go.jp/law/333CO0000000362"],
   idecoMhlw: ["厚生労働省 2026年12月からiDeCoがパワーアップ！ 制度改正の3つのポイント", "https://www.mhlw.go.jp/web_magazine/column/20261020.html"],
   idecoSite: ["iDeCo公式サイト iDeCoをはじめるまでの4つのポイント", "https://www.ideco-koushiki.jp/start/"],
+  localTax2027: [
+    "e-Gov 地方税法（令和9年1月1日施行の条文）",
+    "https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002",
+  ],
+  idecoGuide: ["iDeCo公式サイト iDeCoの特徴", "https://www.ideco-koushiki.jp/guide/"],
+  idecoStructure: ["iDeCo公式サイト iDeCoの加入資格・掛金・受取方法等", "https://www.ideco-koushiki.jp/guide/structure.html"],
+  idecoAnnual: [
+    "国民年金基金連合会 掛金の年単位拠出について",
+    "https://www.ideco-koushiki.jp/library/pdf/annual_unit_contribution_291201revision.pdf",
+  ],
+  idecoNotice: [
+    "国民年金基金連合会 iDeCoの拠出限度額の引き上げにあわせた掛金額変更の案内",
+    "https://www.ideco-koushiki.jp/library/pdf/notice202612-02.pdf",
+  ],
+  idecoMerit: ["iDeCo公式サイト iDeCoのメリット", "https://www.ideco-koushiki.jp/guide/good.html"],
+  retirement: ["国税庁 No.1420 退職金を受け取ったとき", "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1420.htm"],
+  kyosaiClaim: ["中小機構 小規模企業共済の共済金等の請求", "https://kyosai-web.smrj.go.jp/customer/skyosai/claim/index.html"],
+  blueR9: ["財務省 令和8年度改正関係資料（納税環境整備関係）", "https://www.mof.go.jp/tax_policy/summary/tins/r8kaiseinoukan.pdf"],
+  blueR9Nta: [
+    "国税庁 令和9年分以後の 10 万円の青色申告特別控除の要件の見直し",
+    "https://www.nta.go.jp/taxes/shiraberu/shinkoku/kojin_jigyo/0026004-012.pdf",
+  ],
   kyosaiFee: ["中小機構 小規模企業共済の掛金", "https://kyosai-web.smrj.go.jp/customer/skyosai/installment/index.html"],
   kyosaiEntry: ["中小機構 小規模企業共済の加入資格", "https://kyosai-web.smrj.go.jp/skyosai/entry/index_02.html"],
 } as const satisfies Record<string, readonly [string, string]>;
@@ -210,6 +232,8 @@ function buildPages(): PageDef[] {
     <li>ふるさと納税の控除は、所得税の寄附金控除、住民税の基本分（10%）、住民税の特例分の 3 つでできています。特例分は「住民税の所得割額の 20%」が上限で、ここに達する寄附額が「自己負担 2,000 円で済む上限」です（${link("furusatoMic")}、${link("localTax", "地方税法 第314条の7・附則第5条の6")}）。</li>
     <li>式の「所得税率」は 5%〜45% の 7 段階で、課税所得で決まります（${link("rate")}）。1.021 は復興特別所得税の分です。</li>
     <li>住民税の所得割額は、所得から所得控除を引いた額の 10% から調整控除を引いた額です（${link("resident")}）。</li>
+    <li>ふるさと納税で減る税額は、寄附した額から自己負担 2,000 円を引いた額までです（${link("furusatoMic")}）。寄附と同じだけお金が出ていくので、手元のお金は増えません。得になるのは返礼品の分です。</li>
+    <li>所得が少なく、住民税の所得割がかからない場合（合計所得金額が「35 万円 ×（同一生計配偶者 + 扶養親族の数 + 1）+ 10 万円」以下。家族がいれば + 32 万円。${link("localTax2027", "地方税法 附則第3条の3")}）は、上限の目安を出しません。この限度額を少し超える範囲でも所得割が減額されるので、同じ扱いにしています。16 歳未満の子の人数は<a href="../">全部まとめて計算するページ</a>で入力できます。</li>
     <li>この計算機は目安を 1,000 円未満切り捨てで出します。確定申告をする前提です。フリーランスは確定申告をするので、ワンストップ特例は使えません（特例の対象は「確定申告の不要な給与所得者等」です。${link("furusatoMic", "総務省の説明")}）。</li>
   </ul>`,
       examples:
@@ -219,6 +243,10 @@ function buildPages(): PageDef[] {
           f.map((r) => [man(r.income), yen(r.single), yen(r.family), yen(r.withIdeco)]),
         ) + `\n  <p class="note">${esc(EXAMPLE_NOTE)}</p>`,
       faqs: [
+        {
+          q: "ふるさと納税をすると、手元に残るお金は増えますか？",
+          a: `増えません。ふるさと納税で減る税額は、寄附した額から自己負担 2,000 円を引いた額までです（${link("furusatoMic")}）。先に寄附としてお金が出ていき、あとからほぼ同じ額だけ税が減るので、税の前払いに近い仕組みです。得になるのは受け取る返礼品の分で、上限を超えて寄附した分は自己負担が増えます。`,
+        },
         {
           q: "フリーランスの上限は、会社員の早見表で調べられますか？",
           a: `調べられません。会社員向けの早見表は、給与収入から給与所得控除を引き、社会保険料を収入の一定割合と仮定して作られています。フリーランスは売上から経費と青色申告特別控除を引いた所得で決まるので、同じ「年収」でも上限は別の額になります。上の計算機に売上と経費を入れてください。`,
@@ -236,7 +264,7 @@ function buildPages(): PageDef[] {
           a: `変わることがあります。令和8年分から所得税の基礎控除が引き上げられ（合計所得金額に応じて最大 104 万円。${link("basic")}、${link("kaisei", "国税庁の改正の案内")}）、課税所得が減って所得税率の段階が下がる人がいます。所得税率が下がると式の分母が大きくなり、上限の目安は少し下がります。所得税そのものは基礎控除の分だけ減っています。`,
         },
       ],
-      sources: ["furusatoMic", "furusatoNta", "localTax", "rate", "basic", "kaisei", "resident"],
+      sources: ["furusatoMic", "furusatoNta", "localTax", "localTax2027", "rate", "basic", "kaisei", "resident"],
     },
     {
       slug: "ideco-kojin-jigyonushi",
@@ -249,7 +277,7 @@ function buildPages(): PageDef[] {
       lead: `個人事業主（国民年金の第1号被保険者）の iDeCo の掛金は、月額 ${yen(idecoLimitMonthly)}（年 ${man(IDECO_FULL)}）が上限です。掛金は全額が所得控除になるので、売上と経費を入れると、所得税と住民税がいくら減るかを出します。`,
       extraFields: [
         field("ideco-paid", "iDeCo の掛金（支払済み・支払予定）", "年末までの拠出見込み", "例: 27.6万"),
-        field("ideco-add", "追加で拠出する額", "空欄なら年間上限までの残り枠"),
+        field("ideco-add", "年内に追加で拠出できる額", "空欄なら年間上限までの残り枠（税額が減らなくなる額まで）。年内に増やせるかは加入先に確認"),
       ].join("\n    "),
       formula: `<p>減る税額は、掛金を入れる前と入れた後の税額をそれぞれ計算し、その差で出しています。</p>
   <p class="formula">減る税額 ≒ 掛金 ×（所得税率 × 1.021 + 住民税 10%）</p>
@@ -258,6 +286,10 @@ function buildPages(): PageDef[] {
     <li>所得税率は課税所得に応じて 5%〜45% です（${link("rate")}）。掛金を引いた結果、税率の段階が下がる場合は、上の式より少し小さくなります。計算機はその分も含めて計算します。</li>
     <li>住民税の所得割は一律 10% です（${link("resident")}）。住民税が減るのは翌年度（令和9年度）です。</li>
     <li>上限は、国民年金基金の掛金や付加保険料と合算した額です（${link("idecoSite")}）。</li>
+    <li>減る税額は、掛金を支払うことと引き換えです。iDeCo の資産は原則 60 歳になるまで引き出せず、口座管理などの手数料がかかります（金額は金融機関によって異なります。${link("idecoGuide")}）。</li>
+    <li>受け取るときは課税の対象になります。一時金は退職所得（${link("retirement")}）、年金は公的年金等として扱われ、それぞれ退職所得控除・公的年金等控除があります（${link("idecoMerit")}）。この計算機は、受取時の税額は計算しません。</li>
+    <li>年末が近いと、掛金を増やしても今年の分に間に合わないことが多くあります。掛金額の変更は 1 年（12 月分〜翌年 11 月分）に 1 回だけで（${link("idecoStructure")}）、まとめて拠出するには事前に年単位拠出の届出が必要です（${link("idecoAnnual")}）。</li>
+    <li>掛金を増やしても、所得税と住民税の所得割が 0 円になったあとは税額が減りません。計算機は、税額が減らなくなる額までで追加額を止めます。</li>
   </ul>`,
       examples:
         table(
@@ -268,11 +300,15 @@ function buildPages(): PageDef[] {
       faqs: [
         {
           q: "個人事業主の iDeCo は、いくら節税になりますか？",
-          a: `所得と掛金で決まります。上の表の前提で所得 500 万円の場合、上限の月 ${yen(idecoLimitMonthly)}（年 ${man(IDECO_FULL)}）を拠出すると、所得税と住民税を合わせて年 ${yen(idecoFull500)} 減ります。iDeCo の資産は基本的に 60 歳にならないと引き出せないので（${link("idecoSite")}）、手元の資金と相談して決めてください。`,
+          a: `所得と掛金で決まります。上の表の前提で所得 500 万円の場合、上限の月 ${yen(idecoLimitMonthly)}（年 ${man(IDECO_FULL)}）を拠出すると、所得税と住民税を合わせて年 ${yen(idecoFull500)} 減ります。iDeCo の資産は基本的に 60 歳にならないと引き出せず（${link("idecoSite")}）、口座の手数料がかかり、受け取るときには課税の対象になります（${link("idecoGuide")}、${link("idecoMerit")}）。手元の資金と相談して決めてください。`,
+        },
+        {
+          q: "年末に iDeCo の掛金を増やして、今年の節税額を増やせますか？",
+          a: `間に合わないことが多いです。掛金額を変更できるのは 1 年（12 月分〜翌年 11 月分の掛金）に 1 回だけです（${link("idecoStructure")}）。残りの枠をまとめて拠出するには、事前に年単位拠出（月別指定）の届出が必要で、届出は申請の翌月分（翌々月の引落し）からの反映です。過ぎた月の分をあとから納めることもできません（${link("idecoAnnual")}）。今年の控除になるのは 12 月の引落し分（11 月分の掛金）までなので、計算機の「年内に追加で拠出できる額」には、加入先（運営管理機関）に確認して実際に増やせる額を入れてください。`,
         },
         {
           q: "2026 年 12 月に上限が上がると聞きました。令和8年分の節税額は増えますか？",
-          a: `増えません。第1号被保険者の上限は 2026 年 12 月から月額 75,000 円に上がりますが（${link("idecoMhlw", "厚生労働省の案内")}）、12 月分の掛金が口座から引き落とされるのは翌年 1 月です（${link("idecoSite")}）。その年に納付した掛金がその年の控除になるので、令和8年分（2026 年 1〜12 月の納付）は月額 ${yen(idecoLimitMonthly)} のままで計算しています。`,
+          a: `増えません。第1号被保険者の上限は 2026 年 12 月から月額 75,000 円に上がりますが（${link("idecoMhlw", "厚生労働省の案内")}）、12 月分の掛金が口座から引き落とされるのは翌年 1 月です（${link("idecoSite")}。国民年金基金連合会も「2026年12月分（2027年1月引き落とし分）から」と案内しています。${link("idecoNotice")}）。その年に納付した掛金がその年の控除になるので、令和8年分（2026 年 1〜12 月の納付）は月額 ${yen(idecoLimitMonthly)} のままで計算しています。`,
         },
         {
           q: "iDeCo で国民健康保険料は下がりますか？",
@@ -283,7 +319,7 @@ function buildPages(): PageDef[] {
           a: `課税所得がなければ減りません。たとえば所得 120 万円（上の表と同じ前提）では、所得税の課税所得は ${yen(lowIncome.baseline.incomeTax.taxableIncome)} で、上限まで拠出しても減る税額は ${yen(lowIncome.measures.ideco.saving.total)} です。所得控除は、引く前の税額までしか効きません。`,
         },
       ],
-      sources: ["mutual", "idecoMhlw", "idecoSite", "rate", "resident", "nhi", "localTax"],
+      sources: ["mutual", "idecoMhlw", "idecoSite", "idecoGuide", "idecoStructure", "idecoAnnual", "idecoNotice", "idecoMerit", "retirement", "rate", "resident", "nhi", "localTax"],
     },
     {
       slug: "shokibo-kyosai-setsuzei",
@@ -296,7 +332,7 @@ function buildPages(): PageDef[] {
       lead: `小規模企業共済の掛金は月額 1,000 円〜${yen(kyosaiLimitMonthly)}で、全額が所得控除になります。中小機構の節税額の表は「課税される所得金額」で引きますが、ここでは売上と経費から課税所得を計算して、減る税額を出します。`,
       extraFields: [
         field("kyosai-paid", "小規模企業共済の掛金（支払済み・支払予定）", "年末までの支払見込み"),
-        field("kyosai-add", "追加で支払う額", "空欄なら年間上限までの残り枠"),
+        field("kyosai-add", "追加で支払う額", "空欄なら年間上限までの残り枠（税額が減らなくなる額まで）"),
         field("ideco-paid", "iDeCo の掛金", "同じ控除の枠で引かれます。あれば入力", "例: 27.6万"),
       ].join("\n    "),
       formula: `<p>減る税額は、掛金を入れる前と入れた後の税額をそれぞれ計算し、その差で出しています。</p>
@@ -306,6 +342,8 @@ function buildPages(): PageDef[] {
     <li>所得税率は課税所得に応じて 5%〜45%（${link("rate")}）、住民税の所得割は一律 10% です（${link("resident")}）。</li>
     <li>中小機構も、課税される所得金額と掛金月額ごとの節税額の表を公開しています（${link("kyosaiFee")}）。この計算機の計算コアは、その表の値と一致することをテストで確かめています（<a href="${REPO_URL}/blob/main/test/estimate.test.ts" rel="noopener">テスト</a>）。下の表は、令和8年分の基礎控除の引上げを反映し、売上 − 経費の所得から引けるようにしたものです。</li>
     <li>加入できるのは、小規模企業の個人事業主や共同経営者、会社等の役員です。会社に雇われている人（給与所得者）が副業で事業をしていても加入できません（${link("kyosaiEntry")}）。この計算機は加入資格の判定はしません。</li>
+    <li>減る税額は、掛金を支払うことと引き換えです。掛金は事業をやめるときなどに共済金として受け取るもので、受け取るときに課税されます（一括は退職所得、分割は公的年金等の雑所得、65 歳未満の任意解約は一時所得）。任意解約は、掛金納付月数が 240 か月（20 年）未満だと受取額が掛金の合計を下回り、12 か月未満だと掛け捨てになります（${link("kyosaiClaim")}）。この計算機は、受取時の税額は計算しません。</li>
+    <li>掛金を増やしても、所得税と住民税の所得割が 0 円になったあとは税額が減りません。計算機は、税額が減らなくなる額までで追加額を止めます。</li>
   </ul>`,
       examples:
         table(
@@ -317,6 +355,10 @@ function buildPages(): PageDef[] {
         {
           q: "小規模企業共済は、いくら節税になりますか？",
           a: `所得と掛金で決まります。上の表の前提で所得 500 万円の場合、上限の月 ${yen(kyosaiLimitMonthly)}（年 ${man(KYOSAI_FULL)}）を支払うと、所得税と住民税を合わせて年 ${yen(kyosaiFull500)} 減ります。掛金は将来、共済金として受け取るもので、受取時には別に課税があります（この計算機では扱いません）。`,
+        },
+        {
+          q: "小規模企業共済は、途中でやめると損をしますか？",
+          a: `任意解約の場合、掛金納付月数が 240 か月（20 年）未満だと、受け取る解約手当金は掛金の合計を下回ります。12 か月未満では解約手当金を受け取れず、掛け捨てになります。受け取るときは課税もあり、65 歳未満の任意解約は一時所得、事業の廃業などで一括で受け取る共済金は退職所得、分割で受け取る場合は公的年金等の雑所得として扱われます（${link("kyosaiClaim")}）。節税額だけでなく、資金を長く預ける前提で決めてください。`,
         },
         {
           q: "iDeCo と小規模企業共済は、両方使えますか？",
@@ -331,7 +373,7 @@ function buildPages(): PageDef[] {
           a: `下がりません。国民健康保険料の所得割は「総所得金額等 − 基礎控除」をもとに計算され、小規模企業共済等掛金控除は引かれないためです（${link("nhi", "国民健康保険法施行令 第29条の7")}、${link("localTax", "地方税法 第703条の4")}）。`,
         },
       ],
-      sources: ["kyosaiFee", "kyosaiEntry", "mutual", "rate", "resident", "nhi", "localTax"],
+      sources: ["kyosaiFee", "kyosaiEntry", "kyosaiClaim", "mutual", "rate", "resident", "nhi", "localTax"],
     },
     {
       slug: "aoiro-shinkoku-65-55-10",
@@ -352,6 +394,7 @@ function buildPages(): PageDef[] {
     <li>55 万円は、事業所得などを複式簿記で記帳し、貸借対照表と損益計算書を付けて期限内に申告することが要件です。65 万円は、それに加えて e-Tax での申告か、優良な電子帳簿の保存が必要です。どちらにも当たらない青色申告者は 10 万円です（${link("blue")}）。</li>
     <li>控除は事業所得などの黒字が限度です。所得が控除額より少ない場合は、所得の額までしか引けません（${link("blue")}）。</li>
     <li>所得税率は課税所得に応じて 5%〜45%（${link("rate")}）、住民税の所得割は一律 10% です（${link("resident")}）。</li>
+    <li>このページは令和8年分の計算です。令和9年分からは制度が見直され、複式簿記 + e-Tax で 65 万円、さらに一定の電子帳簿（請求書データ等との自動連携や訂正削除履歴の記録など）で 75 万円、複式簿記でも書面で申告すると 10 万円になります。簡易簿記の 10 万円は、前々年の事業所得などの収入が 1,000 万円以下の人などに限られます（${link("blueR9")}、${link("blueR9Nta")}）。</li>
     <li>この計算機は税額の差だけを出します。その区分の要件を満たせるかどうかは判定しません。</li>
   </ul>`,
       examples:
@@ -375,11 +418,15 @@ function buildPages(): PageDef[] {
           a: `下がります。国民健康保険料の所得割は「総所得金額等 − 基礎控除」をもとに計算され、青色申告特別控除は総所得金額等を減らすためです（${link("nhi", "国民健康保険法施行令 第29条の7")}、${link("localTax", "地方税法 第703条の4")}）。iDeCo やふるさと納税と違う点です。料率は自治体ごとに違うので、計算機に所得割率を入れると差の目安を出します（賦課限度額には当てていません）。`,
         },
         {
+          q: "令和9年分から、青色申告特別控除は変わりますか？",
+          a: `変わります。令和9年分以後の所得税から、複式簿記で記帳して e-Tax で申告する場合が 65 万円、それに加えて一定の要件を満たす電子帳簿を作成・保存している場合が 75 万円になります。複式簿記でも書面で申告する場合は 10 万円です。簡易簿記による 10 万円の控除は、前々年の事業所得などの収入が 1,000 万円以下の人などに限られます（${link("blueR9")}、${link("blueR9Nta")}）。このページの計算は令和8年分（55 万円・65 万円の区分）のものです。`,
+        },
+        {
           q: "所得が少ない年は、65 万円を全部引けますか？",
           a: `引けるのは事業所得などの黒字の額までです。たとえば売上 − 経費が 40 万円なら、65 万円の要件を満たしていても引けるのは 40 万円です（${link("blue")}）。計算機はこの上限も反映します。`,
         },
       ],
-      sources: ["blue", "blueApply", "rate", "resident", "nhi", "localTax"],
+      sources: ["blue", "blueApply", "blueR9", "blueR9Nta", "rate", "resident", "nhi", "localTax"],
     },
   ];
 }

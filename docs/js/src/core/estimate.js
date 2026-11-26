@@ -118,6 +118,27 @@ function dependentTotal(amounts, dependents) {
         amounts.elderly * dependents.elderly +
         amounts.elderlyCohabiting * dependents.elderlyCohabiting);
 }
+/**
+ * 住民税の所得割の非課税限度額（地方税法 附則第3条の3）。
+ * 35 万円 ×（同一生計配偶者 + 扶養親族の数 + 1）+ 10 万円（家族がいれば + 32 万円）。
+ * 扶養親族には 16 歳未満の者を含む。同一生計配偶者は合計所得金額が配偶者控除の所得要件以下の配偶者。
+ */
+export function incomeLevyExemptLimit(data, s) {
+    return exemptionLimit(data, data.residentTax.incomeLevyExemption, s);
+}
+/**
+ * 均等割の非課税限度額のうち最も高い 1 級地の基準（地方税法施行令 第47条の3）。
+ * 実際の額は市区町村の条例で決まるので、注意を出す判断にだけ使う。
+ */
+export function perCapitaExemptLimitMax(data, s) {
+    return exemptionLimit(data, data.residentTax.perCapitaExemptionMax, s);
+}
+function exemptionLimit(data, rule, s) {
+    const spouse = s.spouse && s.spouse.income <= data.family.spouseDeductionIncomeLimit ? 1 : 0;
+    const d = s.dependents;
+    const family = spouse + d.general + d.specific + d.elderly + d.elderlyCohabiting + d.under16;
+    return rule.perPerson * (family + 1) + rule.addition + (family > 0 ? rule.familyAddition : 0);
+}
 function sumDeductions(parts) {
     const total = parts.basic +
         parts.spouse +
@@ -200,7 +221,10 @@ export function estimate(data, s) {
             : Math.max(humanDifference - (rtTaxable - adj.threshold), adj.minimumBase);
         adjustmentCredit = Math.floor((base * adj.ratePercent) / 100);
     }
-    const incomeLevyBeforeDonation = Math.max(0, levyBeforeCredits - adjustmentCredit);
+    // 所得割の非課税限度額（地方税法 附則第3条の3）。総所得金額等が限度額以下なら所得割を課さない。
+    const exemptLimit = incomeLevyExemptLimit(data, s);
+    const incomeLevyExempt = totalIncome <= exemptLimit;
+    const incomeLevyBeforeDonation = incomeLevyExempt ? 0 : Math.max(0, levyBeforeCredits - adjustmentCredit);
     // 寄附金税額控除（地方税法 第314条の7）
     const don = rtRule.donation;
     const basicTarget = Math.max(0, Math.min(s.donation, Math.floor((totalIncome * don.incomeCapPercent) / 100)) - don.floor);
@@ -214,13 +238,22 @@ export function estimate(data, s) {
         donationCreditBasic = Math.min(donationCreditBasic, incomeLevyBeforeDonation);
         donationCreditSpecial = incomeLevyBeforeDonation - donationCreditBasic;
     }
-    const incomeLevy = floorTo(incomeLevyBeforeDonation - donationCreditBasic - donationCreditSpecial, 100);
+    // 限度額を少し超える場合は、「総所得金額等 − 所得割額」が限度額を下回らないように所得割を減額する
+    // （同条第2項・第5項。道府県民税と市町村民税に按分する前の合計額で計算している）。
+    // 判定に使う所得割額は寄附金税額控除後の額なので、減額後の所得割は
+    // 「控除後の所得割額」と「総所得金額等 − 限度額」の小さいほうになる。
+    const levyAfterDonation = incomeLevyBeforeDonation - donationCreditBasic - donationCreditSpecial;
+    const exemptionReduction = incomeLevyExempt ? 0 : Math.max(0, levyAfterDonation - (totalIncome - exemptLimit));
+    const incomeLevy = floorTo(levyAfterDonation - exemptionReduction, 100);
     const perCapita = rtRule.perCapita + rtRule.forestTax;
     const residentTax = {
         deductions: rtDeductions,
         taxableIncome: rtTaxable,
         adjustmentCredit,
         incomeLevyBeforeDonation,
+        incomeLevyExemptLimit: exemptLimit,
+        incomeLevyExempt,
+        exemptionReduction,
         donationCreditBasic,
         donationCreditSpecial,
         incomeLevy,
@@ -241,11 +274,14 @@ export function estimate(data, s) {
 /**
  * ふるさと納税で特例分が頭打ちにならない寄附額の上限（自己負担が概ね 2,000 円で済む目安）。
  * 上限 = 所得割額 × 20% ÷ 特例分の割合 + 2,000 円（目安なので 1,000 円未満は切り捨てる）
+ *
+ * 所得割が非課税か、非課税限度額による減額を受ける場合は 0（寄附をしても、減額分を超えるまで
+ * 住民税が減らないので、自己負担が 2,000 円で済む寄附額がない）。
  */
 export function furusatoLimit(data, s) {
     const e = estimate(data, { ...s, donation: 0 });
     const levy = e.residentTax.incomeLevyBeforeDonation;
-    if (levy <= 0)
+    if (levy <= 0 || e.residentTax.incomeLevyExempt || e.residentTax.exemptionReduction > 0)
         return 0;
     const don = data.residentTax.donation;
     const adj = data.residentTax.adjustmentCredit;
@@ -254,5 +290,7 @@ export function furusatoLimit(data, s) {
     const adjustmentAmount = humanDifference + Math.max(0, e.incomeTax.deductions.basic - don.basicDeductionReference);
     const ratePer100k = specialCreditRatePer100k(data, e.residentTax.taxableIncome, adjustmentAmount);
     const specialCap = Math.floor((levy * don.specialCapPercent) / 100);
-    return floorTo(Math.floor((specialCap * 100_000) / ratePer100k) + don.floor, 1_000);
+    const limit = floorTo(Math.floor((specialCap * 100_000) / ratePer100k) + don.floor, 1_000);
+    // 自己負担の 2,000 円以下の寄附では税は減らない
+    return limit > don.floor ? limit : 0;
 }

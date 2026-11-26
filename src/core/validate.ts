@@ -26,7 +26,7 @@ const AMOUNT_KEYS = [
   "kyosaiAdditional",
 ] as const satisfies readonly (keyof TaxInput)[];
 
-const DEPENDENT_KEYS = ["general", "specific", "elderly", "elderlyCohabiting"] as const satisfies readonly (keyof DependentsInput)[];
+const DEPENDENT_KEYS = ["general", "specific", "elderly", "elderlyCohabiting", "under16"] as const satisfies readonly (keyof DependentsInput)[];
 
 const BLUE_VALUES: readonly BlueReturn[] = ["none", "10", "55", "65"];
 
@@ -156,7 +156,7 @@ export function validateInput(raw: unknown): TaxInput {
   const dependents = raw["dependents"];
   if (dependents !== undefined && dependents !== null) {
     if (!isPlainObject(dependents)) {
-      issues.push("dependents: { general, specific, elderly, elderlyCohabiting } の形で人数を指定してください");
+      issues.push("dependents: { general, specific, elderly, elderlyCohabiting, under16 } の形で人数を指定してください");
     } else {
       const d: { -readonly [K in keyof DependentsInput]: DependentsInput[K] } = {};
       for (const key of Object.keys(dependents)) {
@@ -171,7 +171,7 @@ export function validateInput(raw: unknown): TaxInput {
   }
 
   if (out.blueReturn && out.blueReturn !== "none" && out.businessIncomeType === "misc") {
-    issues.push("blueReturn: 雑所得（businessIncomeType: misc）には青色申告特別控除を適用できません");
+    issues.push("blueReturn: 雑所得には青色申告特別控除を適用できません");
   }
 
   if (issues.length > 0) throw new InputError(issues);

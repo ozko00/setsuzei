@@ -85,18 +85,22 @@ export async function askInteractively(
       const age70OrOlder = await yesNo("配偶者は 70 歳以上ですか");
       result.spouse = { income, age70OrOlder };
     }
-    if (await yesNo("扶養親族（16 歳以上）はいますか")) {
+    if (await yesNo("扶養親族（お子さんを含む）はいますか")) {
       const count = async (q: string): Promise<number> => await amount(`${q}（人数）`);
       result.dependents = {
+        under16: await count("16 歳未満"),
         general: await count("16〜18 歳・23〜69 歳"),
         specific: await count("19〜22 歳"),
         elderlyCohabiting: await count("70 歳以上で同居している父母・祖父母など"),
         elderly: await count("70 歳以上（上記以外）"),
       };
     }
-    if (result.salaryRevenue > 8_500_000 && !((result.dependents?.specific ?? 0) > 0)) {
+    if (
+      result.salaryRevenue > 8_500_000 &&
+      !((result.dependents?.specific ?? 0) > 0 || (result.dependents?.under16 ?? 0) > 0)
+    ) {
       result.incomeAdjustment = await yesNo(
-        "23 歳未満の扶養親族（16 歳未満の子を含む）か、特別障害者（本人・同一生計配偶者・扶養親族）はいますか",
+        "23 歳未満の扶養親族（16〜18 歳の子など）か、特別障害者（本人・同一生計配偶者・扶養親族）はいますか",
       );
     }
     result.otherDeductions = await amount("その他の所得控除の合計（医療費控除・生命保険料控除など）");

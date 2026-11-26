@@ -17,6 +17,11 @@ export interface DependentsInput {
   readonly elderly?: number;
   /** 同居老親等の人数 */
   readonly elderlyCohabiting?: number;
+  /**
+   * 16 歳未満の扶養親族の人数。扶養控除はないが、住民税の所得割の非課税限度額の人数に入る。
+   * 1 人以上いれば、所得金額調整控除の対象（23 歳未満の扶養親族あり）としても扱う。
+   */
+  readonly under16?: number;
 }
 
 /**
@@ -53,7 +58,7 @@ export interface TaxInput {
    * 所得金額調整控除（子ども・特別障害者等）の対象かどうか。
    * 給与収入が 850 万円を超え、次のどれかに当たる場合に true にする:
    * 23 歳未満の扶養親族がいる（16 歳未満の子を含む）/ 本人が特別障害者 / 特別障害者の同一生計配偶者・扶養親族がいる。
-   * 特定扶養親族（19〜22 歳）を 1 人以上入力した場合は、指定しなくても対象として扱う。
+   * 特定扶養親族（19〜22 歳）か 16 歳未満の扶養親族を 1 人以上入力した場合は、指定しなくても対象として扱う。
    */
   readonly incomeAdjustment?: boolean;
   /** その他の所得控除の合計（所得税）。医療費控除・生命保険料控除など。 */
@@ -66,9 +71,13 @@ export interface TaxInput {
    * 指定したときだけ、所得が変わる策（青色申告特別控除）による翌年度の国保料の差の目安を出す。
    */
   readonly nhiIncomeRatePercent?: number;
-  /** iDeCo に追加で拠出する額。省略時は限度額までの残り枠。 */
+  /**
+   * iDeCo に年内に追加で拠出できる額。省略時は、限度額までの残り枠（税額が減らなくなる額まで）で試算する。
+   * 指定したときだけ、「まとめて実行した場合」の合計に iDeCo の追加を含める
+   * （掛金額の変更は年 1 回で、年内に増やせるかどうかは加入先と時期しだいのため）。
+   */
   readonly idecoAdditional?: number;
-  /** 小規模企業共済に追加で支払う額。省略時は年間上限までの残り枠。 */
+  /** 小規模企業共済に追加で支払う額。省略時は、年間上限までの残り枠（税額が減らなくなる額まで）。 */
   readonly kyosaiAdditional?: number;
 }
 
@@ -106,8 +115,14 @@ export interface ResidentTaxResult {
   readonly taxableIncome: number;
   /** 調整控除額 */
   readonly adjustmentCredit: number;
-  /** 調整控除後・寄附金税額控除前の所得割額 */
+  /** 調整控除後・寄附金税額控除前の所得割額（所得割が非課税のときは 0） */
   readonly incomeLevyBeforeDonation: number;
+  /** 所得割の非課税限度額（地方税法 附則第3条の3。入力した家族の人数から計算） */
+  readonly incomeLevyExemptLimit: number;
+  /** 合計所得金額が非課税限度額以下で、所得割が課されないか */
+  readonly incomeLevyExempt: boolean;
+  /** 非課税限度額を少し超える場合の所得割の減額（同条第2項・第5項）。なければ 0。 */
+  readonly exemptionReduction: number;
   /** 寄附金税額控除（基本分） */
   readonly donationCreditBasic: number;
   /** 寄附金税額控除（特例分） */
@@ -155,7 +170,7 @@ export interface FurusatoMeasure {
   readonly saving: Saving;
   /** 上限まで寄附した場合の実質的な自己負担額（年間の寄附総額 − 寄附による税の軽減総額） */
   readonly outOfPocket: number;
-  /** iDeCo・小規模企業共済を下の計画どおり追加した場合の上限の目安 */
+  /** 「まとめて実行した場合」（measures.combined）の掛金を追加した後の上限の目安 */
   readonly limitAfterOtherMeasures: number;
   readonly notes: readonly string[];
 }
@@ -169,26 +184,37 @@ export interface ContributionMeasure {
   readonly paid: number;
   /** 上限までの残り枠 */
   readonly remaining: number;
-  /** 軽減額の計算に使った追加拠出額 */
+  /** 軽減額の計算に使った追加拠出額（追加で支払う額） */
   readonly additional: number;
+  /**
+   * 追加額がこの額を超えても税額はそれ以上減らない、という額。
+   * 残り枠（か指定された追加額）いっぱいまで税額が減るときは null。
+   */
+  readonly noEffectBeyond: number | null;
   readonly saving: Saving;
   readonly notes: readonly string[];
 }
 
-/** ふるさと納税・iDeCo・小規模企業共済をまとめて実行した場合 */
+/** ふるさと納税と掛金の追加をまとめて実行した場合 */
 export interface CombinedMeasure {
-  /** iDeCo に追加する額（measures.ideco.additional と同じ） */
+  /** この合計に iDeCo の追加を含めているか */
+  readonly includesIdeco: boolean;
+  /** iDeCo に追加する額（含めていなければ 0） */
   readonly idecoAdditional: number;
-  /** 小規模企業共済に追加する額（measures.kyosai.additional と同じ。対象外なら 0） */
+  /** 小規模企業共済に追加する額（対象外なら 0） */
   readonly kyosaiAdditional: number;
   /** 掛金を追加した後の上限まで寄附する場合の、ふるさと納税の追加額 */
   readonly furusatoAdditional: number;
   /** 追加で支払う額の合計 */
   readonly totalPayment: number;
-  /** 3 つをまとめて実行した場合の税額（まとめて再計算した値） */
+  /** まとめて実行した場合の税額（まとめて再計算した値） */
   readonly totalTax: number;
   /** 現状からの軽減額（まとめて再計算した値。各策の軽減額の単純な合計ではない） */
   readonly saving: Saving;
+  /** saving のうち、掛金（iDeCo・小規模企業共済）の追加による分 */
+  readonly savingFromContributions: Saving;
+  /** saving のうち、ふるさと納税の追加による分（寄附額から自己負担を引いた額が税から引かれるもので、手取りは増えない） */
+  readonly savingFromFurusato: Saving;
   readonly notes: readonly string[];
 }
 
@@ -246,8 +272,16 @@ export interface SetsuzeiResult {
     readonly ideco: ContributionMeasure;
     readonly kyosai: ContributionMeasure;
     readonly blueReturn: BlueReturnMeasure;
-    /** ふるさと納税・iDeCo・小規模企業共済をまとめて実行した場合（青色申告の区分は現在のまま） */
+    /**
+     * 年内に実行しやすいものをまとめて実行した場合（青色申告の区分は現在のまま）。
+     * ふるさと納税と小規模企業共済の追加。iDeCo の追加は、idecoAdditional を指定したときだけ含める。
+     */
     readonly combined: CombinedMeasure;
+    /**
+     * iDeCo の追加（残り枠）も年内に間に合う場合の合計。
+     * combined にすでに含めているか、iDeCo の追加で税額が変わらないときは null。
+     */
+    readonly combinedWithIdeco: CombinedMeasure | null;
     /** 国民健康保険料への影響の目安。nhiIncomeRatePercent を指定しなければ null。 */
     readonly nationalHealthInsurance: NationalHealthInsuranceMeasure | null;
   };

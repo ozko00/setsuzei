@@ -82,8 +82,10 @@
         <input name="spouse-income" inputmode="numeric" placeholder="0"></label>
       <label class="inline"><input type="checkbox" name="spouse-70"> 配偶者は 70 歳以上</label>
     </div>
-    <p class="field-label">扶養親族の人数<span class="sub">16 歳未満の子は対象外</span></p>
+    <p class="field-label">扶養親族の人数<span class="sub">16 歳未満は扶養控除の対象外ですが、住民税の所得割がかからなくなる所得の上限に関わります</span></p>
     <div class="grid2">
+      <label>16 歳未満
+        <input name="dependents-under16" inputmode="numeric" placeholder="0"></label>
       <label>16〜18 歳・23〜69 歳
         <input name="dependents" inputmode="numeric" placeholder="0"></label>
       <label>19〜22 歳
@@ -93,16 +95,16 @@
       <label>70 歳以上（それ以外）
         <input name="dependents-elderly" inputmode="numeric" placeholder="0"></label>
     </div>
-    <label class="inline"><input type="checkbox" name="income-adjustment"> <span>23 歳未満の扶養親族（16 歳未満の子を含む）か特別障害者がいる<span class="sub">給与収入が 850 万円を超える場合だけ関係します（所得金額調整控除）</span></span></label>
+    <label class="inline"><input type="checkbox" name="income-adjustment"> <span>23 歳未満の扶養親族（16〜18 歳の子など）か特別障害者がいる<span class="sub">給与収入が 850 万円を超える場合だけ関係します（所得金額調整控除）。16 歳未満か 19〜22 歳の人数を入れたときは自動で対象にします</span></span></label>
   </fieldset>
 
   <details>
     <summary>試算の条件を変える</summary>
     <label>iDeCo の年間拠出限度額<span class="sub">空欄なら就業形態から推定。企業年金がある方・公務員の方は入力</span>
       <input name="ideco-limit" inputmode="numeric"></label>
-    <label>iDeCo に追加する額<span class="sub">空欄なら限度額までの残り枠</span>
+    <label>iDeCo に年内に追加できる額<span class="sub">入れたときだけ「まとめて実行した場合」の合計に含めます。掛金額の変更は年 1 回で、年内に増やせるかは加入先と時期しだいです</span>
       <input name="ideco-add" inputmode="numeric"></label>
-    <label>小規模企業共済に追加する額<span class="sub">空欄なら年間上限までの残り枠</span>
+    <label>小規模企業共済に追加する額<span class="sub">空欄なら年間上限までの残り枠（税額が減らなくなる額まで）</span>
       <input name="kyosai-add" inputmode="numeric"></label>
     <label>国民健康保険料の所得割率（%）<span class="sub">医療分・支援金分・介護分などの合計。入れると、青色申告の区分による翌年度の国保料（所得割）の差の目安を出します</span>
       <input name="nhi-rate" inputmode="decimal" placeholder="例: 11.5"></label>
@@ -118,7 +120,7 @@
   <section class="card disclaimer">
     <h3>この結果について</h3>
     <p><strong>概算です。</strong>入力値と簡略化した前提にもとづく目安で、実際の税額は申告内容やお住まいの自治体によって変わります。税理士や税務署・市区町村の判断に代わるものではありません。重要な判断の前に、必ず専門家か所轄の窓口に確認してください。</p>
-    <p>計算していないもの: 国民健康保険料の全体額、個人事業税、消費税、住民税の非課税判定、分離課税の所得、住宅ローン控除など。各策の軽減額は、その策だけを実行した場合の額です。</p>
+    <p>計算していないもの: 国民健康保険料の全体額、個人事業税、消費税、住民税の均等割の非課税判定、分離課税の所得、住宅ローン控除など。各策の軽減額は、その策だけを実行した場合の額です。</p>
     <details>
       <summary>根拠にした一次情報</summary>
       <ul id="sources" class="sources"></ul>

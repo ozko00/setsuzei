@@ -1,6 +1,6 @@
 import { DEFAULT_YEAR, getTaxYear } from "../data/index.js";
 import type { TaxYearData } from "../data/types.js";
-import { estimate, furusatoLimit, type Scenario } from "./estimate.js";
+import { estimate, furusatoLimit, perCapitaExemptLimitMax, type Scenario } from "./estimate.js";
 import type {
   BlueReturn,
   BlueReturnMeasure,
@@ -34,6 +34,27 @@ function saving(before: TaxEstimate, after: TaxEstimate): Saving {
 
 const NO_SAVING: Saving = { incomeTax: 0, residentTax: 0, total: 0 };
 
+const yen = (n: number): string => `${n.toLocaleString("ja-JP")} 円`;
+
+/**
+ * 掛金を upTo 円まで追加したときと同じ税額になる、最小の追加額（1,000 円単位に切り上げ）。
+ * 所得税と住民税の所得割が 0 円（か下限）になると、それ以上掛金を増やしても税額は減らない。
+ */
+function effectiveAdditional(data: TaxYearData, base: Scenario, upTo: number): number {
+  const taxAt = (x: number): number => estimate(data, { ...base, mutualAid: base.mutualAid + x }).totalTax;
+  const floorTax = taxAt(upTo);
+  if (taxAt(0) === floorTax) return 0;
+  // 税額は掛金に対して単調に減るので二分探索できる
+  let lo = 0;
+  let hi = upTo;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (taxAt(mid) === floorTax) hi = mid;
+    else lo = mid;
+  }
+  return Math.min(upTo, Math.ceil(hi / 1_000) * 1_000);
+}
+
 function contribution(
   data: TaxYearData,
   base: Scenario,
@@ -45,12 +66,25 @@ function contribution(
   let additional = opts.requested ?? remaining;
   if (additional > remaining) {
     notes.push(
-      `指定された追加額 ${additional.toLocaleString("ja-JP")} 円は残り枠を超えるため、残り枠の ${remaining.toLocaleString("ja-JP")} 円で計算しました。`,
+      `指定された追加額 ${yen(additional)}は残り枠を超えるため、残り枠の ${yen(remaining)}で計算しました。`,
     );
     additional = remaining;
   }
   if (opts.paid > opts.annualLimit) {
     notes.push("支払済みの額が年間上限を超えています。入力値か上限額を確認してください。");
+  }
+  // 税額が減らなくなる額を超えた掛金は提案しない
+  let noEffectBeyond: number | null = null;
+  const effective = effectiveAdditional(data, base, additional);
+  if (effective < additional) {
+    noEffectBeyond = effective;
+    notes.unshift(
+      effective === 0
+        ? "いまの見込みでは、掛金を追加しても税額は減りません（所得税と住民税の所得割が、すでに 0 円かこれ以上減らない額のため）。"
+        : `掛金を ${yen(effective)}より多く追加しても、税額はそれ以上減りません（所得税と住民税の所得割が、0 円かこれ以上減らない額になるため）。` +
+            `追加額は ${yen(effective)}で計算しました（${opts.requested === undefined ? "残り枠" : "指定された額"}は ${yen(additional)}）。`,
+    );
+    additional = effective;
   }
   const after = estimate(data, { ...base, mutualAid: base.mutualAid + additional });
   return {
@@ -59,6 +93,7 @@ function contribution(
     paid: opts.paid,
     remaining,
     additional,
+    noEffectBeyond,
     saving: additional > 0 ? saving(baseline, after) : NO_SAVING,
     notes,
   };
@@ -91,9 +126,13 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
       specific: input.dependents?.specific ?? 0,
       elderly: input.dependents?.elderly ?? 0,
       elderlyCohabiting: input.dependents?.elderlyCohabiting ?? 0,
+      under16: input.dependents?.under16 ?? 0,
     },
-    // 特定扶養親族（19〜22 歳）は必ず 23 歳未満なので、いれば対象
-    incomeAdjustment: input.incomeAdjustment === true || (input.dependents?.specific ?? 0) > 0,
+    // 特定扶養親族（19〜22 歳）と 16 歳未満の扶養親族は必ず 23 歳未満なので、いれば対象
+    incomeAdjustment:
+      input.incomeAdjustment === true ||
+      (input.dependents?.specific ?? 0) > 0 ||
+      (input.dependents?.under16 ?? 0) > 0,
     otherDeductions: input.otherDeductions ?? 0,
     otherDeductionsResident: input.otherDeductionsResident ?? input.otherDeductions ?? 0,
   };
@@ -137,7 +176,11 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     );
   }
   idecoNotes.push(
-    "掛金額の変更は年1回で、手続きから反映まで時間がかかります。年末が近い場合は今年分に間に合わないことがあるので、金融機関（運営管理機関）に確認してください。",
+    "年内に増やせるかどうかは、加入先（運営管理機関）と時期しだいです。掛金額の変更は 1 年（12 月分〜翌年 11 月分）に 1 回だけで、" +
+      "まとめて拠出するには事前に年単位拠出（月別指定）の届出が必要です。届出は申請の翌月分（翌々月の引落し）からの反映で、過ぎた月の分をあとから納めることはできません。" +
+      "今年の控除になるのは、12 月の引落し分までです。",
+    "原則 60 歳まで引き出せません。受け取るときは、一時金なら退職所得、年金なら公的年金等として課税の対象になります（それぞれ控除があります）。" +
+      "口座管理などの手数料がかかります（金額は金融機関によって異なります）。運用の結果によっては、受け取る額が掛金の合計を下回ることがあります。",
   );
   const ideco = contribution(data, base, baseline, {
     annualLimit: idecoLimit,
@@ -163,6 +206,7 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
       paid: 0,
       remaining: 0,
       additional: 0,
+      noEffectBeyond: null,
       saving: NO_SAVING,
       notes: [kyosaiBlocked],
     };
@@ -174,31 +218,127 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
       notes: [
         `年間上限は掛金月額の上限 ${data.kyosai.monthlyLimit.toLocaleString("ja-JP")} 円 × 12 か月として計算しました。`,
         "年内に支払った掛金（1年以内の前納分を含む）が控除の対象です。加入資格・掛金の増額や前納の手続きと締切は中小機構の案内で確認してください。",
+        "掛金は事業をやめるときなどに共済金として受け取るもので、受け取るときに課税されます（一括は退職所得、分割は公的年金等の雑所得、65 歳未満の任意解約は一時所得）。" +
+          "任意解約は、掛金納付月数が 240 か月（20 年）未満だと受取額が掛金の合計を下回り、12 か月未満だと掛け捨てになります。",
       ],
     });
   }
 
-  // --- ふるさと納税 ---
+  // --- まとめて実行した場合の掛金 ---
+  // 掛金を増やすと住民税の所得割額が減り、ふるさと納税の上限も下がるので、
+  // 「掛金を追加した後の上限」まで寄附する前提でまとめて再計算する。
+  // iDeCo の追加は、年内に増やせるかどうかが加入先と時期しだいなので、額を指定されたときだけ合計に含める。
   const limit = furusatoLimit(data, base);
   const paid = normalized.furusatoPaid;
+  const idecoRequested = input.idecoAdditional !== undefined;
+  const combine = (includesIdeco: boolean): CombinedMeasure & { limitAfter: number } => {
+    const wanted = kyosai.additional + (includesIdeco ? ideco.additional : 0);
+    // 合わせた掛金でも、税額が減らなくなる額を超える分は含めない
+    const total = effectiveAdditional(data, base, wanted);
+    // 額を指定された iDeCo を先に、そうでなければ小規模企業共済を先に割り当てる
+    const idecoFirst = includesIdeco && idecoRequested;
+    const idecoAdditional = !includesIdeco
+      ? 0
+      : idecoFirst
+        ? Math.min(ideco.additional, total)
+        : total - Math.min(kyosai.additional, total);
+    const kyosaiAdditional = total - idecoAdditional;
+    const limitAfter = total > 0 ? furusatoLimit(data, { ...base, mutualAid: base.mutualAid + total }) : limit;
+    const donation = Math.max(limitAfter, paid);
+    const contributionsOnly = estimate(data, { ...base, mutualAid: base.mutualAid + total });
+    const all = estimate(data, { ...base, mutualAid: base.mutualAid + total, donation });
+    const furusatoAdditional = donation - paid;
+    const notes: string[] = [];
+    if ([idecoAdditional, kyosaiAdditional, furusatoAdditional].filter((n) => n > 0).length > 1) {
+      notes.push("まとめて実行した場合の税額を計算し直した値です。各策の軽減額を足した額とは一致しません。");
+    }
+    if (total < wanted) {
+      notes.push(
+        `掛金は合わせて ${yen(total)}で税額がそれ以上減らなくなるため、それを超える分は含めていません。`,
+      );
+    }
+    if (furusatoAdditional > 0) {
+      notes.push(
+        "ふるさと納税による分は、寄附した額から自己負担を引いた額が税から引かれるものです。寄附と同じだけお金が出ていくので、手元のお金は増えません（得になるのは返礼品の分です）。",
+      );
+    }
+    if (limitAfter < limit) {
+      notes.push(
+        limitAfter === 0
+          ? "掛金を追加すると住民税の所得割額が減り、ふるさと納税の上限の目安が 0 円になるため、ふるさと納税の追加は含めていません。"
+          : `ふるさと納税は、掛金を追加した後の上限の目安（${yen(limitAfter)}）まで寄附する前提です。`,
+      );
+    }
+    if (paid > limitAfter && total > 0 && limit > 0) {
+      notes.push(
+        "寄附済みの額が、掛金を追加した後の上限の目安を超えます。超えた分は自己負担が増えるので、掛金の追加額とあわせて検討してください。",
+      );
+    }
+    if (!includesIdeco && ideco.additional > 0) {
+      notes.push(
+        "iDeCo の追加は、この合計に含めていません。掛金額の変更は年 1 回で反映にも時間がかかり、年内に増やせるかどうかは加入先と時期しだいのためです。" +
+          "年内に追加できる額がわかっている場合は、その額を指定すると合計に含めます" +
+          "（CLI は --ideco-add、JSON は idecoAdditional、ブラウザ版は「iDeCo に年内に追加できる額」）。",
+      );
+    }
+    return {
+      includesIdeco,
+      idecoAdditional,
+      kyosaiAdditional,
+      furusatoAdditional,
+      totalPayment: total + furusatoAdditional,
+      totalTax: all.totalTax,
+      saving: saving(baseline, all),
+      savingFromContributions: saving(baseline, contributionsOnly),
+      savingFromFurusato: saving(contributionsOnly, all),
+      notes,
+      limitAfter,
+    };
+  };
+  const strip = ({ limitAfter: _limitAfter, ...measure }: CombinedMeasure & { limitAfter: number }): CombinedMeasure =>
+    measure;
+  const combinedPlan = combine(idecoRequested);
+  const combined = strip(combinedPlan);
+  let combinedWithIdeco: CombinedMeasure | null = null;
+  if (!idecoRequested && ideco.additional > 0) {
+    const withIdeco = combine(true);
+    if (withIdeco.idecoAdditional > 0) {
+      combinedWithIdeco = {
+        ...strip(withIdeco),
+        notes: [
+          "iDeCo の追加（残り枠）も年内に間に合う場合の合計です。間に合うかどうかは加入先（運営管理機関）に確認してください。",
+          ...withIdeco.notes,
+        ],
+      };
+    }
+  }
+
+  // --- ふるさと納税 ---
+  const limitAfterOtherMeasures = combinedPlan.limitAfter;
   const target = Math.max(limit, paid);
   const atTarget = estimate(data, { ...base, donation: target });
   const noDonation = estimate(data, { ...base, donation: 0 });
   const reliefAtTarget = noDonation.totalTax - atTarget.totalTax;
-  const plannedExtra = ideco.additional + kyosai.additional;
-  const limitAfterOtherMeasures =
-    plannedExtra > 0 ? furusatoLimit(data, { ...base, mutualAid: base.mutualAid + plannedExtra }) : limit;
   const furusatoNotes: string[] = [
+    "ふるさと納税で減る税額は、寄附した額から自己負担 2,000 円を引いた額までです。寄附と同じだけお金が出ていくので、手元のお金は増えません（得になるのは返礼品の分です）。",
     "確定申告をする前提の目安です（確定申告をするとワンストップ特例の申請は無効になります）。",
     "所得や控除が見込みから動くと上限も変わります。上限ぎりぎりではなく余裕を持たせてください。",
   ];
   if (limit === 0) {
-    furusatoNotes.unshift("住民税の所得割額が 0 円の見込みのため、ふるさと納税による税の軽減はありません。");
+    furusatoNotes.splice(
+      0,
+      1,
+      noDonation.residentTax.incomeLevyExempt
+        ? "住民税の所得割が非課税の見込みのため、ふるさと納税をしても住民税は減りません。上限の目安は出していません。"
+        : noDonation.residentTax.exemptionReduction > 0
+          ? "合計所得金額が住民税の所得割の非課税限度額を少し超える範囲にあり、所得割が減額される見込みです。寄附をしても減額分を超えるまで住民税が減らないため、自己負担 2,000 円で済む寄附額はありません。上限の目安は出していません。"
+          : "住民税の所得割額が 0 円か、ごくわずかの見込みのため、ふるさと納税による税の軽減はありません。",
+    );
   }
   if (paid > limit && limit > 0) {
     furusatoNotes.unshift("寄附済みの額が上限の目安を超えています。超えた分は自己負担が増えます。");
   }
-  if (limitAfterOtherMeasures !== limit) {
+  if (limitAfterOtherMeasures !== limit || ideco.additional + kyosai.additional > 0) {
     furusatoNotes.push("iDeCo や小規模企業共済の掛金を増やすと、住民税の所得割額が減るため上限の目安も下がります。");
   }
   const furusato: FurusatoMeasure = {
@@ -209,38 +349,6 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     outOfPocket: target > 0 ? target - reliefAtTarget : 0,
     limitAfterOtherMeasures,
     notes: furusatoNotes,
-  };
-
-  // --- まとめて実行した場合 ---
-  // 掛金を増やすと住民税の所得割額が減り、ふるさと納税の上限も下がるので、
-  // 「掛金を追加した後の上限」まで寄附する前提でまとめて再計算する。
-  const combinedDonation = Math.max(limitAfterOtherMeasures, paid);
-  const combinedEstimate = estimate(data, {
-    ...base,
-    mutualAid: base.mutualAid + plannedExtra,
-    donation: combinedDonation,
-  });
-  const combinedNotes = [
-    "3 つをまとめて実行した場合の税額を計算し直した値です。各策の軽減額を足した額とは一致しません。",
-  ];
-  if (limitAfterOtherMeasures < limit) {
-    combinedNotes.push(
-      `ふるさと納税は、掛金を追加した後の上限の目安（${limitAfterOtherMeasures.toLocaleString("ja-JP")} 円）まで寄附する前提です。`,
-    );
-  }
-  if (paid > limitAfterOtherMeasures && plannedExtra > 0 && limit > 0) {
-    combinedNotes.push(
-      "寄附済みの額が、掛金を追加した後の上限の目安を超えます。超えた分は自己負担が増えるので、掛金の追加額とあわせて検討してください。",
-    );
-  }
-  const combined: CombinedMeasure = {
-    idecoAdditional: ideco.additional,
-    kyosaiAdditional: kyosai.additional,
-    furusatoAdditional: combinedDonation - paid,
-    totalPayment: plannedExtra + (combinedDonation - paid),
-    totalTax: combinedEstimate.totalTax,
-    saving: saving(baseline, combinedEstimate),
-    notes: combinedNotes,
   };
 
   // --- 青色申告特別控除 ---
@@ -270,6 +378,7 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     });
     const notes = [
       "55万円: 複式簿記で記帳し、貸借対照表・損益計算書を付けて期限内に申告。65万円: それに加えて e-Tax で申告するか、優良な電子帳簿で保存。",
+      "令和9年分からは見直されます（複式簿記 + e-Tax で 65 万円、さらに一定の電子帳簿で 75 万円、複式簿記でも書面で申告すると 10 万円。簡易簿記の 10 万円は前々年の収入が 1,000 万円以下の方などに限定）。この試算は令和8年分のものです。",
     ];
     if (normalized.blueReturn === "none") {
       notes.push(
@@ -333,7 +442,7 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     }
   }
   if (normalized.salaryRevenue > data.salary.incomeAdjustment.revenueAbove && !normalized.incomeAdjustment) {
-    // 適用していないときだけ案内する（16 歳未満・16〜18 歳の子は入力から判別できないため）
+    // 適用していないときだけ案内する（16〜18 歳の子と特別障害者は入力から判別できないため）
     warnings.push(
       "給与収入が 850 万円を超えています。23 歳未満の扶養親族（16 歳未満の子を含む）か特別障害者がいる場合は、" +
         "所得金額調整控除の対象です。今回は計算に含めていません。該当する場合は指定してください" +
@@ -344,13 +453,53 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     warnings.push("事業所得が青色申告特別控除の枠より小さいため、控除は事業所得の金額までにしています。");
   }
 
+  // 住民税の非課税
+  const rt = baseline.residentTax;
+  const exemptLimitText = `${yen(rt.incomeLevyExemptLimit)}。入力された配偶者・扶養親族の人数で計算`;
+  if (baseline.totalIncome > 0 && rt.incomeLevyExempt) {
+    warnings.push(
+      `合計所得金額が住民税の所得割の非課税限度額（${exemptLimitText}）以下のため、所得割は 0 円としています。`,
+    );
+  } else if (rt.exemptionReduction > 0) {
+    warnings.push(
+      `合計所得金額が住民税の所得割の非課税限度額（${exemptLimitText}）を少し超えるため、所得割を ${yen(rt.exemptionReduction)}減額しています（税引後の所得が限度額を下回らないようにする調整）。`,
+    );
+  }
+  if (baseline.totalIncome > 0) {
+    const perCapitaMax = perCapitaExemptLimitMax(data, base);
+    if (baseline.totalIncome <= perCapitaMax) {
+      warnings.push(
+        `お住まいの市区町村によっては、住民税の均等割もかからない可能性があります（基準は地域で異なり、最も高い地域で合計所得金額 ${yen(perCapitaMax)}以下）。` +
+          `この試算では判定せず、均等割と森林環境税の ${yen(rt.perCapita)}を含めたままにしています。市区町村の案内で確認してください。`,
+      );
+    }
+    if (baseline.totalIncome <= data.residentTax.specialExemptIncomeLimit) {
+      warnings.push(
+        `障害者・未成年者・寡婦・ひとり親に当たる方は、合計所得金額が ${yen(data.residentTax.specialExemptIncomeLimit)}以下なら住民税がかかりません。この試算では判定していません。`,
+      );
+    }
+    // 16 歳未満の子が 3 人増えたら所得割が非課税になる範囲なら、入力を促す
+    const d = normalized.dependents;
+    if (
+      !rt.incomeLevyExempt &&
+      d.under16 === 0 &&
+      baseline.totalIncome <=
+        estimate(data, { ...base, dependents: { ...d, under16: 3 } }).residentTax.incomeLevyExemptLimit
+    ) {
+      warnings.push(
+        "16 歳未満の扶養親族（お子さんなど）がいる場合は、人数を入力してください（CLI は --dependents-under16、JSON は dependents.under16、ブラウザ版は「家族」の欄）。" +
+          "扶養控除はありませんが、住民税の所得割がかからなくなる所得の上限が変わります。",
+      );
+    }
+  }
+
   return {
     year,
     label: data.label,
     residentTaxLabel: data.residentTaxLabel,
     input: normalized,
     baseline,
-    measures: { furusato, ideco, kyosai, blueReturn, combined, nationalHealthInsurance },
+    measures: { furusato, ideco, kyosai, blueReturn, combined, combinedWithIdeco, nationalHealthInsurance },
     warnings,
     disclaimer: DISCLAIMER,
   };

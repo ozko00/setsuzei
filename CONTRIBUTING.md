@@ -53,10 +53,10 @@ npm run build:site  # web/・site/・src/ を変えたら実行し、docs/ の�
 2. **取得の手順**: SKILL.md の「CLI を用意する」にある 2 つのコマンドを、まっさらな環境でそのまま実行して確かめます。タグが公開済みなら、次のように Docker で試せます。
 
    ```sh
-   docker run --rm node:22 sh -c 'git clone --depth 1 --branch v0.2.1 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei && npm ci --prefix ~/.cache/setsuzei && node ~/.cache/setsuzei/dist/cli.js --version'
+   docker run --rm node:22 sh -c 'git clone --depth 1 --branch v0.2.2 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei && npm ci --prefix ~/.cache/setsuzei && node ~/.cache/setsuzei/dist/cli.js --version'
    ```
 
-版を上げるときは、`package.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.2.1` のような表記）をそろえます。そろっていないとテストが落ちます。マージ後に、その版のタグと GitHub Release を作ります。
+版を上げるときは、`package.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.2.2` のような表記）をそろえます。そろっていないとテストが落ちます。マージ後に、その版のタグと GitHub Release を作ります。
 
 ## プルリクエスト
 

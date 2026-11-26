@@ -40,8 +40,9 @@ description: 日本のフリーランス・副業の人が「年末までに、�
 | 小規模企業共済の掛金（年末までの支払見込み） | `kyosaiPaid` |
 | ふるさと納税の寄附済み額 | `furusatoPaid` |
 | 生計を一にする配偶者の**合計所得金額**と、70歳以上か | `spouse`: `{ "income": 0, "age70OrOlder": false }` |
-| 扶養親族の人数（16〜18歳・23〜69歳 / 19〜22歳 / 70歳以上 / 70歳以上で同居の父母・祖父母） | `dependents`: `{ "general", "specific", "elderly", "elderlyCohabiting" }` |
-| 給与収入が 850 万円を超える人だけ: 23 歳未満の扶養親族（16 歳未満の子を含む）か、特別障害者（本人・同一生計配偶者・扶養親族）がいるか | `incomeAdjustment`: `true` |
+| 扶養親族の人数（16歳未満 / 16〜18歳・23〜69歳 / 19〜22歳 / 70歳以上 / 70歳以上で同居の父母・祖父母）。**16歳未満の子も必ず聞く** | `dependents`: `{ "under16", "general", "specific", "elderly", "elderlyCohabiting" }` |
+| 給与収入が 850 万円を超える人だけ: 23 歳未満の扶養親族（16〜18 歳の子など）か、特別障害者（本人・同一生計配偶者・扶養親族）がいるか。16 歳未満か 19〜22 歳の人数を入れたときは自動で対象になる | `incomeAdjustment`: `true` |
+| iDeCo の掛金を**年内に**増やせる額（加入先に確認済みの場合だけ。わからなければ入れない） | `idecoAdditional` |
 | その他の所得控除の合計（医療費控除・生命保険料控除など、金額がわかる場合） | `otherDeductions` |
 | iDeCo の年間上限（勤務先に企業年金がある人・公務員は上限が違うので本人に確認） | `idecoAnnualLimit` |
 | 国民健康保険料の所得割の料率の合計（%。国保加入者で、自治体の料率がわかる場合だけ。推測で入れない） | `nhiIncomeRatePercent` |
@@ -50,11 +51,12 @@ description: 日本のフリーランス・副業の人が「年末までに、�
 
 - 金額はすべて**年額・円・整数**。「600万」は `6000000` に直す（単位の変換だけは行ってよい）。
 - 配偶者は「年収」ではなく合計所得金額。給与だけの配偶者の年収しかわからない場合は、`setsuzei --salary <年収> --json`（実行方法は下の「3. 計算」）を実行して `baseline.salaryIncome` を使う（自分で給与所得控除を引かない）。
-- 16歳未満の子は扶養控除の対象外なので人数に入れない。
+- 16歳未満の子は扶養控除の対象外だが、住民税の所得割がかからなくなる所得の上限（非課税限度額）に関わる。`dependents.under16` に人数を入れる（`general` には入れない）。所得が少ない世帯では、入れ忘れると住民税とふるさと納税の上限が実際より高く出る。
+- `idecoAdditional` は、本人が「年内にあといくら増やせる」と確認できている場合だけ入れる。入れなければ、iDeCo の追加は「まとめて実行した場合」の合計から外れ、参考として別に出る。
 
 ### 2. CLI を用意する
 
-計算は `setsuzei` CLI（v0.2.1）で行う。npm には未公開なので、GitHub の固定したタグから取得してビルドする。Node.js 20 以上と git が必要。
+計算は `setsuzei` CLI（v0.2.2）で行う。npm には未公開なので、GitHub の固定したタグから取得してビルドする。Node.js 20 以上と git が必要。
 
 **先に、すでに使える CLI がないか確かめる。** 次のどちらかがバージョンを返せば、取得は不要なのでそれを使う。
 
@@ -68,21 +70,21 @@ node ~/.cache/setsuzei/dist/cli.js --version
 
 どちらも使えないときだけ、取得する。**取得の前に、次の 3 点を利用者に伝えて了承を得る。** 了承がなければ取得しない。
 
-- GitHub の `ozko00/setsuzei` のタグ `v0.2.1` を `~/.cache/setsuzei` に取得すること（約 30 MB）
+- GitHub の `ozko00/setsuzei` のタグ `v0.2.2` を `~/.cache/setsuzei` に取得すること（約 30 MB）
 - ビルドのために npm から `typescript` と `@types/node`（とその依存の `undici-types`）を入れること
 - 計算そのものは手元だけで行い、入力した金額はどこにも送信しないこと
 
 了承を得たら、次の 2 つのコマンドを **1 つずつ別々に** 実行する（`&&` や `;` でつながない。つなぐと、エージェントの権限設定で止まることがある）。
 
 ```sh
-git clone --depth 1 --branch v0.2.1 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei
+git clone --depth 1 --branch v0.2.2 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei
 ```
 
 ```sh
 npm ci --prefix ~/.cache/setsuzei
 ```
 
-`npm ci` がビルドまで行う。終わったら `node ~/.cache/setsuzei/dist/cli.js --version` が `0.2.1` を返すことを確かめる。
+`npm ci` がビルドまで行う。終わったら `node ~/.cache/setsuzei/dist/cli.js --version` が `0.2.2` を返すことを確かめる。
 
 - タグは固定する。`main` や新しいタグに勝手に切り替えない。利用者が新しい版を求めたときだけ、その版のタグを確かめてから取得し直す。
 - `~/.cache/setsuzei` が既にあって版が違う場合は、上書きや削除をせず、利用者にどうするか確認する。
@@ -104,6 +106,7 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 - パイプ（`echo ... |`）が権限の確認で止まる場合は、同じ入力をフラグで渡すと 1 つのコマンドで済む（例: `node ~/.cache/setsuzei/dist/cli.js --revenue 8000000 --expenses 1500000 --blue 65 --social-insurance 900000 --json`）。フラグの一覧は `--help` で確認する。
 - 終了コード 2 は入力の誤り。標準エラーの `error.issues` を読んで直す。直せなければユーザーに確認する。
 - 「iDeCo をあと10万円だけ」のような条件は `idecoAdditional` / `kyosaiAdditional` で指定して再実行する。条件を変えた比較は、条件ごとに CLI を実行する。差額を自分で按分しない。
+- 掛金の追加は、税額が減らなくなる額までで止めて計算される（`additional` が残り枠より小さく、`noEffectBeyond` に額が入る）。それ以上の拠出をすすめない。
 
 ### 4. 結果の読み方（JSON）
 
@@ -113,10 +116,14 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 | 現状の住民税（均等割・森林環境税込み） | `baseline.residentTax.total` |
 | ふるさと納税の上限の目安・残り | `measures.furusato.limit` / `.remaining` |
 | 上限まで寄附した場合に追加で減る税額・自己負担 | `measures.furusato.saving` / `.outOfPocket` |
-| iDeCo・共済も実行した場合のふるさと納税の上限 | `measures.furusato.limitAfterOtherMeasures` |
-| 3つ（ふるさと納税・iDeCo・共済）を全部やった場合の軽減額の合計と、追加で支払う額 | `measures.combined.saving` / `.totalPayment` |
-| iDeCo の残り枠と軽減額 | `measures.ideco.remaining` / `.saving` |
-| 小規模企業共済の残り枠と軽減額 | `measures.kyosai.remaining` / `.saving` |
+| 掛金を追加した場合（下の「まとめて」の前提）のふるさと納税の上限 | `measures.furusato.limitAfterOtherMeasures` |
+| まとめて実行した場合（ふるさと納税 + 小規模企業共済。iDeCo は `idecoAdditional` を指定したときだけ含む）の軽減額の合計と、追加で支払う額 | `measures.combined.saving` / `.totalPayment` |
+| その軽減額のうち、掛金による分 / ふるさと納税による分 | `measures.combined.savingFromContributions` / `.savingFromFurusato` |
+| iDeCo の残り枠も年内に追加できた場合の合計（参考。なければ `null`） | `measures.combinedWithIdeco` |
+| iDeCo の残り枠・試算した追加額（支払う額）・軽減額 | `measures.ideco.remaining` / `.additional` / `.saving` |
+| 小規模企業共済の残り枠・試算した追加額（支払う額）・軽減額 | `measures.kyosai.remaining` / `.additional` / `.saving` |
+| それ以上追加しても税額が減らなくなる額（枠いっぱいまで効くなら `null`） | 各 measure の `noEffectBeyond` |
+| 住民税の所得割が非課税か、非課税限度額による減額があるか | `baseline.residentTax.incomeLevyExempt` / `.exemptionReduction` |
 | 青色申告の区分ごとの税額と現在との差 | `measures.blueReturn.options[]` |
 | 青色申告の区分による翌年度の国保料（所得割）の差（料率を入れたときだけ。なければ `null`） | `measures.nationalHealthInsurance.blueReturnOptions[]` |
 | その策を計算できなかった理由 | 各 measure の `applicable: false` と `notes` |
@@ -125,8 +132,10 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 ### 5. 伝え方
 
 1. 現状の税額の見込み（所得税・住民税・合計）。
-2. 策ごとに「いくら払うと、いくら減るか」。軽減額の大きい順に並べる。各策の `notes` にある条件や期限の注意を落とさずに伝える。
-3. 組み合わせ: 各策の軽減額は単独で実行した場合のもの。全部やった場合の合計は `measures.combined.saving` を使う（各策の軽減額を自分で足さない）。iDeCo や共済を増やすとふるさと納税の上限は下がる（`limitAfterOtherMeasures`）ことも伝える。
-4. iDeCo と小規模企業共済は「税が減る」だけでなく資金が原則として長期間引き出せなくなること、ふるさと納税は税の前払いに近く手取りが増えるわけではないことを添える。
-5. `warnings` があれば伝える。
-6. 概算であること・税理士や税務署の判断に代わらないことを最後に添える。根拠を聞かれたら `setsuzei --sources` の一覧を示す。
+2. 策ごとに「いくら払うと、いくら減るか」。**減る税額だけを単独で言わず、必ず支払う額（`additional`・`remaining`・`totalPayment`）を隣に並べる。** 各策の `notes` にある条件や期限の注意を落とさずに伝える。
+3. 組み合わせ: 各策の軽減額は単独で実行した場合のもの。まとめた合計は `measures.combined.saving` と `.totalPayment` を使う（各策の軽減額を自分で足さない）。掛金を増やすとふるさと納税の上限は下がる（`limitAfterOtherMeasures`）ことも伝える。
+4. iDeCo の追加は、`idecoAdditional` を指定していなければ合計に入っていない。掛金額の変更は年 1 回で、まとめて拠出するには事前の届出が必要なため、年末が近いと今年分に間に合わないことが多い。「加入先に確認して増やせる場合は」と条件を付けて `measures.ideco` と `measures.combinedWithIdeco` の数字を伝える。間に合う前提で話さない。
+5. ふるさと納税は、寄附した額とほぼ同じだけ税が減る仕組みで、手元のお金は増えない（得になるのは返礼品の分と、自己負担 2,000 円）。合計の軽減額を伝えるときは、ふるさと納税による分（`savingFromFurusato`）を分けて言う。
+6. iDeCo は原則 60 歳まで引き出せず、手数料がかかり、受け取るときに課税がある。小規模企業共済も受け取るときに課税があり、任意解約は掛金納付月数 240 か月未満だと元本を下回る。これらを添える。
+7. `warnings` があれば伝える（住民税の非課税や、16 歳未満の子の入力を促すものを含む）。
+8. 概算であること・税理士や税務署の判断に代わらないことを最後に添える。根拠を聞かれたら `setsuzei --sources` の一覧を示す。

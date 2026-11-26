@@ -118,6 +118,20 @@ export interface TaxYearData {
     readonly perCapita: number;
     /** 森林環境税（国税。均等割と併せて徴収） */
     readonly forestTax: number;
+    /**
+     * 所得割の非課税限度額（地方税法 附則第3条の3）。
+     * 総所得金額等が perPerson ×（同一生計配偶者 + 扶養親族の数 + 1）+ addition
+     * （同一生計配偶者か扶養親族がいれば + familyAddition）以下なら所得割を課さない。
+     * 扶養親族には 16 歳未満の者を含む。
+     */
+    readonly incomeLevyExemption: ExemptionRule;
+    /**
+     * 均等割の非課税限度額のうち、最も高い 1 級地の基準（地方税法施行令 第47条の3）。
+     * 実際の額は級地に応じて市区町村の条例で決まるので、計算には使わず、注意を出す判断にだけ使う。
+     */
+    readonly perCapitaExemptionMax: ExemptionRule;
+    /** 障害者・未成年者・寡婦・ひとり親は、合計所得金額がこの額以下なら非課税（地方税法 第295条第1項第2号）。注意を出す判断にだけ使う。 */
+    readonly specialExemptIncomeLimit: number;
     readonly basicDeduction: readonly Tier<number>[];
     readonly spouseDeduction: {
       readonly general: ByTaxpayerTier;
@@ -194,6 +208,13 @@ export interface TaxYearData {
     /** 小規模企業共済の掛金月額の上限 */
     readonly monthlyLimit: number;
   };
+}
+
+/** 住民税の非課税限度額の式: perPerson ×（人数 + 1）+ addition（家族がいれば + familyAddition） */
+export interface ExemptionRule {
+  readonly perPerson: number;
+  readonly addition: number;
+  readonly familyAddition: number;
 }
 
 /** 出典 1 件 */

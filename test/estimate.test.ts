@@ -4,6 +4,7 @@ import {
   estimate,
   furusatoLimit,
   getTaxYear,
+  calculate,
   incomeAdjustment,
   incomeTaxOnTaxableIncome,
   salaryIncome,
@@ -22,7 +23,7 @@ const scenario = (overrides: Partial<Scenario> = {}): Scenario => ({
   mutualAid: 0,
   donation: 0,
   spouse: null,
-  dependents: { general: 0, specific: 0, elderly: 0, elderlyCohabiting: 0 },
+  dependents: { general: 0, specific: 0, elderly: 0, elderlyCohabiting: 0, under16: 0 },
   otherDeductions: 0,
   otherDeductionsResident: 0,
   incomeAdjustmentEligible: false,
@@ -247,7 +248,7 @@ describe("扶養控除（国税庁 No.1180 / 地方税法 第314条の2第1項�
   it("区分ごとの控除額", () => {
     const e = estimate(
       data,
-      withIncome(8_000_000, { dependents: { general: 1, specific: 1, elderly: 1, elderlyCohabiting: 1 } }),
+      withIncome(8_000_000, { dependents: { general: 1, specific: 1, elderly: 1, elderlyCohabiting: 1, under16: 0 } }),
     );
     assert.equal(e.incomeTax.deductions.dependents, 380_000 + 630_000 + 480_000 + 580_000);
     assert.equal(e.residentTax.deductions.dependents, 330_000 + 450_000 + 380_000 + 450_000);
@@ -271,14 +272,14 @@ describe("住民税の調整控除（地方税法 第314条の6）", () => {
     // 課税所得 = 300 − 43 − 33 − 45 = 179 万円 → 200 万円以下 → min(28 万, 179 万) × 5% = 14,000 円
     const a = estimate(
       data,
-      withIncome(3_000_000, { spouse: { income: 0 }, dependents: { general: 0, specific: 1, elderly: 0, elderlyCohabiting: 0 } }),
+      withIncome(3_000_000, { spouse: { income: 0 }, dependents: { general: 0, specific: 1, elderly: 0, elderlyCohabiting: 0, under16: 0 } }),
     );
     assert.equal(a.residentTax.taxableIncome, 1_790_000);
     assert.equal(a.residentTax.adjustmentCredit, 14_000);
     // 合計所得 340 万円 → 課税所得 219 万円 → (28 万 − 19 万) × 5% = 4,500 円
     const b = estimate(
       data,
-      withIncome(3_400_000, { spouse: { income: 0 }, dependents: { general: 0, specific: 1, elderly: 0, elderlyCohabiting: 0 } }),
+      withIncome(3_400_000, { spouse: { income: 0 }, dependents: { general: 0, specific: 1, elderly: 0, elderlyCohabiting: 0, under16: 0 } }),
     );
     assert.equal(b.residentTax.taxableIncome, 2_190_000);
     assert.equal(b.residentTax.adjustmentCredit, 4_500);
@@ -320,7 +321,7 @@ describe("所得税・住民税の通し計算（手計算との照合）", () =
         businessIncomeType: "misc",
         socialInsurance: 880_000,
         spouse: { income: 0 },
-        dependents: { general: 1, specific: 0, elderly: 0, elderlyCohabiting: 0 },
+        dependents: { general: 1, specific: 0, elderly: 0, elderlyCohabiting: 0, under16: 0 },
       }),
     );
     // 給与所得 436 万円 + 雑所得 100 万円 = 536 万円
@@ -425,7 +426,7 @@ describe("ふるさと納税（総務省 ふるさと納税ポータルサイト
       businessIncomeType: "misc",
       socialInsurance: 880_000,
       spouse: { income: 0 },
-      dependents: { general: 1, specific: 0, elderly: 0, elderlyCohabiting: 0 },
+      dependents: { general: 1, specific: 0, elderly: 0, elderlyCohabiting: 0, under16: 0 },
     });
     assert.equal(furusatoLimit(data, side), 86_000);
     // 低所得のケース: 事業所得 240 万円、社保 40 万円 → 所得割額 154,500 円 × 20% = 30,900 円
@@ -462,5 +463,106 @@ describe("所得金額調整控除（子ども・特別障害者等）", () => {
   it("対象者でも給与収入 850 万円以下なら変わらない。事業の売上は対象外", () => {
     const base = scenario({ salaryRevenue: 8_500_000, businessRevenue: 5_000_000 });
     assert.deepEqual(estimate(data, { ...base, incomeAdjustmentEligible: true }), estimate(data, base));
+  });
+});
+
+describe("住民税の所得割の非課税限度額（地方税法 附則第3条の3）", () => {
+  // https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002
+  // 総所得金額等が「35 万円 ×（同一生計配偶者 + 扶養親族の数 + 1）+ 10 万円
+  // （同一生計配偶者か扶養親族がいれば + 32 万円）」以下なら、所得割を課さない。
+  // 扶養親族は 16 歳未満の者と控除対象扶養親族。期待値は条文の式からの手計算。
+  const family = (under16: number, spouseIncome: number | null = 0): Partial<Scenario> => ({
+    spouse: spouseIncome === null ? null : { income: spouseIncome },
+    dependents: { general: 0, specific: 0, elderly: 0, elderlyCohabiting: 0, under16 },
+  });
+
+  it("限度額: 独身 45 万円、配偶者と 16 歳未満の子 3 人で 217 万円", () => {
+    const limit = (s: Partial<Scenario>): number => estimate(data, withIncome(3_000_000, s)).residentTax.incomeLevyExemptLimit;
+    assert.equal(limit({}), 450_000); // 35 万 × 1 + 10 万
+    assert.equal(limit(family(0)), 1_120_000); // 35 万 × 2 + 10 万 + 32 万
+    assert.equal(limit(family(3)), 2_170_000); // 35 万 × 5 + 10 万 + 32 万
+    assert.equal(limit(family(1, null)), 1_120_000); // 配偶者なし・子 1 人
+    // 控除対象扶養親族も 1 人ずつ数える
+    assert.equal(
+      limit({ dependents: { general: 1, specific: 1, elderly: 1, elderlyCohabiting: 1, under16: 1 } }),
+      350_000 * 6 + 100_000 + 320_000,
+    );
+    // 同一生計配偶者は合計所得金額 62 万円以下（第292条第1項第7号）。超えると人数に入らない
+    assert.equal(limit(family(0, 620_000)), 1_120_000);
+    assert.equal(limit(family(0, 620_001)), 450_000);
+  });
+
+  it("限度額以下なら所得割 0 円（均等割と森林環境税は残す）。ふるさと納税の上限も 0 円", () => {
+    // 監査の指摘の例: 売上 215 万円・社会保険料 35 万円・配偶者（所得なし）・16 歳未満の子 3 人
+    const s = withIncome(2_150_000, { socialInsurance: 350_000, ...family(3) });
+    const e = estimate(data, s);
+    assert.equal(e.residentTax.incomeLevyExempt, true);
+    assert.equal(e.residentTax.incomeLevy, 0);
+    assert.equal(e.residentTax.incomeLevyBeforeDonation, 0);
+    assert.equal(e.residentTax.total, 5_000);
+    assert.equal(furusatoLimit(data, s), 0);
+    // 子を入力しなければ限度額は 112 万円で、所得割がかかる（修正前はこちらしか出せなかった）
+    const without = estimate(data, withIncome(2_150_000, { socialInsurance: 350_000, ...family(0) }));
+    assert.equal(without.residentTax.incomeLevyExempt, false);
+    assert.equal(without.residentTax.total, 104_000);
+    // 独身: 45 万円ちょうどは非課税
+    const single = estimate(data, withIncome(450_000));
+    assert.equal(single.residentTax.incomeLevyExempt, true);
+    assert.equal(single.residentTax.total, 5_000);
+    // 所得税には影響しない
+    assert.equal(e.incomeTax.total, without.incomeTax.total);
+  });
+
+  it("限度額を少し超えるときは、税引後の所得が限度額を下回らないよう所得割を減額する（同条第2項・第5項）", () => {
+    // 所得 220 万円（限度額 217 万円を 3 万円超える）:
+    //   課税所得 2,200,000 − 430,000 − 330,000（配偶者控除）− 350,000 = 1,090,000 円 → 109,000 円
+    //   調整控除（5 万 + 5 万）× 5% = 5,000 円 → 所得割 104,000 円
+    //   2,200,000 − 104,000 = 2,096,000 円が限度額を 74,000 円下回るので、74,000 円を減額 → 30,000 円
+    const s = withIncome(2_200_000, { socialInsurance: 350_000, ...family(3) });
+    const e = estimate(data, s);
+    assert.equal(e.residentTax.incomeLevyExempt, false);
+    assert.equal(e.residentTax.incomeLevyBeforeDonation, 104_000);
+    assert.equal(e.residentTax.exemptionReduction, 74_000);
+    assert.equal(e.residentTax.incomeLevy, 30_000);
+    // 寄附をしても、控除後の所得割が 30,000 円を下回るまで住民税は減らない。上限の目安は出さない
+    assert.equal(estimate(data, { ...s, donation: 30_000 }).residentTax.incomeLevy, 30_000);
+    assert.equal(furusatoLimit(data, s), 0);
+    // 独身: 所得 450,500 円 → 課税所得 20,000 円、所得割 2,000 − 1,000 = 1,000 円 → 500 円に減額
+    const single = estimate(data, withIncome(450_500));
+    assert.equal(single.residentTax.incomeLevyBeforeDonation, 1_000);
+    assert.equal(single.residentTax.incomeLevy, 500);
+    // 十分に超えていれば減額なし
+    assert.equal(estimate(data, withIncome(3_000_000, family(3))).residentTax.exemptionReduction, 0);
+  });
+
+  it("calculate: 16 歳未満の人数を受け取り、注意を出す。均等割は判定せず注意だけ", () => {
+    const base = { businessRevenue: 2_150_000, socialInsurance: 350_000, spouse: { income: 0 } } as const;
+    const r = calculate({ ...base, dependents: { under16: 3 } });
+    assert.equal(r.baseline.residentTax.total, 5_000);
+    assert.equal(r.measures.furusato.limit, 0);
+    assert.ok(r.measures.furusato.notes[0]?.includes("所得割が非課税"));
+    assert.ok(r.warnings.some((w) => w.includes("非課税限度額（2,170,000 円")));
+    // 掛金で減るのは所得税の分だけ（課税所得 380,000 円 → 379,000 円の追加で 1,000 円未満になる）
+    assert.equal(r.measures.kyosai.additional, 379_000);
+    assert.deepEqual(r.measures.kyosai.saving, { incomeTax: 19_300, residentTax: 0, total: 19_300 });
+    // 子を入力していないと所得割がかかる。入力を促す注意を出す
+    const without = calculate(base);
+    assert.equal(without.baseline.residentTax.total, 104_000);
+    assert.ok(without.warnings.some((w) => w.includes("--dependents-under16")));
+    // 均等割の非課税は級地で変わるので計算しない。最も高い基準（35 万 × 人数 + 10 万 + 21 万）以下なら注意を出す
+    const low = calculate({ businessRevenue: 1_000_000, spouse: { income: 0 } });
+    assert.equal(low.baseline.residentTax.perCapita, 5_000);
+    assert.ok(low.warnings.some((w) => w.includes("均等割もかからない可能性") && w.includes("1,010,000 円")));
+    assert.ok(low.warnings.some((w) => w.includes("ひとり親") && w.includes("1,350,000 円")));
+    assert.ok(!calculate({ businessRevenue: 8_000_000 }).warnings.some((w) => /均等割|ひとり親|16 歳未満/.test(w)));
+  });
+
+  it("16 歳未満の扶養親族がいれば、所得金額調整控除の対象として扱う", () => {
+    const r = calculate({ salaryRevenue: 9_000_000, dependents: { under16: 1 } });
+    assert.equal(r.input.incomeAdjustment, true);
+    assert.equal(r.baseline.incomeAdjustment, 50_000);
+    // 扶養控除は増えない
+    assert.equal(r.baseline.incomeTax.deductions.dependents, 0);
+    assert.equal(r.baseline.residentTax.deductions.dependents, 0);
   });
 });

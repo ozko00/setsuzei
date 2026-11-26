@@ -45,7 +45,7 @@ claude -p "今年あといくら節税できるか知りたいです。フリー
 session="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).session_id)' "$work/turn1.json")"
 
 echo "2 回目: 数字を渡す…"
-claude -p "売上 800万円、経費 150万円、青色申告 65万円（事業所得、開業届あり）、国民健康保険と国民年金で年 90万円、給与なし。iDeCo は今年 27.6万円、小規模企業共済は入っていません、ふるさと納税は 3万円済み。独身で扶養なし、ほかの控除はありません。setsuzei コマンドは使える状態です。" \
+claude -p "売上 800万円、経費 150万円、青色申告 65万円（事業所得、開業届あり）、国民健康保険と国民年金で年 90万円、給与なし。iDeCo は今年 27.6万円、小規模企業共済は入っていません、ふるさと納税は 3万円済み。独身で扶養なし（16歳未満の子もいません）、ほかの控除はありません。setsuzei コマンドは使える状態です。" \
   --resume "$session" --allowedTools "$allowed" --output-format json < /dev/null > "$work/turn2.json"
 
 node - "$work" <<'JS'
@@ -75,9 +75,16 @@ const figures = {
   "ふるさと納税の上限の目安": m.furusato.limit,
   "iDeCo の軽減額": m.ideco.saving.total,
   "小規模企業共済の軽減額": m.kyosai.saving.total,
-  "全部やった場合の軽減額": m.combined.saving.total,
+  "小規模企業共済に追加で支払う額": m.kyosai.additional,
+  "まとめて実行した場合の軽減額": m.combined.saving.total,
+  "まとめて実行した場合に追加で支払う額": m.combined.totalPayment,
 };
 for (const [name, value] of Object.entries(figures)) check(`2 回目: ${name} ${yen(value)} 円`, turn2.includes(yen(value)));
+// 減る税額だけでなく、資金の拘束・受取時の課税・ふるさと納税の性質・iDeCo が年内に間に合うかを伝えている
+check("2 回目: iDeCo は 60 歳まで引き出せない旨", /60 ?歳/.test(turn2));
+check("2 回目: ふるさと納税で手元のお金は増えない旨", /返礼品|手取り|手元/.test(turn2));
+check("2 回目: iDeCo を年内に増やせるかは加入先しだいである旨", /年内|間に合|加入先|運営管理機関/.test(turn2));
+check("2 回目: 受取時に課税がある旨", /受け取るとき|受取時|受け取り時/.test(turn2));
 check("2 回目: 概算である旨", turn2.includes("概算"));
 check("2 回目: 税理士・税務署の判断に代わらない旨", /税理士|税務署/.test(turn2));
 const denials = read("turn2.json").permission_denials ?? [];

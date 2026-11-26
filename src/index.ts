@@ -3,6 +3,7 @@ export {
   estimate,
   furusatoLimit,
   incomeAdjustment,
+  incomeLevyExemptLimit,
   incomeTaxOnTaxableIncome,
   salaryIncome,
   type Scenario,

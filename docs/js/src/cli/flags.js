@@ -23,6 +23,7 @@ const DEPENDENT_FLAGS = {
     "dependents-specific": "specific",
     "dependents-elderly": "elderly",
     "dependents-elderly-cohabiting": "elderlyCohabiting",
+    "dependents-under16": "under16",
 };
 /** 値を取る入力フラグの名前 */
 export const INPUT_STRING_FLAGS = [
@@ -50,6 +51,14 @@ const KEY_TO_FLAG = {
     year: "year",
 };
 /**
+ * 入力エラーのメッセージの項目名を CLI のフラグ名にそろえる（「blueReturn: …」→「--blue: …」）。
+ * フラグで入力した人には、JSON の項目名ではなくフラグ名で伝える。対応するフラグがなければそのまま。
+ */
+export function issueWithFlagName(issue) {
+    const parsed = issueFlag(issue);
+    return parsed ? `--${parsed.flag}: ${parsed.message}` : issue;
+}
+/**
  * 入力エラーのメッセージ（「--revenue: …」「businessRevenue: …」）が、どのフラグについてのものかを返す。
  * ブラウザ版が、該当する入力欄を示すのに使う。わからなければ null。
  */
@@ -66,8 +75,11 @@ export function flagsToInput(flags) {
     const input = {};
     const amountOf = (flag, text) => {
         const value = parseAmount(text);
-        if (value === null)
-            issues.push(`--${flag}: 金額として読めません（${JSON.stringify(text)}）`);
+        if (value === null) {
+            issues.push(/^\s*[-−ー－]/.test(text)
+                ? `--${flag}: 0 以上の金額で指定してください（受け取った値: ${JSON.stringify(text)}）`
+                : `--${flag}: 金額として読めません（${JSON.stringify(text)}）`);
+        }
         return value ?? undefined;
     };
     for (const [flag, key] of Object.entries(AMOUNT_FLAGS)) {
