@@ -49,31 +49,63 @@ description: 日本のフリーランス・副業の人が「年末までに、�
 注意:
 
 - 金額はすべて**年額・円・整数**。「600万」は `6000000` に直す（単位の変換だけは行ってよい）。
-- 配偶者は「年収」ではなく合計所得金額。給与だけの配偶者の年収しかわからない場合は、`setsuzei --salary <年収> --json`（実行方法は下の「2. 計算」）を実行して `baseline.salaryIncome` を使う（自分で給与所得控除を引かない）。
+- 配偶者は「年収」ではなく合計所得金額。給与だけの配偶者の年収しかわからない場合は、`setsuzei --salary <年収> --json`（実行方法は下の「3. 計算」）を実行して `baseline.salaryIncome` を使う（自分で給与所得控除を引かない）。
 - 16歳未満の子は扶養控除の対象外なので人数に入れない。
 
-### 2. 計算
+### 2. CLI を用意する
 
-入力を JSON にして CLI に渡し、`--json` で結果を受け取る。
+計算は `setsuzei` CLI（v0.2.1）で行う。npm には未公開なので、GitHub の固定したタグから取得してビルドする。Node.js 20 以上と git が必要。
 
-npm には未公開なので、最初に 1 回、ソースを取得してビルドする（Node.js 20 以上と git が必要）。
+**先に、すでに使える CLI がないか確かめる。** 次のどちらかがバージョンを返せば、取得は不要なのでそれを使う。
 
 ```sh
-git clone https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei   # 既にあれば git -C ~/.cache/setsuzei pull
-cd ~/.cache/setsuzei && npm ci && npm run build
+setsuzei --version
 ```
+
+```sh
+node ~/.cache/setsuzei/dist/cli.js --version
+```
+
+どちらも使えないときだけ、取得する。**取得の前に、次の 3 点を利用者に伝えて了承を得る。** 了承がなければ取得しない。
+
+- GitHub の `ozko00/setsuzei` のタグ `v0.2.1` を `~/.cache/setsuzei` に取得すること（約 30 MB）
+- ビルドのために npm から `typescript` と `@types/node`（とその依存の `undici-types`）を入れること
+- 計算そのものは手元だけで行い、入力した金額はどこにも送信しないこと
+
+了承を得たら、次の 2 つのコマンドを **1 つずつ別々に** 実行する（`&&` や `;` でつながない。つなぐと、エージェントの権限設定で止まることがある）。
+
+```sh
+git clone --depth 1 --branch v0.2.1 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei
+```
+
+```sh
+npm ci --prefix ~/.cache/setsuzei
+```
+
+`npm ci` がビルドまで行う。終わったら `node ~/.cache/setsuzei/dist/cli.js --version` が `0.2.1` を返すことを確かめる。
+
+- タグは固定する。`main` や新しいタグに勝手に切り替えない。利用者が新しい版を求めたときだけ、その版のタグを確かめてから取得し直す。
+- `~/.cache/setsuzei` が既にあって版が違う場合は、上書きや削除をせず、利用者にどうするか確認する。
+- **コマンドが権限の確認で止まった・拒否されたとき** は、同じコマンドを言い換えて再実行しない。利用者に次のどちらかを頼む。
+  - 上の 2 つのコマンドを利用者自身の端末で実行してもらう（終わったら教えてもらう）
+  - このエージェントに、その 2 つのコマンドの実行を許可してもらう
+- 取得もビルドもできないときは、計算できないと伝える。推測の数字で代用しない。代わりに、インストール不要のブラウザ版（https://ozko00.github.io/setsuzei/ ）を案内してよい。
+
+### 3. 計算
+
+入力を JSON にして CLI に渡し、`--json` で結果を受け取る。
 
 ```sh
 echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","socialInsurance":900000}' \
   | node ~/.cache/setsuzei/dist/cli.js --input - --json
 ```
 
-- 以下 `setsuzei` と書いているコマンドは `node ~/.cache/setsuzei/dist/cli.js` のこと。`setsuzei` コマンドが既にインストールされていればそれを使ってよい。
-- clone できない環境では `npx -y --allow-git=all github:ozko00/setsuzei --input - --json` でも実行できる。npm 12 以降は `--allow-git=all` がないと `EALLOWGIT` で失敗する（git からの取得が既定で無効になったため）。
+- 以下 `setsuzei` と書いているコマンドは、手順 2 で使えることを確かめた CLI（`setsuzei` か `node ~/.cache/setsuzei/dist/cli.js`）のこと。
+- パイプ（`echo ... |`）が権限の確認で止まる場合は、同じ入力をフラグで渡すと 1 つのコマンドで済む（例: `node ~/.cache/setsuzei/dist/cli.js --revenue 8000000 --expenses 1500000 --blue 65 --social-insurance 900000 --json`）。フラグの一覧は `--help` で確認する。
 - 終了コード 2 は入力の誤り。標準エラーの `error.issues` を読んで直す。直せなければユーザーに確認する。
 - 「iDeCo をあと10万円だけ」のような条件は `idecoAdditional` / `kyosaiAdditional` で指定して再実行する。条件を変えた比較は、条件ごとに CLI を実行する。差額を自分で按分しない。
 
-### 3. 結果の読み方（JSON）
+### 4. 結果の読み方（JSON）
 
 | 知りたいこと | 場所 |
 | --- | --- |
@@ -90,7 +122,7 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 | その策を計算できなかった理由 | 各 measure の `applicable: false` と `notes` |
 | 入力に応じた注意 | `warnings` |
 
-### 4. 伝え方
+### 5. 伝え方
 
 1. 現状の税額の見込み（所得税・住民税・合計）。
 2. 策ごとに「いくら払うと、いくら減るか」。軽減額の大きい順に並べる。各策の `notes` にある条件や期限の注意を落とさずに伝える。

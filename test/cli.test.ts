@@ -146,3 +146,36 @@ describe("実行手順の記載", () => {
     }
   });
 });
+
+describe("Skill と README の取得手順", () => {
+  const read = (file: string): string => readFileSync(new URL(file, root), "utf8");
+  const tag = `v${VERSION}`;
+
+  it("取得するタグは、いまの版（package.json の version）と同じ", () => {
+    for (const file of ["README.md", "skills/setsuzei/SKILL.md"]) {
+      const text = read(file);
+      const tags = [...text.matchAll(/(?:--branch |setsuzei#)(v\d+\.\d+\.\d+)/g)].map((m) => m[1]);
+      assert.ok(tags.length >= 1, `${file}: タグの指定がない`);
+      for (const found of tags) assert.equal(found, tag, file);
+      // タグなしで GitHub から取得する記載を残さない（開発用の CONTRIBUTING.md は対象外）
+      for (const line of text.split("\n")) {
+        if (/git clone .*ozko00\/setsuzei/.test(line)) assert.match(line, new RegExp(`--branch ${tag.replace(/\./g, "\\.")}\\b`), `${file}: ${line.trim()}`);
+        if (/github:ozko00\/setsuzei/.test(line)) assert.ok(line.includes(`github:ozko00/setsuzei#${tag}`), `${file}: ${line.trim()}`);
+      }
+    }
+  });
+
+  it("Skill: 取得の前に利用者の了承を得る。取得のコマンドは 1 つずつで、つながない", () => {
+    const skill = read("skills/setsuzei/SKILL.md");
+    assert.match(skill, /取得の前に、[^\n]*了承を得る/);
+    assert.match(skill, /すでに使える CLI がないか確かめる/);
+    assert.match(skill, /権限の確認で止まった・拒否されたとき/);
+    const blocks = [...skill.matchAll(/```sh\n([\s\S]*?)```/g)].map((m) => (m[1] ?? "").trim());
+    const setup = blocks.filter((b) => /git clone|npm ci/.test(b));
+    assert.equal(setup.length, 2);
+    for (const block of setup) {
+      assert.equal(block.split("\n").length, 1, block);
+      assert.doesNotMatch(block, /&&|;|\|/, block);
+    }
+  });
+});
