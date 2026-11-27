@@ -461,7 +461,7 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
   if (baseline.totalIncome === 0) {
     warnings.push("合計所得金額（所得の合計）が 0 円の見込みです。入力値（収入・経費）を確認してください。");
   } else if (baseline.incomeTax.taxableIncome === 0) {
-    warnings.push("所得税がかかる所得（課税所得。所得から控除を引いた残り）が 0 円の見込みです。控除を増やしても所得税はこれ以上減りません。");
+    warnings.push("所得から控除（基礎控除など）を引くと残りが 0 円になるため、所得税はかからない見込みです（課税所得 0 円）。控除を増やしても所得税はこれ以上減りません。");
   }
   if (normalized.spouse) {
     const [, , top] = data.family.taxpayerTiers;

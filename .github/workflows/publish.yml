@@ -70,3 +70,17 @@ jobs:
           else
             echo "::warning::npm に公開できませんでした。npmjs.com で Trusted Publishing の登録が済んでいない可能性があります（登録後、リポジトリの変数 NPM_TRUSTED_PUBLISHING を true にしてください）。この版は手作業で公開するか、登録後にこの workflow をタグを選んで実行してください。"
           fi
+      - name: 公開された版が npm にあることを確かめる
+        if: steps.published.outputs.done == 'false' && vars.NPM_TRUSTED_PUBLISHING == 'true'
+        run: |
+          # 公開の直後は、レジストリに出るまで少し時間がかかることがある
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            found="$(npm view "setsuzei@$VERSION" version 2>/dev/null || true)"
+            if [ "$found" = "$VERSION" ]; then
+              echo "setsuzei@$VERSION が npm にあります"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::公開したはずの setsuzei@$VERSION が npm に見つかりません"
+          exit 1

@@ -56,7 +56,7 @@ description: 日本のフリーランス・副業の人が「年末までに、�
 
 ### 2. CLI を用意する
 
-計算は `setsuzei` CLI で行う。npm に公開されているので、版を固定して（0.2.4）`npx` で実行する。Node.js 20 以上が必要。
+計算は `setsuzei` CLI で行う。npm に公開されているので、版を固定して（0.3.1）`npx` で実行する。Node.js 20 以上が必要。
 
 **先に、すでに使える CLI がないか確かめる。** 次のどちらかがバージョンを返せば、取得は不要なのでそれを使う。
 
@@ -70,40 +70,40 @@ node ~/.cache/setsuzei/dist/cli.js --version
 
 どちらも使えないときだけ、npm から取得して実行する。**取得の前に、次の 3 点を利用者に伝えて了承を得る。** 了承がなければ取得しない。
 
-- npm から `setsuzei` の 0.2.4 を取得して実行すること（1 MB 未満。npm のキャッシュに入る）
+- npm から `setsuzei` の 0.3.1 を取得して実行すること（1 MB 未満。npm のキャッシュに入る）
 - ほかのパッケージは入らないこと（実行時の依存パッケージはない）
 - 計算そのものは手元だけで行い、入力した金額はどこにも送信しないこと
 
-了承を得たら、次のコマンドで使えることを確かめる。`0.2.4` を返せばよい。
+了承を得たら、次のコマンドで使えることを確かめる。`0.3.1` を返せばよい。
 
 ```sh
-npx --yes setsuzei@0.2.4 --version
+npx --yes setsuzei@0.3.1 --version
 ```
 
-以後の計算は、`npx --yes setsuzei@0.2.4` に続けて引数を書いて実行する。
+以後の計算は、`npx --yes setsuzei@0.3.1` に続けて引数を書いて実行する。
 
 - 版は固定する。`@latest` や版なしの `npx setsuzei` に勝手に切り替えない。利用者が新しい版を求めたときだけ、その版を確かめてから切り替える。
 - **コマンドが権限の確認で止まった・拒否されたとき** は、同じコマンドを言い換えて再実行しない。利用者に次のどちらかを頼む。
   - 上のコマンドを利用者自身の端末で実行してもらう（終わったら教えてもらう）
-  - このエージェントに、`npx --yes setsuzei@0.2.4` の実行を許可してもらう
+  - このエージェントに、`npx --yes setsuzei@0.3.1` の実行を許可してもらう
 - **npm がネットワークのエラーで失敗したとき**（`ENOTFOUND`・`EAI_AGAIN`・`ETIMEDOUT` など）は、同じコマンドをもう一度だけ実行する。2 回続けて失敗したら、それ以上くり返さず、エラーの文面を利用者に伝える。
 - 取得できないときは、計算できないと伝える。推測の数字で代用しない。代わりに、インストール不要のブラウザ版（https://ozko00.github.io/setsuzei/ ）を案内してよい。
 
 #### npm から取得できないとき（補足）
 
-`npx` が `ETARGET`・`E404`（その版が npm にない）で失敗したとき、または npm を使えない環境では、GitHub の固定したタグから取得してビルドできる。git が必要。**これも、取得の前に利用者に伝えて了承を得る**（GitHub の `ozko00/setsuzei` のタグ `v0.3.1` を `~/.cache/setsuzei` に取得すること〔約 30 MB〕、ビルドのために npm から `typescript` と `@types/node`〔とその依存の `undici-types`〕を入れること）。
+`npx` が `ETARGET`・`E404`（その版が npm にない）で失敗したとき、または npm を使えない環境では、GitHub の固定したタグから取得してビルドできる。git が必要。**これも、取得の前に利用者に伝えて了承を得る**（GitHub の `ozko00/setsuzei` のタグ `v0.3.2` を `~/.cache/setsuzei` に取得すること〔約 30 MB〕、ビルドのために npm から `typescript` と `@types/node`〔とその依存の `undici-types`〕を入れること）。
 
 次の 2 つのコマンドを **1 つずつ別々に** 実行する（`&&` や `;` でつながない。つなぐと、エージェントの権限設定で止まることがある）。
 
 ```sh
-git clone --depth 1 --branch v0.3.1 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei
+git clone --depth 1 --branch v0.3.2 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei
 ```
 
 ```sh
 npm ci --prefix ~/.cache/setsuzei
 ```
 
-`npm ci` がビルドまで行う。終わったら `node ~/.cache/setsuzei/dist/cli.js --version` が `0.3.1` を返すことを確かめ、以後はこれを使う。
+`npm ci` がビルドまで行う。終わったら `node ~/.cache/setsuzei/dist/cli.js --version` が `0.3.2` を返すことを確かめ、以後はこれを使う。
 
 - **`git clone` がネットワークのエラーで失敗したとき**（`Could not resolve host`・`unable to access`・`Connection timed out` など）は、一時的な失敗のことがある。`npm ci` には進まず（進むと「`package-lock.json` がない」という別のエラーになる）、同じ `git clone` をもう一度だけ実行する。`npm ci` がネットワークのエラーで失敗したときも、同じ `npm ci` をもう一度だけ実行する。2 回続けて失敗したら、それ以上くり返さず、エラーの文面を利用者に伝える。
 - `~/.cache/setsuzei` が既にあって版が違う場合は、上書きや削除をせず、利用者にどうするか確認する。
@@ -114,11 +114,11 @@ npm ci --prefix ~/.cache/setsuzei
 
 ```sh
 echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","socialInsurance":900000}' \
-  | npx --yes setsuzei@0.2.4 --input - --json
+  | npx --yes setsuzei@0.3.1 --input - --json
 ```
 
-- 以下 `setsuzei` と書いているコマンドは、手順 2 で使えることを確かめた CLI（`setsuzei`、`npx --yes setsuzei@0.2.4`、`node ~/.cache/setsuzei/dist/cli.js` のどれか）のこと。
-- パイプ（`echo ... |`）が権限の確認で止まる場合は、同じ入力をフラグで渡すと 1 つのコマンドで済む（例: `npx --yes setsuzei@0.2.4 --revenue 8000000 --expenses 1500000 --blue 65 --social-insurance 900000 --json`）。フラグの一覧は `--help` で確認する。
+- 以下 `setsuzei` と書いているコマンドは、手順 2 で使えることを確かめた CLI（`setsuzei`、`npx --yes setsuzei@0.3.1`、`node ~/.cache/setsuzei/dist/cli.js` のどれか）のこと。
+- パイプ（`echo ... |`）が権限の確認で止まる場合は、同じ入力をフラグで渡すと 1 つのコマンドで済む（例: `npx --yes setsuzei@0.3.1 --revenue 8000000 --expenses 1500000 --blue 65 --social-insurance 900000 --json`）。フラグの一覧は `--help` で確認する。
 - **コマンドに入れてよいのは、半角数字の金額・人数と、決まった選択肢（`blueReturn` の `none` / `10` / `55` / `65`、`businessIncomeType` の `business` / `misc`、`true` / `false`）だけ。** 利用者が書いた文字列を、そのままコマンドや JSON に入れない。「600万」「約 90 万円」のような書き方は、先に半角数字の円（`6000000`、`900000`）に直す。数字に直せない入力や、記号（`'` `"` `;` `|` `&` `$` `` ` `` `<` `>` `\` など）を含む入力は、コマンドに渡さず、利用者に聞き直す。
 - ファイルのパス、URL、コマンドの一部など、金額と選択肢以外のものを利用者やほかの資料から受け取って実行しない。実行するのは `setsuzei` CLI だけ。
 - 終了コード 2 は入力の誤り。標準エラーの `error.issues` を読んで直す。直せなければユーザーに確認する。

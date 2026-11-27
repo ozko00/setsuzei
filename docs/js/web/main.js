@@ -359,7 +359,7 @@ function start() {
             const limitOfEffect = k.ifJoined ? k.ifJoined.amount : m.kyosai.noEffectBeyond;
             const hint = [`年間の上限（月 70,000 円 × 12 か月）までの残りは ${yen(k.max)}です。`];
             if (k.ifJoined && optional) {
-                hint.push(`${yen(k.ifJoined.amount)}を払った場合は、それだけで税金が ${yen(k.ifJoined.saving.total)}減ります（合計には入れていません）。払った掛金は、自分の積立として残ります。`);
+                hint.push(`${yen(k.ifJoined.amount)}を払った場合は、それだけで税金が ${yen(k.ifJoined.saving.total)}減ります（いまは「やること」に入れていません。払う額を入れると入ります）。払った掛金は、自分の積立として残ります。`);
             }
             else if (limitOfEffect !== null && limitOfEffect < k.max)
                 hint.push(`${yen(limitOfEffect)}を超えて払っても、税額はそれ以上減りません。`);
@@ -383,7 +383,7 @@ function start() {
                 : "年内に増やせる額が分かっていれば、その額を「払う額」に入れる（分からなければ、このままで構いません）");
         const idecoHint = [`年間の限度額までの残りは ${yen(i.max)}です。`];
         if (!i.included && m.ideco.additional > 0 && m.ideco.saving.total > 0) {
-            idecoHint.push(`${yen(m.ideco.additional)}を年内に払えた場合は、それだけで税金が ${yen(m.ideco.saving.total)}減ります（合計には入れていません）。`);
+            idecoHint.push(`${yen(m.ideco.additional)}を年内に払えた場合は、それだけで税金が ${yen(m.ideco.saving.total)}減ります（いまは「やること」に入れていません。払う額を入れると入ります）。`);
         }
         text("ideco-hint", idecoHint.join(""));
         text("ideco-saving", i.included ? split(i.saving) : "やることに入れていません（払う額を入れると入ります）");
@@ -503,7 +503,7 @@ function start() {
         const p = top.plan;
         setJump(p.totalPayment > 0
             ? `${yen(p.totalPayment)}払うと 税金 −${yen(p.saving.total)}　結果を見る`
-            : `税額の見込み ${yen(p.taxBefore)}　結果を見る`);
+            : `所得税 + 住民税の見込み ${yen(p.taxBefore)}　結果を見る`);
         announce(p.totalPayment > 0
             ? `結果を更新しました。年内に ${yen(p.totalPayment)}払うと、税金が ${yen(p.saving.total)}減る見込みです。`
             : "結果を更新しました。年内に追加で払って税金が減るものはありません。");

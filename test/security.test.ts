@@ -45,6 +45,17 @@ describe("workflow（.github/workflows）", () => {
     }
   });
 
+  it("Dependabot: 型（@types/node）と TypeScript のメジャー更新は、自動では上げない", () => {
+    const text = read(".github/dependabot.yml");
+    for (const name of ["@types/node", "typescript"]) {
+      assert.match(text, new RegExp(`dependency-name: "${name}"\\n\\s+update-types: \\["version-update:semver-major"\\]`), name);
+    }
+    // 型は、対応する Node.js の下限（engines.node）のメジャーを大きく超えない版にしておく
+    const pkg = JSON.parse(read("package.json")) as { engines: { node: string }; devDependencies: Record<string, string> };
+    assert.equal(pkg.engines.node, ">=20");
+    assert.match(pkg.devDependencies["@types/node"] ?? "", /^\^2[02]\./);
+  });
+
   it("Dependabot が、action と npm の依存を週 1 回確かめる", () => {
     const text = read(".github/dependabot.yml");
     for (const ecosystem of ["github-actions", "npm"]) {

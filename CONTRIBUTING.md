@@ -60,14 +60,22 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 2. **取得の手順**: SKILL.md の「CLI を用意する」にあるコマンドを、まっさらな環境でそのまま実行して確かめます。npm に公開済みの版なら、次のように Docker で試せます。
 
    ```sh
-   docker run --rm node:22 npx --yes setsuzei@0.2.4 --version
+   docker run --rm node:22 npx --yes setsuzei@0.3.1 --version
    ```
 
    補足の手順（GitHub のタグから取得してビルド）は、`scripts/verify-install.sh` でくり返し実行できます（Node 20 / 22 / 24 / 26 で 10 回ずつ。出力はすべてログに残ります）。取得はネットワークに依存するので、失敗したらログのエラーの文面（`Could not resolve host` など）を先に確かめてください。
 
-版を上げるときは、`package.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.3.1` のような表記）をそろえます。そろっていないとテストが落ちます。`npx setsuzei@…` で案内する版は、npm に実際にある版（`package.json` の `config.npmPinned`）に合わせます。新しい版が npm に出たら、この値と README・SKILL.md の表記を上げてください（npm にあることは CI で確かめています）。マージ後に、その版のタグと GitHub Release を作ります。
+### リリースの手順
 
-タグ（`v0.3.1` の形）を push すると、[`.github/workflows/publish.yml`](.github/workflows/publish.yml) が npm に公開します。トークンは使わず、npm の Trusted Publishing（GitHub Actions の OIDC）で認証します。npmjs.com 側の登録（パッケージの Settings → Trusted publishing）が必要で、登録する値は、リポジトリ `ozko00/setsuzei`、workflow のファイル名 `publish.yml`、environment は空欄です。登録が済んだら、リポジトリの変数 `NPM_TRUSTED_PUBLISHING` を `true` にします（それまでは、公開に失敗しても警告だけで終わります）。
+npm の固定版（`npx setsuzei@…` で案内する版）が、いつも npm に実在する版を指すように、次の順で進めます。
+
+1. **リリースの PR**: `package.json`・`package-lock.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.3.2` のような表記）を新しい版にそろえます（そろっていないとテストが落ちます）。
+   `npx setsuzei@…` で案内する版（`package.json` の `config.npmPinned` と、README・SKILL.md・この文書の表記）は、**その時点で npm に公開済みの最新の版**にします。これから出す版は、まだ npm にないので書きません。つまり固定版は、いつも 1 つ前の公開済みの版です。
+2. **マージ → タグ**: CI が通ったらマージし、その版のタグ（`v0.3.2` の形）を push して GitHub Release を作ります。タグは付け直せないので、`package.json` の版と同じであることを push の前に確かめます。
+3. **npm への公開**: タグの push で [`.github/workflows/publish.yml`](.github/workflows/publish.yml) が npm に公開し、公開された版を `npm view` で確かめます。トークンは使わず、npm の Trusted Publishing（GitHub Actions の OIDC）で認証します（npmjs.com 側の登録: リポジトリ `ozko00/setsuzei`、workflow のファイル名 `publish.yml`、environment は空欄。リポジトリの変数 `NPM_TRUSTED_PUBLISHING` が `true` の間、公開の失敗はそのまま失敗になります）。
+4. **固定版を上げる**: 次のリリースの PR で、固定版を、公開を確かめた版に上げます（急ぐ理由があれば、公開の確認後に固定版だけを上げる PR を出しても構いません）。
+
+固定版が npm に実在することは、CI（`README と Skill が案内している版が、npm に実在することを確かめる`）が毎回確かめます。固定版がいまの版より新しくないこと、表記がそろっていることは `npm test` が確かめます。
 
 ## プルリクエスト
 
