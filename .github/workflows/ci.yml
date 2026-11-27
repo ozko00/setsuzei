@@ -40,3 +40,19 @@ jobs:
           npm run build
           node dist/cli.js --input examples/freelancer.json
           node dist/cli.js --input examples/side-job.json --json > /dev/null
+
+  # 公開ページ（docs/）を実際のブラウザで操作して確かめる。Chrome が要るので、上のテストとは別のジョブにしている
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Chrome の版
+        run: google-chrome --version
+      - name: 公開ページを Chrome で操作するテスト
+        run: npm run test:browser

@@ -321,6 +321,10 @@ function start(): void {
   };
 
   fillForm(form, queryToValues(location.search));
+  // 引き継いだ値が、閉じた「試算の条件を変える」の中に隠れたまま結果に効くことがないよう、値があれば開く
+  for (const details of Array.from(form.querySelectorAll("details"))) {
+    if (Array.from(details.querySelectorAll("input")).some((el) => el.value !== "")) details.open = true;
+  }
   form.addEventListener("input", update);
   form.addEventListener("change", update);
   form.addEventListener("submit", (event) => event.preventDefault());
