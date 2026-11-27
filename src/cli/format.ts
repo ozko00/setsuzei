@@ -237,9 +237,22 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
     out.push("");
   }
 
+  out.push("■ ことばの説明");
+  out.push(...GLOSSARY.map(([term, text]) => `  ・${term}: ${text}`));
+  out.push("");
+
   out.push("■ 免責");
   out.push(`  ${r.disclaimer}`);
   out.push("  計算していないもの: 国民健康保険料の全体額、個人事業税、消費税、住民税の均等割の非課税判定、分離課税の所得、住宅ローン控除など。");
   out.push("  根拠にした一次情報の一覧は `setsuzei --sources` で表示できます。");
   return out.join("\n");
 }
+
+/** 結果に出てくることばの短い説明（CLI とブラウザ版の両方で出す） */
+export const GLOSSARY: readonly (readonly [string, string])[] = [
+  ["所得", "収入から、経費（給与の場合は給与所得控除）を引いた額。合計所得金額は、その合計"],
+  ["控除", "税金を計算する前に、所得から引けるもの（社会保険料、掛金、家族の分など）"],
+  ["課税所得", "所得から控除を引いた残り。この額に税率を掛けて所得税を計算する"],
+  ["住民税の所得割・均等割", "住民税のうち、所得に応じてかかる部分が所得割、所得にかかわらず定額でかかる部分が均等割"],
+  ["事業所得・雑所得", "開業して続けている仕事の所得が事業所得。それに当たらない副業などの所得が雑所得（青色申告特別控除は使えない）"],
+];

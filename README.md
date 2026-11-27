@@ -25,7 +25,7 @@
 
 ```console
 $ setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万 --ideco-paid 27.6万 --furusato-paid 3万
-setsuzei 0.3.0 ｜ 令和8年分（2026年分）の概算
+setsuzei 0.3.1 ｜ 令和8年分（2026年分）の概算
 
 ■ 現状の見込み
   事業所得（青色申告特別控除 650,000 円を控除後）  5,850,000 円
@@ -99,7 +99,7 @@ npx setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90�
 
 はじめて実行するときに、npm から [setsuzei](https://www.npmjs.com/package/setsuzei) を取得します（1 MB 未満。ほかのパッケージは入りません）。計算は手元だけで行い、入力した金額はどこにも送信しません。
 
-- いつ実行しても同じ版を使いたいときは、`npx setsuzei@0.3.0` のように版を付けます。
+- いつ実行しても同じ版を使いたいときは、`npx setsuzei@0.2.4` のように版を付けます。
 - よく使うなら `npm install -g setsuzei` で入れておくと、`setsuzei` だけで実行できます。
 
 以下の例は `setsuzei` と書いています。入れていない場合は `npx setsuzei` に読み替えてください。
@@ -110,14 +110,14 @@ npx setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90�
 git が必要です。
 
 ```sh
-git clone --depth 1 --branch v0.3.0 https://github.com/ozko00/setsuzei.git
+git clone --depth 1 --branch v0.3.1 https://github.com/ozko00/setsuzei.git
 cd setsuzei
 npm ci
 npm run build
 node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
-`v0.3.0` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
+`v0.3.1` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
 
 `git clone` が `Could not resolve host: github.com` などで止まったときは、ネットワークの一時的な失敗のことがあります。`npm ci` に進む前に、同じ `git clone` をもう一度実行してください（clone に失敗したまま `npm ci` を実行すると、「`package-lock.json` がない」という別のエラーになります）。`npm ci` が `ENOTFOUND` や `ETIMEDOUT` で止まったときも、同じコマンドをもう一度実行すれば続きから入ります。
 
@@ -213,7 +213,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 
 そのうえで「今年あといくら節税できる？」のように聞くと、エージェントが必要な項目を質問し、CLI の結果をもとに答えます。
 
-- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、版を固定した `npx setsuzei@0.3.0` で実行します（npm から取得。ほかのパッケージは入りません）。
+- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、版を固定した `npx setsuzei@0.2.4` で実行します（npm から取得。ほかのパッケージは入りません）。
 - エージェントの権限設定でコマンドが止まった場合は、Skill に書いてあるコマンドを自分で実行するか、エージェントに実行を許可してください。
 - Skill が聞き取りから結果の説明まで通ることは、[`scripts/skill-e2e.sh`](scripts/skill-e2e.sh) で確かめられます（Claude Code が必要）。
 

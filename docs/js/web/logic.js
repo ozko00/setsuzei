@@ -260,8 +260,25 @@ export function computeTop(values) {
         const afterContributions = i > 0 ? at(k, i, 0) : afterKyosai;
         const limit = afterContributions.measures.furusato.limit;
         const recommended = Math.max(0, limit - n.furusatoPaid);
-        const f = furusatoPlanned ?? recommended;
-        const afterAll = f > 0 ? at(k, i, f) : afterContributions;
+        let f = furusatoPlanned ?? recommended;
+        let afterAll = f > 0 ? at(k, i, f) : afterContributions;
+        // 自分で額を決めていない寄附は、減る税額が自己負担より小さいなら、やることに入れない（割に合わないため）
+        let skipped = null;
+        if (furusatoCustom === null && f > 0) {
+            const s = savingBetween(afterContributions.baseline, afterAll.baseline);
+            if (s.total < f - s.total) {
+                skipped = { amount: f, saving: s };
+                f = 0;
+                afterAll = afterContributions;
+            }
+        }
+        // 出せるお金に合わせて掛金を減らすと、ふるさと納税の上限の目安は上がる。配分の理由として添える
+        if (budget && limit > first.measures.furusato.limitAfterOtherMeasures) {
+            budget = {
+                ...budget,
+                reason: `${budget.reason}掛金を上限まで払う場合より掛金が少ないぶん、住民税が多く残るので、ふるさと納税の上限の目安は ${yen(first.measures.furusato.limitAfterOtherMeasures)}から ${yen(limit)}に上がっています。`,
+            };
+        }
         const plan = {
             furusato: {
                 amount: f,
@@ -271,6 +288,7 @@ export function computeTop(values) {
                 recommended,
                 custom: furusatoCustom !== null,
                 over: Math.max(0, f - recommended),
+                skipped,
             },
             kyosai: m.kyosai.applicable
                 ? {

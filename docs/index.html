@@ -182,7 +182,7 @@
     </div>
 
     <div class="budget">
-      <label for="budget">年内に出せるお金<span class="optional-mark">任意</span><span class="sub">入れると、その範囲で税金がいちばん減る組み合わせにします。空のままなら、上限まで実行した場合を出します</span></label>
+      <label for="budget">年内に出せるお金<span class="optional-mark">任意</span><span class="sub">ふるさと納税の寄附や掛金として、12 月 31 日までに新しく払えるお金の合計です（例: 貯金から 10 万円までなら「10万」）。入れると、その範囲で税金がいちばん減る組み合わせにします。空のままなら、上限まで実行した場合を出します</span></label>
       <span class="amount-field"><input id="budget" name="budget" form="form" inputmode="numeric" placeholder="例: 10万"><span class="unit">円</span></span>
       <p class="sub" id="budget-reason"></p>
     </div>
@@ -197,11 +197,17 @@
             <input type="range" id="furusato-range" min="0" step="1000" aria-label="ふるさと納税で払う額を動かす">
             <span class="sub" id="furusato-hint"></span></dd></div>
           <div><dt>減る税額</dt><dd><span class="saving" id="furusato-saving"></span>
-            <span class="sub">寄附と引き換えです。税金が減るのは「寄附した額 − 2,000 円」までで、手元のお金は増えません（得になるのは返礼品の分）。</span></dd></div>
+            <span class="sub worth" id="furusato-worth"></span></dd></div>
         </dl>
         <details class="help more-info">
-          <summary>締切と注意（12 月 31 日まで）</summary>
+          <summary>やり方・締切・注意（12 月 31 日まで）</summary>
           <dl class="info">
+            <div><dt>やり方</dt><dd><ol class="howto">
+              <li>寄附する自治体を選び、12 月 31 日までに寄附（支払い）を済ませる。</li>
+              <li>自治体から届く、寄附を証明する書類（受領書）を保管する。</li>
+              <li>来年 3 月 15 日までの確定申告で、寄附金控除として申告する（受領書を添える）。</li>
+              <li>確定申告をする方は、ワンストップ特例を使えません（対象は、確定申告の不要な給与所得者などです）。</li>
+            </ol><a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/furusato/mechanism/procedure.html" rel="noopener noreferrer" target="_blank">総務省「ふるさと納税の流れ」</a>、<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1155.htm" rel="noopener noreferrer" target="_blank">国税庁 No.1155 ふるさと納税（寄附金控除）</a></dd></div>
             <div><dt>締切</dt><dd>ことしの分になるのは、12 月 31 日までに寄附（支払い）を済ませた分です。</dd></div>
             <div><dt>注意</dt><dd>寄附した分だけお金は出ていきます。税金が減るのは「寄附した額 − 2,000 円」までで、得になるのは返礼品の分です。確定申告で申告します。</dd></div>
           </dl>
@@ -218,15 +224,19 @@
             <span class="amount-field"><input id="kyosai-add" name="kyosai-add" form="form" inputmode="numeric" placeholder="0" aria-describedby="kyosai-hint"><span class="unit">円</span></span>
             <input type="range" id="kyosai-range" min="0" step="1000" aria-label="小規模企業共済で払う額を動かす">
             <span class="sub" id="kyosai-hint"></span></dd></div>
-          <div><dt>減る税額</dt><dd class="saving" id="kyosai-saving"></dd></div>
+          <div><dt>減る税額</dt><dd><span class="saving" id="kyosai-saving"></span>
+            <span class="sub worth" id="kyosai-worth"></span></dd></div>
         </dl>
         <details class="help more-info">
-          <summary>締切・注意・加入の手順</summary>
+          <summary>やり方・締切・注意</summary>
           <dl class="info">
-            <div><dt>締切</dt><dd>ことしの分になるのは、12 月 31 日までに支払った掛金です。</dd></div>
-            <div><dt>加入の手順</dt><dd>いま入っていない方が 11 月・12 月に申し込んで、ことしの分にするには、中小機構の委託機関（商工会・商工会議所などの団体や、金融機関）の窓口で、掛金をその場で現金で払う方法（「現金あり」）で加入の手続きをします。年払いにして 12 か月分を現金で払えば、その全額がことしの分になります。オンラインでの申込みは、最初の引落しが翌々月になるため、ことしの分にするには 10 月中の申込みが必要でした（11 月・12 月のオンライン申込みは、来年の分になります）。窓口の受付日や必要な書類は、窓口に確かめてください。
-              <a href="https://www.smrj.go.jp/kyosai/skyosai/news/2026/qsktgp000000cx1u.html" rel="noopener noreferrer" target="_blank">中小機構のお知らせ（令和8年分の所得控除の対象）</a>、<a href="https://kyosai-web.smrj.go.jp/skyosai/entry/index_07.html" rel="noopener noreferrer" target="_blank">中小機構「加入後はじめての掛金納付方法」</a></dd></div>
-            <div><dt>注意</dt><dd>払った掛金は自分の積立として残り、事業をやめるときなどに受け取ります（受け取るときに税金がかかります）。加入済みの方が掛金を増やす・先の月の分をまとめて払う（前納）手続きと締切は、中小機構か窓口に確かめてください。</dd></div>
+            <div><dt>やり方</dt><dd><ul class="howto">
+              <li><strong>新しく入る</strong>: 11 月・12 月に申し込んでことしの分にするには、中小機構の委託機関（商工会・商工会議所などの団体や、金融機関）の窓口で、掛金をその場で現金で払う方法（「現金あり」）で手続きします。年払いにして 12 か月分を現金で払えば、その全額がことしの分になります。オンラインの申込みは、最初の引落しが翌々月になるため、11 月・12 月の申込みは来年の分になります。</li>
+              <li><strong>掛金を増やす</strong>: 「掛金月額変更（増額・減額）申込書」を、委託機関の窓口に出すか、中小機構に郵送します。締切は毎月の月末で、月末までに手続きが済むと、その月の分から増えます。</li>
+              <li><strong>増やして、先の月の分もまとめて払う（前納）</strong>: 委託機関の窓口で、申込みと一緒に現金で払います（郵送ではできません）。</li>
+            </ul><a href="https://www.smrj.go.jp/kyosai/skyosai/news/2026/qsktgp000000cx1u.html" rel="noopener noreferrer" target="_blank">中小機構のお知らせ（令和8年分の所得控除の対象）</a>、<a href="https://kyosai-web.smrj.go.jp/skyosai/entry/index_07.html" rel="noopener noreferrer" target="_blank">「加入後はじめての掛金納付方法」</a>、<a href="https://kyosai-web.smrj.go.jp/customer/skyosai/installment/describe/index_03.html" rel="noopener noreferrer" target="_blank">「増額だけしたい」</a>、<a href="https://kyosai-web.smrj.go.jp/customer/skyosai/installment/describe/index_02.html" rel="noopener noreferrer" target="_blank">「増額と同時に前納もしたい」</a></dd></div>
+            <div><dt>締切</dt><dd>ことしの分になるのは、12 月 31 日までに支払った掛金です。年末の窓口の受付日と必要な書類は、窓口に確かめてください。口座振替で増やす場合は、増えた分の引落しが年内になるかを確かめてください。</dd></div>
+            <div><dt>注意</dt><dd>払った掛金は自分の積立として残り、事業をやめるときなどに受け取ります（受け取るときに税金がかかります）。</dd></div>
           </dl>
           <ul id="kyosai-notes"></ul>
         </details>
@@ -240,11 +250,17 @@
             <span class="amount-field"><input id="ideco-add" name="ideco-add" form="form" inputmode="numeric" placeholder="0" aria-describedby="ideco-hint"><span class="unit">円</span></span>
             <input type="range" id="ideco-range" min="0" step="1000" aria-label="iDeCo で追加して払う額を動かす">
             <span class="sub" id="ideco-hint"></span></dd></div>
-          <div><dt>減る税額</dt><dd class="saving" id="ideco-saving"></dd></div>
+          <div><dt>減る税額</dt><dd><span class="saving" id="ideco-saving"></span>
+            <span class="sub worth" id="ideco-worth"></span></dd></div>
         </dl>
         <details class="help more-info">
-          <summary>締切と注意</summary>
+          <summary>やり方・締切・注意</summary>
           <dl class="info">
+            <div><dt>やり方</dt><dd><ol class="howto">
+              <li>加入している金融機関（運営管理機関）に連絡して、掛金額を変えるための専用の届書をもらう。</li>
+              <li>届書を出す。掛金額の変更は、1 年（12 月分〜翌年 11 月分の掛金）に 1 回です。</li>
+              <li>変更がいつの引落しから反映されるか、年内の引落しに間に合うかを、運営管理機関に確かめる。</li>
+            </ol><a href="https://www.ideco-koushiki.jp/join/" rel="noopener noreferrer" target="_blank">iDeCo 公式サイト「各種変更届について」</a></dd></div>
             <div><dt>締切</dt><dd>ことしの分になるのは、12 月の引落し分までです。</dd></div>
             <div><dt>注意</dt><dd>掛金の額を変えられるのは年 1 回で、年内に増やせるかどうかは加入先と時期しだいです。原則 60 歳まで引き出せません。</dd></div>
           </dl>
@@ -266,6 +282,15 @@
     <div class="later" id="later" hidden>
       <h4>確定申告のときに</h4>
       <p id="later-text"></p>
+      <details class="help more-info">
+        <summary>青色申告にするには（届出と期限）</summary>
+        <ul class="howto">
+          <li>来年分から青色申告にするには、来年の 3 月 15 日までに「青色申告承認申請書」を、住所地の税務署に出します。</li>
+          <li>仕事を始めたばかりの方は、始めた日から 2 か月以内に出せば、その年の分から青色申告にできます。</li>
+          <li>65 万円の控除には、複式簿記の帳簿、貸借対照表と損益計算書の添付、期限内の申告、e-Tax での申告（または優良な電子帳簿の保存）が必要です。</li>
+        </ul>
+        <p class="sub"><a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2070.htm" rel="noopener noreferrer" target="_blank">国税庁 No.2070 青色申告制度</a></p>
+      </details>
     </div>
 
     <div class="share">

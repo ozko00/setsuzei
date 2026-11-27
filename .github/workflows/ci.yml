@@ -56,3 +56,9 @@ jobs:
         run: google-chrome --version
       - name: 公開ページを Chrome で操作するテスト
         run: npm run test:browser
+      - name: README と Skill が案内している版が、npm に実在することを確かめる
+        run: |
+          pinned="$(node -p 'require("./package.json").config.npmPinned')"
+          found="$(npm view "setsuzei@$pinned" version)"
+          test "$found" = "$pinned" || { echo "::error::setsuzei@$pinned が npm にありません"; exit 1; }
+          echo "setsuzei@$pinned は npm にあります"

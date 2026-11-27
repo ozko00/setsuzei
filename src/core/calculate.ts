@@ -222,7 +222,7 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
     : !hasBusiness
       ? "事業の収入がないため計算していません。"
       : !isBusinessIncome
-        ? "雑所得として入力されているため計算していません。小規模企業共済は個人事業主などが対象です。"
+        ? "雑所得（事業とは言えない副業などの所得）として入力されているため計算していません。小規模企業共済は個人事業主などが対象です。"
         : null;
   if (kyosaiBlocked !== null && normalized.kyosaiPaid === 0) {
     kyosai = {
@@ -359,17 +359,17 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
       0,
       1,
       noDonation.residentTax.incomeLevyExempt
-        ? "住民税の所得割が非課税の見込みのため、ふるさと納税をしても住民税は減りません。上限の目安は出していません。"
+        ? "住民税の所得割（所得に応じてかかる部分）がかからない見込みのため、ふるさと納税をしても住民税は減りません。上限の目安は出していません。"
         : noDonation.residentTax.exemptionReduction > 0
-          ? "合計所得金額が住民税の所得割の非課税限度額を少し超える範囲にあり、所得割が減額される見込みです。寄附をしても減額分を超えるまで住民税が減らないため、自己負担 2,000 円で済む寄附額はありません。上限の目安は出していません。"
-          : "住民税の所得割額が 0 円か、ごくわずかの見込みのため、ふるさと納税による税の軽減はありません。",
+          ? "合計所得金額（所得の合計）が、住民税の所得割（所得に応じてかかる部分）がかからなくなる上限を少し超える範囲にあり、所得割が減額される見込みです。寄附をしても減額分を超えるまで住民税が減らないため、自己負担 2,000 円で済む寄附額はありません。上限の目安は出していません。"
+          : "住民税の所得割（所得に応じてかかる部分）が 0 円か、ごくわずかの見込みのため、ふるさと納税による税の軽減はありません。",
     );
   }
   if (paid > limit && limit > 0) {
     furusatoNotes.unshift("寄附済みの額が上限の目安を超えています。超えた分は自己負担が増えます。");
   }
   if (limitAfterOtherMeasures !== limit || ideco.additional + kyosai.additional > 0) {
-    furusatoNotes.push("iDeCo や小規模企業共済の掛金を増やすと、住民税の所得割額が減るため上限の目安も下がります。");
+    furusatoNotes.push("iDeCo や小規模企業共済の掛金を増やすと、住民税が減るため上限の目安も下がります。");
   }
   const furusato: FurusatoMeasure = {
     limit,
@@ -390,7 +390,7 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
       options: [],
       notes: [
         hasBusiness
-          ? "雑所得として入力されているため計算していません。青色申告特別控除は事業所得（または不動産所得）が対象です。"
+          ? "雑所得（事業とは言えない副業などの所得）として入力されているため計算していません。青色申告特別控除は事業所得（または不動産所得）が対象です。"
           : "事業の収入がないため計算していません。",
       ],
     };
@@ -459,9 +459,9 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
   // --- 注意 ---
   const warnings: string[] = [];
   if (baseline.totalIncome === 0) {
-    warnings.push("合計所得金額が 0 円の見込みです。入力値（収入・経費）を確認してください。");
+    warnings.push("合計所得金額（所得の合計）が 0 円の見込みです。入力値（収入・経費）を確認してください。");
   } else if (baseline.incomeTax.taxableIncome === 0) {
-    warnings.push("所得税の課税所得が 0 円の見込みです。所得控除を増やしても所得税はこれ以上減りません。");
+    warnings.push("所得税がかかる所得（課税所得。所得から控除を引いた残り）が 0 円の見込みです。控除を増やしても所得税はこれ以上減りません。");
   }
   if (normalized.spouse) {
     const [, , top] = data.family.taxpayerTiers;
@@ -488,18 +488,18 @@ export function calculate(rawInput: TaxInput): SetsuzeiResult {
   const exemptLimitText = `${yen(rt.incomeLevyExemptLimit)}。入力された配偶者・扶養親族の人数で計算`;
   if (baseline.totalIncome > 0 && rt.incomeLevyExempt) {
     warnings.push(
-      `合計所得金額が住民税の所得割の非課税限度額（${exemptLimitText}）以下のため、所得割は 0 円としています。`,
+      `合計所得金額（所得の合計）が、住民税の所得割（所得に応じてかかる部分）がかからなくなる上限（非課税限度額。${exemptLimitText}）以下のため、所得割は 0 円としています。`,
     );
   } else if (rt.exemptionReduction > 0) {
     warnings.push(
-      `合計所得金額が住民税の所得割の非課税限度額（${exemptLimitText}）を少し超えるため、所得割を ${yen(rt.exemptionReduction)}減額しています（税引後の所得が限度額を下回らないようにする調整）。`,
+      `合計所得金額（所得の合計）が、住民税の所得割（所得に応じてかかる部分）がかからなくなる上限（非課税限度額。${exemptLimitText}）を少し超えるため、所得割を ${yen(rt.exemptionReduction)}減額しています（税引後の所得が限度額を下回らないようにする調整）。`,
     );
   }
   if (baseline.totalIncome > 0) {
     const perCapitaMax = perCapitaExemptLimitMax(data, base);
     if (baseline.totalIncome <= perCapitaMax) {
       warnings.push(
-        `お住まいの市区町村によっては、住民税の均等割もかからない可能性があります（基準は地域で異なり、最も高い地域で合計所得金額 ${yen(perCapitaMax)}以下）。` +
+        `お住まいの市区町村によっては、住民税の均等割（所得にかかわらず定額でかかる部分）もかからない可能性があります（基準は地域で異なり、最も高い地域で合計所得金額 ${yen(perCapitaMax)}以下）。` +
           `この試算では判定せず、均等割と森林環境税の ${yen(rt.perCapita)}を含めたままにしています。市区町村の案内で確認してください。`,
       );
     }

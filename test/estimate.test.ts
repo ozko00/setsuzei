@@ -540,8 +540,8 @@ describe("住民税の所得割の非課税限度額（地方税法 附則第3�
     const r = calculate({ ...base, dependents: { under16: 3 } });
     assert.equal(r.baseline.residentTax.total, 5_000);
     assert.equal(r.measures.furusato.limit, 0);
-    assert.ok(r.measures.furusato.notes[0]?.includes("所得割が非課税"));
-    assert.ok(r.warnings.some((w) => w.includes("非課税限度額（2,170,000 円")));
+    assert.ok(r.measures.furusato.notes[0]?.includes("所得割（所得に応じてかかる部分）がかからない見込み"));
+    assert.ok(r.warnings.some((w) => w.includes("非課税限度額。2,170,000 円")));
     // 掛金で減るのは所得税の分だけ（課税所得 380,000 円 → 379,000 円の追加で 1,000 円未満になる）
     assert.equal(r.measures.kyosai.additional, 379_000);
     assert.deepEqual(r.measures.kyosai.saving, { incomeTax: 19_300, residentTax: 0, total: 19_300 });
@@ -552,7 +552,7 @@ describe("住民税の所得割の非課税限度額（地方税法 附則第3�
     // 均等割の非課税は級地で変わるので計算しない。最も高い基準（35 万 × 人数 + 10 万 + 21 万）以下なら注意を出す
     const low = calculate({ businessRevenue: 1_000_000, spouse: { income: 0 } });
     assert.equal(low.baseline.residentTax.perCapita, 5_000);
-    assert.ok(low.warnings.some((w) => w.includes("均等割もかからない可能性") && w.includes("1,010,000 円")));
+    assert.ok(low.warnings.some((w) => w.includes("もかからない可能性") && w.includes("1,010,000 円")));
     assert.ok(low.warnings.some((w) => w.includes("ひとり親") && w.includes("1,350,000 円")));
     assert.ok(!calculate({ businessRevenue: 8_000_000 }).warnings.some((w) => /均等割|ひとり親|16 歳未満/.test(w)));
   });
