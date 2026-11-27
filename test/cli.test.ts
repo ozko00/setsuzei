@@ -232,14 +232,14 @@ describe("Skill と README の取得手順", () => {
     // 固定する版は、いまの版より新しくない
     const num = (v: string): number => v.split(".").reduce((n, part) => n * 1000 + Number(part), 0);
     assert.ok(num(NPM_PINNED) <= num(VERSION));
-    for (const file of ["README.md", "skills/setsuzei/SKILL.md", "CONTRIBUTING.md"]) {
+    for (const file of ["README.md", "README.en.md", "skills/setsuzei/SKILL.md", "CONTRIBUTING.md"]) {
       const text = read(file);
       // npx で固定する版は、npm に実際にある版（package.json の config.npmPinned）。
       // npm に出す前の版を案内しないよう、いまの版とは別に持つ。npm にあることは CI で確かめる（npm view）
       const pinned = [...text.matchAll(/setsuzei@(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
       assert.ok(pinned.length >= 1, `${file}: 版を付けた npx の記載がない`);
       for (const found of pinned) assert.equal(found, NPM_PINNED, file);
-      if (file === "CONTRIBUTING.md") continue; // 開発用の clone はタグなし
+      if (file === "CONTRIBUTING.md" || file === "README.en.md") continue; // 開発用の clone はタグなし
       const tags = [...text.matchAll(/--branch (v\d+\.\d+\.\d+)/g)].map((m) => m[1]);
       assert.ok(tags.length >= 1, `${file}: タグの指定がない`);
       for (const found of tags) assert.equal(found, tag, file);
