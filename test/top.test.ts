@@ -195,6 +195,25 @@ describe("トップページ: 割に合わないものは、やることに入�
     assert.ok(top.plan.furusato.amount > 0);
   });
 
+  it("出せるお金が小さくて寄附が割に合わないときは、その分を掛金に回す", () => {
+    // 3,000 円を寄附しても 1,000 円しか減らない。小規模企業共済に回せば、その分だけ税金が減る
+    const top = done({ work: "freelance", revenue: "800万", expenses: "150万", blue: "none", "si-mode": "enter", "social-insurance": "90万", "kyosai-paid": "12万", budget: "3000" });
+    assert.equal(top.plan.furusato.amount, 0);
+    assert.equal(top.plan.kyosai?.amount, 3_000);
+    assert.ok(top.plan.saving.total > 0);
+    assert.doesNotMatch(top.plan.budget?.reason ?? "", /ふるさと納税は払った額とほぼ同じだけ/);
+  });
+
+  it("配偶者の給料の年収が読めない・大きすぎるときは、欄の名前つきの入力エラーにする", () => {
+    const base: FormValues = { work: "employee", salary: "620万", "si-mode": "enter", "social-insurance": "91.2万", "has-spouse": true };
+    for (const text of ["abc", "-1", "1000000000001"]) {
+      const top = computeTop({ ...base, "spouse-salary": text });
+      assert.equal(top.ok, false, text);
+      assert.match(top.ok ? "" : (top.issues[0] ?? ""), /^--spouse-salary: /, text);
+    }
+    assert.equal(isBlankTop({ ...base, "spouse-salary": "1000000000001" }), false);
+  });
+
   it("出せるお金に合わせて掛金を減らしたとき、ふるさと納税の上限の目安が上がる理由を添える", () => {
     const top = done({ work: "freelance", revenue: "950万", expenses: "430万", blue: "65", "si-mode": "enter", "social-insurance": "120.8万", "kyosai-paid": "36万", "has-spouse": true, "spouse-income": "0", "dependents-under16": "1", dependents: "1", "other-deductions": "8万", budget: "20万" });
     assert.equal(top.plan.furusato.amount, 39_000);

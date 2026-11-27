@@ -127,16 +127,6 @@ function normalizeTop(values) {
         v["blue"] = "";
     if (usesEstimate(values))
         v["social-insurance"] = "";
-    // 配偶者: 所得が空で、給料の年収が入っていれば、年収から給与所得を計算して使う（計算コアの給与所得と同じ）
-    if (v["has-spouse"] === true && !filled(v["spouse-income"]) && filled(v["spouse-salary"])) {
-        const salary = parseAmount(String(v["spouse-salary"]));
-        if (salary !== null)
-            v["spouse-income"] = String(calculate({ salaryRevenue: salary }).baseline.salaryIncome);
-    }
-    // 「配偶者がいる」にチェックしただけで、所得も年収も入っていない間は、配偶者なしで計算する
-    // （所得 0 円の配偶者として計算すると、共働きの人の税額が実際より低く出るため）
-    if (v["has-spouse"] === true && !filled(v["spouse-income"]))
-        v["has-spouse"] = false;
     return v;
 }
 /** トップページで、収入がまだ何も入っていないか。 */
@@ -161,6 +151,30 @@ export function computeTop(values) {
     const v = normalizeTop(values);
     const issues = [];
     try {
+        // 配偶者: 所得が空で、給料の年収が入っていれば、年収から給与所得を計算して使う（計算コアの給与所得と同じ）
+        if (v["has-spouse"] === true && !filled(v["spouse-income"]) && filled(v["spouse-salary"])) {
+            const text = String(v["spouse-salary"]);
+            const salary = parseAmount(text);
+            if (salary === null) {
+                issues.push(/^\s*[-−ー－]/.test(text)
+                    ? `--spouse-salary: 0 以上の金額で指定してください（受け取った値: ${JSON.stringify(text)}）`
+                    : `--spouse-salary: 金額として読めません（${JSON.stringify(text)}）`);
+            }
+            else {
+                try {
+                    v["spouse-income"] = String(calculate({ salaryRevenue: salary }).baseline.salaryIncome);
+                }
+                catch (error) {
+                    if (!(error instanceof InputError))
+                        throw error;
+                    issues.push(...error.issues.map((issue) => `--spouse-salary: ${issue.replace(/^[A-Za-z.]+: /, "")}`));
+                }
+            }
+        }
+        // 「配偶者がいる」にチェックしただけで、所得も年収も入っていない間は、配偶者なしで計算する
+        // （所得 0 円の配偶者として計算すると、共働きの人の税額が実際より低く出るため）
+        if (v["has-spouse"] === true && !filled(v["spouse-income"]))
+            v["has-spouse"] = false;
         let insurance = null;
         if (usesEstimate(values)) {
             // 所得は社会保険料に関係なく決まるので、先に社会保険料なしで計算して、目安の計算に使う
@@ -220,8 +234,14 @@ export function computeTop(values) {
             const tryAt = (k) => {
                 const kk = fixedKyosai + k;
                 const contributions = kk + fixedIdeco > 0 ? at(kk, fixedIdeco, 0) : first;
-                const f = furusatoCustom ?? Math.min(room - k, Math.max(0, contributions.measures.furusato.limit - n.furusatoPaid));
-                const after = f > 0 ? at(kk, fixedIdeco, f) : contributions;
+                let f = furusatoCustom ?? Math.min(room - k, Math.max(0, contributions.measures.furusato.limit - n.furusatoPaid));
+                let after = f > 0 ? at(kk, fixedIdeco, f) : contributions;
+                // 割に合わない寄附（減る税額が自己負担より小さい）は、配分の候補でも入れない
+                const byDonation = contributions.baseline.totalTax - after.baseline.totalTax;
+                if (furusatoCustom === null && f > 0 && byDonation < f - byDonation) {
+                    f = 0;
+                    after = contributions;
+                }
                 return { k, f, saved: first.baseline.totalTax - after.baseline.totalTax, paid: k + f };
             };
             const better = (a, b) => a.saved > b.saved || (a.saved === b.saved && a.paid < b.paid);
