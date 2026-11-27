@@ -110,6 +110,13 @@ export function isBlank(values) {
 export const TOP_ONLY_NAMES = ["work", "si-mode", "misc-assumed", "furusato-add", "budget"];
 const yen = (n) => `${n.toLocaleString("ja-JP")} 円`;
 const filled = (value) => typeof value === "string" && value.trim() !== "";
+/**
+ * 社会保険料を目安で置くか。「分からない」を選んでいる間と、「金額を入れる」を選んだがまだ額を入れていない間
+ * （選んだとたんに 0 円として計算して、結果が大きく動くことがないようにする）。
+ */
+function usesEstimate(values) {
+    return values["si-mode"] === "estimate" || (values["si-mode"] === "enter" && !filled(values["social-insurance"]));
+}
 /** トップページの値を、CLI のフラグと同じ形の値にそろえる（目安の社会保険料はまだ入れない）。 */
 function normalizeTop(values) {
     const v = { ...values };
@@ -118,7 +125,7 @@ function normalizeTop(values) {
         v["salary"] = "";
     if (v["blue"] === "unknown")
         v["blue"] = "";
-    if (v["si-mode"] === "estimate")
+    if (usesEstimate(values))
         v["social-insurance"] = "";
     return v;
 }
@@ -145,7 +152,7 @@ export function computeTop(values) {
     const issues = [];
     try {
         let insurance = null;
-        if (values["si-mode"] === "estimate") {
+        if (usesEstimate(values)) {
             // 所得は社会保険料に関係なく決まるので、先に社会保険料なしで計算して、目安の計算に使う
             const first = calculate(flagsToInput(valuesToFlags(v)));
             const kind = first.input.salaryRevenue > 0 ? "employee" : "freelance";

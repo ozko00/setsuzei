@@ -192,6 +192,10 @@ async function fillTop(page, values, exact = true) {
       if (!(await checked(page, `input[name="work"][value="${work}"]`))) await page.click(`input[name="work"][value="${work}"]`);
     }
     if (!(await checked(page, 'input[name="si-mode"][value="enter"]'))) await page.click('input[name="si-mode"][value="enter"]');
+    // 「金額を入れる」は、額を入れるまで目安で計算する。CLI と同じ 0 円にするには 0 と入れる
+    if (!("social-insurance" in values) && (await page.evaluate('document.querySelector(\'input[name="social-insurance"]\').value')) === "") {
+      await page.type('input[name="social-insurance"]', "0");
+    }
   }
   for (const [name, value] of Object.entries(values)) {
     if (name === "misc") continue;
@@ -371,7 +375,7 @@ const EFFECTIVE = `(() => {
   }
   if (form.elements["income-type"].value === "misc") out.misc = true;
   else if (!["unknown", "none"].includes(value("blue"))) out.blue = value("blue");
-  if (form.elements["si-mode"].value === "enter") { if (value("social-insurance") !== "") out["social-insurance"] = value("social-insurance"); }
+  if (form.elements["si-mode"].value === "enter" && value("social-insurance") !== "") out["social-insurance"] = value("social-insurance");
   else out["social-insurance"] = (document.querySelector("#si-guide strong")?.textContent ?? "").replace(/[^0-9]/g, "");
   return out;
 })()`;
@@ -418,6 +422,10 @@ browserTest("トップ: 3 つ答えるだけで結果が出て、仮に置いた
   await page.click("#open-more");
   assert.equal(await page.evaluate('document.querySelector("#more").open'), true);
   await page.click('input[name="si-mode"][value="enter"]');
+  // 「金額を入れる」を選んだだけでは、結果は動かない（額を入れるまで目安のまま）
+  const untouched = await page.evaluate(READ);
+  assert.deepEqual(untouched.figures, view.figures);
+  assert.ok(untouched.plan.assumed[0].startsWith("社会保険料: 目安の 573,000 円"));
   await page.type('input[name="social-insurance"]', "50.4万");
   await page.select('select[name="blue"]', "65");
   await page.type('input[name="furusato-paid"]', "1万");

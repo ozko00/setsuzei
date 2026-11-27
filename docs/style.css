@@ -194,7 +194,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .results-title { margin: 0; }
 .placeholder { margin: 0; padding: 28px 18px; border: 1px dashed var(--strong-border); border-radius: var(--radius); color: var(--muted); text-align: center; }
 .plan { padding: 18px; border-color: var(--accent); }
-.plan.stale .plan-lead, .plan.stale .headline, .plan.stale .saving, .plan.stale #totals-note, .plan.stale .share, .plan.stale .assumed, .plan.stale .later { opacity: 0.35; }
+.plan.stale .plan-lead, .plan.stale .headline, .plan.stale .steps .saving, .plan.stale #totals-note, .plan.stale .share, .plan.stale .assumed, .plan.stale .later { opacity: 0.35; }
 .plan > h3 { font-size: 0.9rem; color: var(--accent); letter-spacing: 0.04em; margin-bottom: 4px; }
 .plan-lead { margin: 0; font-size: clamp(1.15rem, 4.4vw, 1.4rem); font-weight: 700; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .approx { margin: 6px 0 0; color: var(--muted); font-size: 0.875rem; }
@@ -234,7 +234,8 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 }
 .steps dt label { margin: 0; font-size: inherit; font-weight: 400; }
 .steps dd { margin: 0; font-size: 0.95rem; }
-.steps dd.saving { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.steps .saving { display: block; }
+.steps .saving { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
 .amount-field { display: flex; align-items: center; gap: 8px; max-width: 15em; }
 .amount-field input { margin-top: 0; text-align: right; font-size: 1.1rem; font-weight: 700; }
 .unit { flex: none; }

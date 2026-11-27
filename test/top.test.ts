@@ -181,6 +181,13 @@ describe("トップページ: 仮に置いた値を結果に示す", () => {
     assert.match(top.assumptions[0]?.text ?? "", /573,000 円.*529,000 円〜690,000 円/);
   });
 
+  it("「金額を入れる」を選んでも、額を入れるまでは目安で計算する（0 円として計算しない）", () => {
+    const chosen = done({ ...QUICK, "si-mode": "enter", "social-insurance": "" });
+    assert.equal(chosen.result.input.socialInsurance, 573_000);
+    assert.equal(chosen.assumptions[0]?.key, "insurance");
+    assert.equal(done({ ...QUICK, "si-mode": "enter", "social-insurance": "0" }).result.input.socialInsurance, 0);
+  });
+
   it("入力した項目は、仮に置いた値から消える", () => {
     const top = done({ ...QUICK, "si-mode": "enter", "social-insurance": "50万", blue: "65", "has-spouse": true, "ideco-paid": "0" });
     assert.deepEqual(top.assumptions, []);

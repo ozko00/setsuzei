@@ -74,7 +74,7 @@
       </div>
       <div class="only-si-estimate guide" id="si-guide" aria-live="polite"></div>
       <div class="only-si-enter">
-        <label>社会保険料の年額
+        <label>社会保険料の年額<span class="sub">入れるまでは、目安の額で計算しています</span>
           <input name="social-insurance" inputmode="numeric" placeholder="例: 59万"></label>
         <details class="help">
           <summary>どこを見れば分かる？</summary>
@@ -196,7 +196,8 @@
             <span class="amount-field"><input id="furusato-add" name="furusato-add" form="form" inputmode="numeric" aria-describedby="furusato-hint"><span class="unit">円</span></span>
             <input type="range" id="furusato-range" min="0" step="1000" aria-label="ふるさと納税で払う額を動かす">
             <span class="sub" id="furusato-hint"></span></dd></div>
-          <div><dt>減る税額</dt><dd class="saving" id="furusato-saving"></dd></div>
+          <div><dt>減る税額</dt><dd><span class="saving" id="furusato-saving"></span>
+            <span class="sub">寄附と引き換えです。税金が減るのは「寄附した額 − 2,000 円」までで、手元のお金は増えません（得になるのは返礼品の分）。</span></dd></div>
         </dl>
         <details class="help more-info">
           <summary>締切と注意（12 月 31 日まで）</summary>

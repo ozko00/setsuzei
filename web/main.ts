@@ -370,6 +370,7 @@ function start(): void {
             : `${yen(f.amount)}寄附する`,
       );
       const hint = [`上限の目安は年間 ${yen(f.limit)}です（これを超えた分は、税金が減らず自己負担になります）。`];
+      if (f.paid >= 2_000 && f.amount > 0) hint.push("自己負担の 2,000 円は寄附済みの分で負担しているので、追加の分はほぼ全額が税金から引かれます。");
       if (f.limit < m.furusato.limit) hint.push(`掛金を払う分、上限の目安は ${yen(m.furusato.limit)}から下がっています。`);
       text("furusato-hint", hint.join(""));
       $("furusato-saving").replaceChildren(
@@ -598,6 +599,8 @@ function start(): void {
       ...fromQuery,
       work: typeof salary === "string" && salary.trim() !== "" ? "employee" : "freelance",
       "si-mode": "enter",
+      // 社会保険料の指定がなければ、CLI と同じく 0 円（目安は使わない）
+      "social-insurance": typeof fromQuery["social-insurance"] === "string" ? fromQuery["social-insurance"] : "0",
       misc: fromQuery["misc"] === true,
       blue: typeof fromQuery["blue"] === "string" ? fromQuery["blue"] : "none",
     });

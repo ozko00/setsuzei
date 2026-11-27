@@ -192,13 +192,21 @@ export type TopOutcome =
 const yen = (n: number): string => `${n.toLocaleString("ja-JP")} 円`;
 const filled = (value: string | boolean | undefined): boolean => typeof value === "string" && value.trim() !== "";
 
+/**
+ * 社会保険料を目安で置くか。「分からない」を選んでいる間と、「金額を入れる」を選んだがまだ額を入れていない間
+ * （選んだとたんに 0 円として計算して、結果が大きく動くことがないようにする）。
+ */
+function usesEstimate(values: FormValues): boolean {
+  return values["si-mode"] === "estimate" || (values["si-mode"] === "enter" && !filled(values["social-insurance"]));
+}
+
 /** トップページの値を、CLI のフラグと同じ形の値にそろえる（目安の社会保険料はまだ入れない）。 */
 function normalizeTop(values: FormValues): FormValues {
   const v: FormValues = { ...values };
   // 「給料はない」を選んでいる間は、給与の欄を隠しているので値を使わない
   if (v["work"] === "freelance") v["salary"] = "";
   if (v["blue"] === "unknown") v["blue"] = "";
-  if (v["si-mode"] === "estimate") v["social-insurance"] = "";
+  if (usesEstimate(values)) v["social-insurance"] = "";
   return v;
 }
 
@@ -227,7 +235,7 @@ export function computeTop(values: FormValues): TopOutcome {
   const issues: string[] = [];
   try {
     let insurance: InsuranceEstimate | null = null;
-    if (values["si-mode"] === "estimate") {
+    if (usesEstimate(values)) {
       // 所得は社会保険料に関係なく決まるので、先に社会保険料なしで計算して、目安の計算に使う
       const first = calculate(flagsToInput(valuesToFlags(v)));
       const kind = first.input.salaryRevenue > 0 ? "employee" : "freelance";
