@@ -1,6 +1,7 @@
+import { furusatoComparison2025 } from "../data/2025-furusato.js";
 import { DEFAULT_YEAR, getTaxYear } from "../data/index.js";
-import { estimate, furusatoLimit, perCapitaExemptLimitMax } from "./estimate.js";
-import { validateInput } from "./validate.js";
+import { estimate, furusatoLimit, furusatoLimitDetail, perCapitaExemptLimitMax } from "./estimate.js";
+import { InputError, validateInput } from "./validate.js";
 export const DISCLAIMER = "この結果は入力値と簡略化した前提にもとづく概算です。実際の税額は申告内容やお住まいの自治体によって変わります。" +
     "税理士や税務署・市区町村の判断に代わるものではありません。重要な判断の前に、必ず専門家か所轄の窓口に確認してください。";
 const BLUE_LEVELS = ["none", "10", "55", "65"];
@@ -76,12 +77,8 @@ function contribution(data, base, baseline, opts) {
 function publish({ wanted: _wanted, ...measure }) {
     return measure;
 }
-/**
- * 現状の所得税・住民税の概算と、節税策ごとの軽減額を計算する。
- *
- * 入力は validateInput を通してから使うので、JSON などの外部入力をそのまま渡してよい。
- */
-export function calculate(rawInput) {
+/** 入力を検証し、既定値を埋めて、計算の土台になるシナリオを作る。 */
+function prepare(rawInput) {
     const input = validateInput(rawInput);
     const year = input.year ?? DEFAULT_YEAR;
     const data = getTaxYear(year);
@@ -126,6 +123,15 @@ export function calculate(rawInput) {
         otherDeductionsResident: normalized.otherDeductionsResident,
         incomeAdjustmentEligible: normalized.incomeAdjustment,
     };
+    return { input, year, data, normalized, base };
+}
+/**
+ * 現状の所得税・住民税の概算と、節税策ごとの軽減額を計算する。
+ *
+ * 入力は validateInput を通してから使うので、JSON などの外部入力をそのまま渡してよい。
+ */
+export function calculate(rawInput) {
+    const { input, year, data, normalized, base } = prepare(rawInput);
     const baseline = estimate(data, base);
     const hasSalary = normalized.salaryRevenue > 0;
     const hasBusiness = normalized.businessRevenue > 0;
@@ -444,4 +450,65 @@ export function calculate(rawInput) {
         warnings,
         disclaimer: DISCLAIMER,
     };
+}
+const yenText = (n) => `${n.toLocaleString("ja-JP")} 円`;
+/** 10 万分率を「84.895%」の形にする */
+const rateText = (per100k) => `${per100k / 1_000}%`;
+/**
+ * ふるさと納税の上限の目安を、令和 8 年分と令和 7 年分で比べる。
+ *
+ * 令和 7 年分は、上限の計算に関わる項目のうち当時と違うもの（所得税の基礎控除、給与所得控除）だけを
+ * 当時の額に差し替えたデータ（src/data/2025-furusato.ts）で、同じ入力を計算する。
+ * 配偶者・扶養親族の所得要件は差し替えていないので、配偶者に所得がある入力は受け付けない。
+ */
+export function compareFurusatoLimit(rawInput) {
+    const { year, data, base } = prepare(rawInput);
+    if (year !== furusatoComparison2025.year + 1) {
+        throw new InputError([`year: 令和7年分との比較は ${furusatoComparison2025.year + 1} 年分だけに対応しています`]);
+    }
+    if (base.spouse && base.spouse.income > 0) {
+        throw new InputError([
+            "spouse.income: 令和7年分との比較は、配偶者の所得が 0 の場合だけに対応しています（配偶者の所得要件が年分で違うため）",
+        ]);
+    }
+    const side = (d) => ({
+        label: d.label,
+        residentTaxLabel: d.residentTaxLabel,
+        ...furusatoLimitDetail(d, base),
+    });
+    const current = side(data);
+    const previous = side(furusatoComparison2025);
+    const difference = current.limit - previous.limit;
+    const reasons = [];
+    const notes = [];
+    if (current.exempt || previous.exempt) {
+        for (const s of [previous, current]) {
+            if (s.exempt)
+                notes.push(`${s.label}は、住民税の所得割が非課税か減額される見込みのため、上限の目安を出していません。`);
+        }
+    }
+    if (difference === 0) {
+        if (!current.exempt && current.limit > 0) {
+            notes.push("この入力では、上限の目安は令和7年分と同じです。住民税の所得割額も、特例分の割合の区分も変わらないためです。");
+        }
+    }
+    else if (!current.exempt && !previous.exempt) {
+        if (current.specialRatePer100k !== previous.specialRatePer100k) {
+            reasons.push("specialRate");
+            notes.push(`特例分の割合が ${rateText(previous.specialRatePer100k)} → ${rateText(current.specialRatePer100k)} に変わりました。` +
+                `所得税の基礎控除が ${yenText(previous.incomeTaxBasicDeduction)} → ${yenText(current.incomeTaxBasicDeduction)}になり、` +
+                `割合を決める金額（住民税の課税総所得金額 − 人的控除差調整額）が ${yenText(previous.rateBase)} → ${yenText(current.rateBase)}になって、` +
+                "当てはまる所得税率の区分が変わったためです。割合が上がると、特例分の上限（所得割額の 20%）に少ない寄附額で達するので、上限の目安は下がります。");
+        }
+        if (current.incomeLevy !== previous.incomeLevy) {
+            reasons.push("incomeLevy");
+            notes.push(`住民税の所得割額が ${yenText(previous.incomeLevy)} → ${yenText(current.incomeLevy)}に変わりました。` +
+                `給与所得控除の最低額が 65 万円 → 74 万円に上がり、給与所得が ${yenText(previous.salaryIncome)} → ${yenText(current.salaryIncome)}になったためです。`);
+        }
+    }
+    if (difference < 0 && reasons.includes("specialRate")) {
+        notes.push("上限の目安が下がるのは、所得税が減って、寄附 1 円あたりの所得税の軽減が小さくなった分を、住民税の特例分が埋めるようになったためです。寄附できる額の目安は下がりますが、所得税そのものが減っています。");
+    }
+    notes.push("令和7年分は、所得税の基礎控除と給与所得控除を当時の額にして、同じ入力（収入・経費・社会保険料・家族）で計算した値です。収入や控除が変われば、どちらの年分の上限も変わります。");
+    return { current, previous, difference, reasons, notes };
 }

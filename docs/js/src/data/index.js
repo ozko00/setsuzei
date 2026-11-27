@@ -1,6 +1,8 @@
+import { sourcesFurusatoComparison } from "./2025-furusato.js";
 import { sources2026, taxYear2026 } from "./2026.js";
 const years = new Map([
-    [2026, { data: taxYear2026, sources: sources2026 }],
+    // 令和 7 年分との上限の比較（compareFurusatoLimit）で根拠にした資料も、出典の一覧に含める
+    [2026, { data: taxYear2026, sources: [...sources2026, ...sourcesFurusatoComparison] }],
 ]);
 /** 既定の年分 */
 export const DEFAULT_YEAR = 2026;

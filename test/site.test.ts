@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   blueRows,
   contributionRows,
+  CROSS_CHECKS,
   EXAMPLE_INCOMES,
   exampleInput,
   furusatoRows,
@@ -15,11 +16,19 @@ import {
   renderSite,
   REPO_URL,
   SITE_URL,
+  scanYear,
   siteUrls,
+  YEAR_FAMILIES,
+  YEAR_SALARIES,
+  YEAR_SCAN,
+  yearCell,
+  yearOutOfPocket,
+  yearSalaryInput,
+  yearSalaryRows,
   yen,
 } from "../site/pages.js";
 import { INPUT_BOOLEAN_FLAGS, INPUT_STRING_FLAGS } from "../src/cli/flags.js";
-import { calculate, getSources } from "../src/index.js";
+import { calculate, compareFurusatoLimit, getSources } from "../src/index.js";
 
 // コンパイル後は .test-dist/test/ にあるので、リポジトリのルートは 2 つ上
 const docs = join(fileURLToPath(new URL("../../", import.meta.url)), "docs");
@@ -34,11 +43,15 @@ const KEYWORDS: Record<string, string> = {
   "ideco-kojin-jigyonushi": "iDeCo 節税 シミュレーション 個人事業主",
   "shokibo-kyosai-setsuzei": "小規模企業共済 節税額 シミュレーション",
   "aoiro-shinkoku-65-55-10": "青色申告特別控除 65万 55万 10万 違い",
+  "furusato-nozei-jogen-reiwa8": "ふるさと納税 上限 下がる 令和8年 基礎控除",
 };
+
+/** 令和 7 年分と令和 8 年分を比べるページ（表の作りがほかのページと違う） */
+const YEAR_SLUG = "furusato-nozei-jogen-reiwa8";
 
 describe("検索語ごとのページ: 生成結果とコミット済みのファイル", () => {
   it("docs/ のファイルは、いまの計算コアから生成した結果と一致する（npm run build:site の実行漏れを検出）", () => {
-    assert.equal(pages.length, 4);
+    assert.equal(pages.length, 5);
     for (const [path, content] of site) {
       assert.equal(readFileSync(join(docs, path), "utf8"), content, path);
     }
@@ -71,11 +84,14 @@ describe("検索語ごとのページ: 生成結果とコミット済みのフ�
   it("計算式と根拠・計算例の表・よくある質問・出典が、JavaScript なしで読める HTML 本文にある", () => {
     for (const [path, html] of pages) {
       const body = html.replace(/<script[\s\S]*?<\/script>/g, "");
-      for (const heading of ["計算式と根拠", "計算例", "よくある質問", "根拠にした一次情報"]) {
+      const isYear = path === `${YEAR_SLUG}/index.html`;
+      for (const heading of ["計算式と根拠", isYear ? "年収別の比較表" : "計算例", "よくある質問", "根拠にした一次情報"]) {
         assert.ok(body.includes(`<h2>${heading}</h2>`), `${path}: ${heading}`);
       }
       assert.match(body, /<table class="examples">/);
-      assert.equal((body.match(/<tbody>[\s\S]*?<\/tbody>/)?.[0].match(/<tr>/g) ?? []).length, EXAMPLE_INCOMES.length, path);
+      if (!isYear) {
+        assert.equal((body.match(/<tbody>[\s\S]*?<\/tbody>/)?.[0].match(/<tr>/g) ?? []).length, EXAMPLE_INCOMES.length, path);
+      }
       assert.ok((body.match(/<h3>/g) ?? []).length >= 4, path);
       assert.match(body, /概算です/);
       assert.match(body, /税理士や税務署/);
@@ -160,20 +176,105 @@ describe("検索語ごとのページ: 計算例の表の数字は計算コア�
   });
 });
 
+describe("令和7年分と令和8年分の比較のページ: 表と本文の数字は計算コアの結果そのもの", () => {
+  const html = site.get(`${YEAR_SLUG}/index.html`) ?? "";
+  /** caption で表を選び、行ごとのセルの文字列を取り出す */
+  const tableCells = (caption: string): string[][] => {
+    const table = new RegExp(`<caption>${caption}</caption>[\\s\\S]*?<tbody>([\\s\\S]*?)</tbody>`).exec(html)?.[1] ?? "";
+    return [...table.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map((row) =>
+      [...(row[1] ?? "").matchAll(/<t[hd][^>]*>([^<]*)<\/t[hd]>/g)].map((c) => c[1] ?? ""),
+    );
+  };
+
+  it("給与収入別の表: 表とは別に compareFurusatoLimit で求めた値と一致する", () => {
+    const table = tableCells("給与収入別のふるさと納税の上限の目安（令和7年分 → 令和8年分）");
+    assert.equal(table.length, YEAR_SALARIES.length);
+    YEAR_SALARIES.forEach((salary, i) => {
+      const expected = YEAR_FAMILIES.map((f) => yearCell(compareFurusatoLimit({ salaryRevenue: salary, socialInsurance: salary * 0.15, ...f.input })));
+      assert.deepEqual(table[i], [manLabel(salary), ...expected]);
+    });
+    // 下がる行も、変わらない行も載っている（下がる人だけを並べていない）
+    const all = yearSalaryRows().flatMap((r) => r.cells);
+    assert.ok(all.some((c) => c.difference < 0) && all.filter((c) => c.difference === 0).length > all.length / 2);
+    assert.ok(all.every((c) => c.difference <= 0));
+  });
+
+  it("内訳の表: 1 万円きざみの走査の件数と一致し、上がる収入は 1 つもない", () => {
+    const table = tableCells("上限の目安が下がる人・変わらない人・上がる人の内訳");
+    assert.equal(table.length, YEAR_FAMILIES.length + 1);
+    YEAR_FAMILIES.forEach((f, i) => {
+      // 走査は、ページの関数を使わずに数え直す
+      let lower = 0;
+      let same = 0;
+      let higher = 0;
+      for (let salary: number = YEAR_SCAN.from; salary <= YEAR_SCAN.to; salary += YEAR_SCAN.step) {
+        const d = compareFurusatoLimit({ salaryRevenue: salary, socialInsurance: salary * 0.15, ...f.input }).difference;
+        if (d < 0) lower++;
+        else if (d === 0) same++;
+        else higher++;
+      }
+      const count = (n: number): string => `${n.toLocaleString("en-US")} 通り`;
+      assert.deepEqual(table[i]?.slice(1, 4), [count(lower), count(same), count(higher)], f.label);
+      assert.equal(higher, 0);
+      assert.ok(same > lower * 5, `${f.label}: 変わらない収入のほうがずっと多い`);
+      const scan = scanYear((amount) => yearSalaryInput(amount, f.input));
+      assert.deepEqual([scan.lower, scan.same, scan.higher, scan.total], [lower, same, higher, lower + same + higher]);
+    });
+  });
+
+  it("本文で引いている例（給与収入 500 万円・600 万円・200 万円、自己負担）の金額も計算コアの結果", () => {
+    const c500 = compareFurusatoLimit({ salaryRevenue: 5_000_000, socialInsurance: 750_000 });
+    assert.deepEqual([c500.previous.limit, c500.current.limit], [61_000, 57_000]);
+    assert.ok(html.includes(`給与収入 500 万円・独身は ${yen(61_000)} → ${yen(57_000)}`));
+    const c600 = compareFurusatoLimit({ salaryRevenue: 6_000_000, socialInsurance: 900_000 });
+    assert.equal(c600.difference, 0);
+    assert.ok(html.includes(`600 万円・独身は ${yen(c600.current.limit)} のまま`));
+    const c200 = compareFurusatoLimit({ salaryRevenue: 2_000_000, socialInsurance: 300_000 });
+    assert.ok(html.includes(`${yen(c200.previous.limit)} → ${yen(c200.current.limit)} です`));
+    // 自己負担: 寄附額 −（寄附なしの税額 − 寄附ありの税額）
+    const input = { salaryRevenue: 5_000_000, socialInsurance: 750_000 };
+    const burden = (donation: number): number =>
+      donation - (calculate(input).baseline.totalTax - calculate({ ...input, furusatoPaid: donation }).baseline.totalTax);
+    assert.equal(yearOutOfPocket(input, 57_000), burden(57_000));
+    assert.equal(burden(57_000), 2_000);
+    assert.ok(burden(61_000) > burden(57_000));
+    assert.ok(html.includes(`を令和8年分（2026年中）に寄附すると、自己負担は ${yen(burden(61_000))} になります`));
+  });
+
+  it("題名・見出し・冒頭で、影響が一部の所得帯に限られることを述べている（全員が下がると読める書き方をしない）", () => {
+    const lead = /<p class="lead">([^<]*)<\/p>/.exec(html)?.[1] ?? "";
+    assert.match(lead, /一部の所得帯/);
+    assert.match(lead, /多くの人は変わらず/);
+    const description = /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? "";
+    assert.match(description, /一部の所得帯だけ/);
+    const title = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "";
+    const h1 = /<h1>([^<]*)<\/h1>/.exec(html)?.[1] ?? "";
+    for (const text of [title, h1]) assert.doesNotMatch(text, /全員|必ず|大幅|激減|損/);
+    // 公的な早見表は改正前のもので、数字は条文からの計算であることを明記している
+    assert.match(html, /令和8年分を反映した公的な早見表は、確認した範囲では見つかりませんでした。このページの令和8年分の数字は、上の条文から計算したものです。/);
+    // 根拠: 条文と財務省の解説
+    assert.ok(html.includes("https://laws.e-gov.go.jp/law/325AC0000000226/20260401_508AC0000000002"));
+    assert.ok(html.includes("https://www.mof.go.jp/tax_policy/tax_reform/outline/fy2026/explanation/PDF/p0921-0989.pdf"));
+  });
+});
+
 describe("検索語ごとのページ: リンクと公開まわり", () => {
   it("外部へのリンクは、出典一覧にある一次情報と、このリポジトリだけ", () => {
     const allowed = new Set(getSources().map((s) => s.url));
+    // 令和 7 年分との比較のページだけは、独立した計算との突き合わせとして第三者の解説にも張る
+    const crossChecks = new Set<string>(CROSS_CHECKS.map((x) => x.url));
     for (const [path, html] of pages) {
       const body = html.replace(/<head>[\s\S]*?<\/head>/, "");
       const external = [...body.matchAll(/href="(https?:[^"]+)"/g)].map((m) => (m[1] ?? "").replace(/&amp;/g, "&"));
       assert.ok(external.length >= 5, path);
       for (const url of external) {
-        assert.ok(allowed.has(url) || url.startsWith(REPO_URL), `${path}: 出典一覧にない外部リンク ${url}`);
+        const crossCheck = path === `${YEAR_SLUG}/index.html` && crossChecks.has(url);
+        assert.ok(allowed.has(url) || url.startsWith(REPO_URL) || crossCheck, `${path}: 出典一覧にない外部リンク ${url}`);
       }
     }
   });
 
-  it("内部リンク: 各ページはトップとほかの 3 ページへ、トップは 4 ページすべてへ張っている", () => {
+  it("内部リンク: 各ページはトップとほかのすべてのページへ、トップはすべてのページへ張っている", () => {
     const slugs = pages.map(([path]) => path.replace("/index.html", ""));
     for (const [path, html] of pages) {
       const self = path.replace("/index.html", "");
@@ -192,7 +293,7 @@ describe("検索語ごとのページ: リンクと公開まわり", () => {
     const sitemap = site.get("sitemap.xml") ?? "";
     const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     assert.deepEqual(locs, siteUrls());
-    assert.equal(locs.length, 5);
+    assert.equal(locs.length, 6);
     assert.equal(locs[0], SITE_URL);
     assert.match(site.get("robots.txt") ?? "", new RegExp(`^Sitemap: ${SITE_URL}sitemap\\.xml$`, "m"));
     // canonical は sitemap の URL と同じ

@@ -56,7 +56,7 @@ description: 日本のフリーランス・副業の人が「年末までに、�
 
 ### 2. CLI を用意する
 
-計算は `setsuzei` CLI（v0.2.2）で行う。npm には未公開なので、GitHub の固定したタグから取得してビルドする。Node.js 20 以上と git が必要。
+計算は `setsuzei` CLI（v0.2.3）で行う。npm には未公開なので、GitHub の固定したタグから取得してビルドする。Node.js 20 以上と git が必要。
 
 **先に、すでに使える CLI がないか確かめる。** 次のどちらかがバージョンを返せば、取得は不要なのでそれを使う。
 
@@ -70,21 +70,21 @@ node ~/.cache/setsuzei/dist/cli.js --version
 
 どちらも使えないときだけ、取得する。**取得の前に、次の 3 点を利用者に伝えて了承を得る。** 了承がなければ取得しない。
 
-- GitHub の `ozko00/setsuzei` のタグ `v0.2.2` を `~/.cache/setsuzei` に取得すること（約 30 MB）
+- GitHub の `ozko00/setsuzei` のタグ `v0.2.3` を `~/.cache/setsuzei` に取得すること（約 30 MB）
 - ビルドのために npm から `typescript` と `@types/node`（とその依存の `undici-types`）を入れること
 - 計算そのものは手元だけで行い、入力した金額はどこにも送信しないこと
 
 了承を得たら、次の 2 つのコマンドを **1 つずつ別々に** 実行する（`&&` や `;` でつながない。つなぐと、エージェントの権限設定で止まることがある）。
 
 ```sh
-git clone --depth 1 --branch v0.2.2 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei
+git clone --depth 1 --branch v0.2.3 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei
 ```
 
 ```sh
 npm ci --prefix ~/.cache/setsuzei
 ```
 
-`npm ci` がビルドまで行う。終わったら `node ~/.cache/setsuzei/dist/cli.js --version` が `0.2.2` を返すことを確かめる。
+`npm ci` がビルドまで行う。終わったら `node ~/.cache/setsuzei/dist/cli.js --version` が `0.2.3` を返すことを確かめる。
 
 - タグは固定する。`main` や新しいタグに勝手に切り替えない。利用者が新しい版を求めたときだけ、その版のタグを確かめてから取得し直す。
 - `~/.cache/setsuzei` が既にあって版が違う場合は、上書きや削除をせず、利用者にどうするか確認する。

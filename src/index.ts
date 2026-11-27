@@ -1,7 +1,9 @@
-export { calculate, DISCLAIMER } from "./core/calculate.js";
+export { calculate, compareFurusatoLimit, DISCLAIMER } from "./core/calculate.js";
 export {
   estimate,
   furusatoLimit,
+  furusatoLimitDetail,
+  type FurusatoLimitDetail,
   incomeAdjustment,
   incomeLevyExemptLimit,
   incomeTaxOnTaxableIncome,

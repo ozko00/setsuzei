@@ -21,7 +21,7 @@
 
 ```console
 $ setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万 --ideco-paid 27.6万 --furusato-paid 3万
-setsuzei 0.2.2 ｜ 令和8年分（2026年分）の概算
+setsuzei 0.2.3 ｜ 令和8年分（2026年分）の概算
 
 ■ 現状の見込み
   事業所得（青色申告特別控除 650,000 円を控除後）  5,850,000 円
@@ -74,12 +74,13 @@ setsuzei 0.2.2 ｜ 令和8年分（2026年分）の概算
 
 <https://ozko00.github.io/setsuzei/> を開くだけです。「例を入れてみる」を押すと、上の画面と同じ入力が入ります。
 
-知りたいことが 1 つだけなら、項目を絞ったページもあります。それぞれ計算式と根拠、所得別の計算例の表、よくある質問を載せています。
+知りたいことが 1 つだけなら、項目を絞ったページもあります。それぞれ計算式と根拠、所得別・年収別の表、よくある質問を載せています。
 
 - [ふるさと納税の上限額を計算する（フリーランス・個人事業主）](https://ozko00.github.io/setsuzei/furusato-nozei-freelance/)
 - [iDeCo の節税額をシミュレーションする（個人事業主・フリーランス）](https://ozko00.github.io/setsuzei/ideco-kojin-jigyonushi/)
 - [小規模企業共済の節税額をシミュレーションする](https://ozko00.github.io/setsuzei/shokibo-kyosai-setsuzei/)
 - [青色申告特別控除 65万・55万・10万の違いを税額で計算する](https://ozko00.github.io/setsuzei/aoiro-shinkoku-65-55-10/)
+- [ふるさと納税の上限は令和8年分で下がる？ 基礎控除の引上げの影響を令和7年分と比べる](https://ozko00.github.io/setsuzei/furusato-nozei-jogen-reiwa8/)（給与収入にも対応。下がるのは一部の所得帯だけで、年収別の比較表と条文にもとづく理由を載せています）
 
 URL に CLI と同じ名前のパラメータを付けると、入力済みの状態で開けます（例: [`?revenue=800万&expenses=150万&blue=65`](https://ozko00.github.io/setsuzei/?revenue=800万&expenses=150万&blue=65)）。入力内容は保存も送信もしません。
 
@@ -88,7 +89,7 @@ URL に CLI と同じ名前のパラメータを付けると、入力済みの�
 npm には未公開なので、ソースを取得してビルドします。Node.js 20 以上と git が必要です。
 
 ```sh
-git clone --depth 1 --branch v0.2.2 https://github.com/ozko00/setsuzei.git
+git clone --depth 1 --branch v0.2.3 https://github.com/ozko00/setsuzei.git
 cd setsuzei
 npm ci
 npm run build
@@ -96,7 +97,7 @@ node dist/cli.js          # 対話形式で入力
 node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
-`v0.2.2` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
+`v0.2.3` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
 
 以下の例は `setsuzei` と書いています。`node dist/cli.js` に読み替えてください。
 
@@ -104,12 +105,12 @@ node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance
 <summary>clone せずに 1 行で実行する（npx）</summary>
 
 ```sh
-npx --allow-git=all github:ozko00/setsuzei#v0.2.2 --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
+npx --allow-git=all github:ozko00/setsuzei#v0.2.3 --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
 - `--allow-git=all` は npm 12 以降で必要です。npm 12.0.0 から、git リポジトリからのパッケージ取得が既定で無効（`allow-git` の既定値が `none`）になり、付けないと `EALLOWGIT` のエラーで止まります（[npm のドキュメント](https://docs.npmjs.com/cli/v12/using-npm/config#allow-git)）。
 - npm 11 以前は付けなくても動きます。付けたままでも動きます（npm 10.8 / 11.19 / 11.20 / 12.2 で確認）。
-- npm 12 では `npm warn install-scripts ... setsuzei@0.2.2 (prepare: npm run build)` のような警告が出ることがあります。npm 12 が、依存パッケージのインストール時スクリプトを既定で実行しなくなったことの通知です。setsuzei のビルドは取得の時点で済んでいるので、そのまま使えます。`npm install-scripts approve` を実行する必要はありません。
+- npm 12 では `npm warn install-scripts ... setsuzei@0.2.3 (prepare: npm run build)` のような警告が出ることがあります。npm 12 が、依存パッケージのインストール時スクリプトを既定で実行しなくなったことの通知です。setsuzei のビルドは取得の時点で済んでいるので、そのまま使えます。`npm install-scripts approve` を実行する必要はありません。
 - このオプションは、その 1 回のコマンドに限って git からの取得を許可するものです。気になる場合は上の clone の手順を使ってください。
 
 </details>
@@ -161,7 +162,7 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 
 ### ライブラリとして使う
 
-計算コアは実行時依存ゼロの純粋関数です。`npm install --allow-git=all github:ozko00/setsuzei#v0.2.2` で入ります（`--allow-git=all` は npm 12 以降で必要。npm 12 で出る `install-scripts` の警告は、上の npx の説明と同じ理由で、そのままで動きます）。
+計算コアは実行時依存ゼロの純粋関数です。`npm install --allow-git=all github:ozko00/setsuzei#v0.2.3` で入ります（`--allow-git=all` は npm 12 以降で必要。npm 12 で出る `install-scripts` の警告は、上の npx の説明と同じ理由で、そのままで動きます）。
 
 ```ts
 import { calculate } from "setsuzei";
@@ -182,6 +183,17 @@ result.measures.combined.totalPayment; // そのために追加で支払う額
 result.measures.combinedWithIdeco; // iDeCo の追加も年内に間に合う場合（なければ null）
 ```
 
+ふるさと納税の上限の目安を、令和7年分と令和8年分で比べる関数もあります（配偶者に所得がある入力には対応していません）。
+
+```ts
+import { compareFurusatoLimit } from "setsuzei";
+
+const c = compareFurusatoLimit({ salaryRevenue: 5_000_000, socialInsurance: 750_000 });
+c.previous.limit; // 令和7年分の上限の目安（61,000）
+c.current.limit;  // 令和8年分の上限の目安（57,000）
+c.notes;          // 変わる・変わらない理由
+```
+
 ### Agent Skill として使う
 
 [`skills/setsuzei/SKILL.md`](skills/setsuzei/SKILL.md) は、Claude Code などのエージェントが聞き取りをして、計算を必ずこの CLI に任せるための Skill です（モデルには税額を暗算させません）。
@@ -193,7 +205,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 
 そのうえで「今年あといくら節税できる？」のように聞くと、エージェントが必要な項目を質問し、CLI の結果をもとに答えます。
 
-- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、固定したタグ（`v0.2.2`）を `~/.cache/setsuzei` に取得してビルドします。
+- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、固定したタグ（`v0.2.3`）を `~/.cache/setsuzei` に取得してビルドします。
 - エージェントの権限設定で取得のコマンドが止まった場合は、Skill に書いてある 2 つのコマンドを自分で実行するか、エージェントに実行を許可してください。
 - Skill が聞き取りから結果の説明まで通ることは、[`scripts/skill-e2e.sh`](scripts/skill-e2e.sh) で確かめられます（Claude Code が必要）。
 
@@ -297,7 +309,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 - 実装で変わったのは差の出方です。実装前は独身と子ありで差が食い違っていましたが、実装後は行ごとにほぼ同じ額にそろいました。「独身と比べて子がいるといくら上限が下がるか」は、表と 1,000 円以内で合います。
 - 残る差は家族構成によらない要因で、高収入の行で表が社会保険料を 15% より低く置いていることが原因とみられます。ただし資料に前提の記載がなく確認できないので、前提を表に合わせて動かすことはしていません。社会保険料は入力値をそのまま使うので、実際の額を入れれば、この前提の違いは利用時の結果には影響しません。
 
-なお、令和8年分は基礎控除が引き上げられたため、同じ収入でも総務省の表より上限が低く出ることがあります（例: 給与収入 500 万円・独身は 6.1 万円 → 5.7 万円。所得税率が 10% から 5% に下がるためです）。
+なお、令和8年分は所得税の基礎控除が引き上げられたため、一部の所得帯では、同じ収入でも総務省の表や令和7年分より上限が低く出ます（例: 給与収入 500 万円・独身は 6.1 万円 → 5.7 万円。多くの所得帯では変わりません）。上限の式で使う割合は「住民税の課税総所得金額 − 人的控除差調整額」で決まり、この調整額に「所得税の基礎控除額 − 48 万円」が加わったためです（地方税法 第314条の7第11項第1号。令和8年法律第2号による改正で、令和8年度分＝令和7年中の寄附から適用）。令和7年分との比較と根拠は[比較のページ](https://ozko00.github.io/setsuzei/furusato-nozei-jogen-reiwa8/)にまとめています。
 
 ## 開発
 
@@ -311,7 +323,7 @@ scripts/verify-docker.sh   # CI と同じ手順を Docker の Node 20 / 22 / 24 
 ```
 
 - 計算コア: [`src/core/`](src/core)（純粋関数、実行時依存なし）
-- 年分ごとの税制データ: [`src/data/`](src/data)
+- 年分ごとの税制データ: [`src/data/`](src/data)（`2025-furusato.ts` は、ふるさと納税の上限を令和7年分と比べるためだけのデータ。年分としては対応していません）
 - CLI: [`src/cli.ts`](src/cli.ts)、[`src/cli/`](src/cli)
 - ブラウザ版: [`web/`](web)（スクリプト）、[`docs/`](docs)（配信する静的ファイル。`docs/js` はビルド結果）
 - 項目を絞った説明ページ: [`site/pages.ts`](site/pages.ts) から生成します（`docs/<名前>/index.html`、`sitemap.xml`、`robots.txt`）。計算例の表の数字は計算コアから作り、コミット済みのファイルと一致することをテストで確かめています。

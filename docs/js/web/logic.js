@@ -3,7 +3,7 @@
  * 入力の名前は CLI のフラグ名と同じで、CLI と同じ flagsToInput → calculate を通す。
  */
 import { flagsToInput, INPUT_BOOLEAN_FLAGS, INPUT_STRING_FLAGS, issueFlag } from "../src/cli/flags.js";
-import { calculate } from "../src/core/calculate.js";
+import { calculate, compareFurusatoLimit } from "../src/core/calculate.js";
 import { InputError } from "../src/core/validate.js";
 /** フォームの値を CLI のフラグと同じ形にする。空欄は「指定なし」。 */
 export function valuesToFlags(values) {
@@ -35,6 +35,20 @@ export function valuesToFlags(values) {
 export function compute(values) {
     try {
         return { ok: true, result: calculate(flagsToInput(valuesToFlags(values))) };
+    }
+    catch (error) {
+        if (error instanceof InputError)
+            return { ok: false, issues: error.issues };
+        if (error instanceof RangeError)
+            return { ok: false, issues: [error.message] };
+        throw error;
+    }
+}
+/** フォームの値から、令和 8 年分の結果と、ふるさと納税の上限の令和 7 年分との比較を計算する。 */
+export function computeComparison(values) {
+    try {
+        const input = flagsToInput(valuesToFlags(values));
+        return { ok: true, result: calculate(input), comparison: compareFurusatoLimit(input) };
     }
     catch (error) {
         if (error instanceof InputError)
