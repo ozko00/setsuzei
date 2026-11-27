@@ -213,6 +213,8 @@ async function createPage(send, listen) {
     errors,
     requests,
     evaluate,
+    /** DevTools Protocol のコマンドをそのまま送る（座標でのクリックなど、下の部品にない操作に使う）。 */
+    send,
     /** 画面の大きさ。mobile = true でスマホとして表示する。 */
     async viewport(width, height, mobile = false) {
       await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: mobile ? 2 : 1, mobile });

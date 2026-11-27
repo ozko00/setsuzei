@@ -818,8 +818,10 @@ ${jsonLd(faqLd)}
 ${jsonLd(breadcrumbLd)}
 </head>
 <body class="article">
+<a class="skip" href="#results">結果へ移動</a>
 <header class="site">
-  <p class="crumbs"><a href="../">setsuzei</a> › ${esc(KIND_LABEL[p.kind])}</p>
+  <p class="brand"><a href="../"><span class="mark" aria-hidden="true">税</span></a><a href="../">setsuzei</a><span class="tag">令和8年分・概算</span></p>
+  <p class="crumbs"><a href="../">年内にやることをまとめて計算</a> › ${esc(KIND_LABEL[p.kind])}</p>
   <h1>${esc(p.h1)}</h1>
   <p class="lead">${esc(p.lead)}</p>
   <p class="privacy">令和8年分（2026年分）の概算です。入力した内容はこのページの中だけで計算し、どこにも送信・保存しません。</p>
@@ -878,7 +880,7 @@ ${jsonLd(breadcrumbLd)}
 <a id="jump" class="jump" href="#results" hidden></a>
 
 <footer class="site">
-  <p>setsuzei ・ MIT License ・ <a href="${REPO_URL}" rel="noopener">実行方法・ソースコード・計算の前提（GitHub）</a></p>
+  <p>setsuzei ・ MIT License ・ 同じ計算を、コマンドラインでも <code>npx setsuzei</code> で実行できます（Node.js 20 以上）。 ・ <a href="${REPO_URL}" rel="noopener">実行方法・ソースコード・計算の前提（GitHub）</a></p>
 </footer>
 <script type="module" src="../js/web/page.js"></script>
 </body>

@@ -18,8 +18,8 @@
 #   - 作業ツリーの CLI（dist/cli.js）を `setsuzei` コマンドとして PATH に置く。Skill の
 #     「すでに使える CLI があればそれを使う」の経路を通るので、ホームディレクトリには何も書かない。
 #   - エージェントに許可するのは、Skill の読み込みと、`setsuzei`・`echo`・`command` の実行だけ。
-#     取得（git clone / npm ci）の経路は、このスクリプトでは確かめない。scripts/verify-docker.sh の
-#     ように Docker で SKILL.md の 2 つのコマンドを実行して確かめる（CONTRIBUTING.md を参照）。
+#     取得（npx setsuzei@<版>、補足の git clone / npm ci）の経路は、このスクリプトでは確かめない。
+#     Docker で SKILL.md のコマンドを実行して確かめる（CONTRIBUTING.md を参照）。
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
