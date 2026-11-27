@@ -1,0 +1,31 @@
+{
+  "name": "setsuzei",
+  "displayName": "setsuzei: Japanese tax estimate engine",
+  "version": "0.4.0",
+  "description": "Cited, tested Japanese income/resident tax estimates (furusato nozei, iDeCo, mutual aid, blue return) as MCP tools and a skill. Local only; the model does not do the arithmetic.",
+  "author": {
+    "name": "Kosuke Ozawa",
+    "url": "https://github.com/ozko00"
+  },
+  "homepage": "https://ozko00.github.io/setsuzei/",
+  "repository": "https://github.com/ozko00/setsuzei",
+  "license": "MIT",
+  "keywords": [
+    "japan",
+    "tax",
+    "furusato-nozei",
+    "ideco",
+    "mcp",
+    "freelance"
+  ],
+  "mcpServers": {
+    "setsuzei": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "setsuzei@0.4.0",
+        "mcp"
+      ]
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "setsuzei",
+  "description": "setsuzei: a cited, tested calculation engine for Japanese income tax and resident tax estimates",
+  "owner": {
+    "name": "Kosuke Ozawa",
+    "url": "https://github.com/ozko00"
+  },
+  "plugins": [
+    {
+      "name": "setsuzei",
+      "source": "./",
+      "description": "Japanese income/resident tax estimates for freelancers and side-job workers (tax year 2026): furusato nozei limit, iDeCo, Small Enterprise Mutual Aid, blue-return deduction. MCP tools + skill, local only.",
+      "category": "finance",
+      "homepage": "https://github.com/ozko00/setsuzei"
+    }
+  ]
+}

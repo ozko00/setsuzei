@@ -65,6 +65,14 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 
    補足の手順（GitHub のタグから取得してビルド）は、`scripts/verify-install.sh` でくり返し実行できます（Node 20 / 22 / 24 / 26 で 10 回ずつ。出力はすべてログに残ります）。取得はネットワークに依存するので、失敗したらログのエラーの文面（`Could not resolve host` など）を先に確かめてください。
 
+## Claude Code のプラグイン
+
+このリポジトリは、そのまま Claude Code のマーケットプレイス兼プラグインです（[`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) と [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json)。プラグインの中身は、`skills/` の Skill と、npm の `setsuzei` を版を固定して起動する MCP サーバーの設定）。
+
+- 仕様は Claude Code の公式ドキュメント（<https://code.claude.com/docs/en/plugins-reference>、<https://code.claude.com/docs/en/plugin-marketplaces>）で確かめてください。
+- 変えたら `claude plugin validate .` を実行します。入れてみるには、`claude plugin marketplace add .` と `claude plugin install setsuzei@setsuzei`（自分の設定を汚したくなければ、環境変数 `CLAUDE_CONFIG_DIR` に一時フォルダを指定する）。
+- `plugin.json` の `version` はいまの版に、MCP サーバーの `setsuzei@…` は npm に公開済みの版（`config.npmPinned`）にそろえます（テストが確かめます）。
+
 ## MCP サーバーを変えたとき
 
 `setsuzei mcp`（[`src/mcp/`](src/mcp)）は、依存パッケージを使わずに MCP の JSON-RPC を処理しています。ツールは計算コアを呼ぶだけで、ここで税の計算はしません。
@@ -79,7 +87,7 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 
 npm の固定版（`npx setsuzei@…` で案内する版）が、いつも npm に実在する版を指すように、次の順で進めます。
 
-1. **リリースの PR**: `package.json`・`package-lock.json`・`src/version.ts`・`server.json` と、README・SKILL.md のタグ（`v0.4.0` のような表記）を新しい版にそろえます（そろっていないとテストが落ちます）。
+1. **リリースの PR**: `package.json`・`package-lock.json`・`src/version.ts`・`server.json`・`.claude-plugin/plugin.json` と、README・SKILL.md のタグ（`v0.4.0` のような表記）を新しい版にそろえます（そろっていないとテストが落ちます）。
    `npx setsuzei@…` で案内する版（`package.json` の `config.npmPinned` と、README・SKILL.md・この文書の表記）は、**その時点で npm に公開済みの最新の版**にします。これから出す版は、まだ npm にないので書きません。つまり固定版は、いつも 1 つ前の公開済みの版です。
 2. **マージ → タグ**: CI が通ったらマージし、その版のタグ（`v0.4.0` の形）を push して GitHub Release を作ります。タグは付け直せないので、`package.json` の版と同じであることを push の前に確かめます。
 3. **npm への公開**: タグの push で [`.github/workflows/publish.yml`](.github/workflows/publish.yml) が npm に公開し、公開された版を `npm view` で確かめます。トークンは使わず、npm の Trusted Publishing（GitHub Actions の OIDC）で認証します（npmjs.com 側の登録: リポジトリ `ozko00/setsuzei`、workflow のファイル名 `publish.yml`、environment は空欄。リポジトリの変数 `NPM_TRUSTED_PUBLISHING` が `true` の間、公開の失敗はそのまま失敗になります）。

@@ -28,6 +28,17 @@ Why an engine instead of letting the model calculate:
 
 Requires Node.js 20 or later.
 
+### Claude Code (plugin)
+
+Inside Claude Code, run these two lines:
+
+```
+/plugin marketplace add ozko00/setsuzei
+/plugin install setsuzei@setsuzei
+```
+
+This installs the MCP server (the five tools below) and the Agent Skill together. From a shell: `claude plugin marketplace add ozko00/setsuzei` and `claude plugin install setsuzei@setsuzei`. On first use the MCP server fetches the pinned `setsuzei` package from npm (no other packages) and runs locally.
+
 ### MCP server
 
 `setsuzei mcp` starts an MCP server over stdio. Add it to your client's MCP configuration:
@@ -43,7 +54,7 @@ Requires Node.js 20 or later.
 }
 ```
 
-Claude Code:
+Claude Code, MCP server only:
 
 ```sh
 claude mcp add setsuzei -- npx -y setsuzei@0.4.0 mcp
