@@ -13,15 +13,19 @@
 年間の見込みの収入・経費・家族構成を入れると、いまの所得税・住民税の見込みと、**ふるさと納税・iDeCo・小規模企業共済・青色申告特別控除**でそれぞれいくら減るか、そのためにいくら支払うか、まとめて実行するといくら減るかが出ます。
 
 <p>
-  <img src="docs/img/desktop.png" alt="ブラウザ版の画面（PC 幅）。左に入力欄、右に「いまの見込み税額 780,000 円」「まとめて実行すると減る税額 297,700 円」「そのために追加で支払う額 896,000 円」と内訳が並ぶ" width="68%">
-  <img src="docs/img/mobile.png" alt="ブラウザ版の画面（スマホ幅）。入力欄の下に「税額の見込み 780,000 円 ／ 896,000 円支払うと −297,700 円」の帯が出る" width="26%">
+  <img src="docs/img/desktop.png" alt="ブラウザ版の画面（PC 幅）。左に「働き方・ことしの売上・経費」の 3 つの質問、右に「年内に合わせて 891,000 円払うと、税金が 196,500 円減る見込みです」と、やること（ふるさと納税・小規模企業共済）の一覧が並ぶ" width="68%">
+  <img src="docs/img/mobile.png" alt="ブラウザ版の画面（スマホ幅）。「年内にやること」として、ふるさと納税の払う額・減る税額・締切・注意が並び、画面の下に結果の要点の帯が出る" width="26%">
 </p>
 
-上はブラウザ版の実際の画面、下は同じ入力をコマンドラインで実行した結果です。どちらも同じ計算コアを使い、同じ数字になります。
+上はブラウザ版の実際の画面です（「例を入れてみる」を押したところ）。はじめは**働き方・売上・経費の 3 つ**だけ答えれば結果が出ます。社会保険料などの残りの値は目安や既定で置き、どう置いたかを結果に示します。「もっと正確にする」を開くと、残りの欄を入れられます。
+
+結果の先頭は「年内にやること」です。やること・払う額・減る税額・締切・注意を 1 つずつ並べ、払う額は自分で動かして税額の変化を試せます。結果は文章としてコピーでき、印刷もできます。入力をこの端末のブラウザに保存する機能は、自分で選んだときだけ働きます（既定では保存しません）。
+
+下は、コマンドラインで実行した結果です。ブラウザ版も同じ計算コアを使い、同じ入力なら同じ数字になります。
 
 ```console
 $ setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万 --ideco-paid 27.6万 --furusato-paid 3万
-setsuzei 0.2.4 ｜ 令和8年分（2026年分）の概算
+setsuzei 0.3.0 ｜ 令和8年分（2026年分）の概算
 
 ■ 現状の見込み
   事業所得（青色申告特別控除 650,000 円を控除後）  5,850,000 円
@@ -72,7 +76,7 @@ setsuzei 0.2.4 ｜ 令和8年分（2026年分）の概算
 
 ### ブラウザ版
 
-<https://ozko00.github.io/setsuzei/> を開くだけです。「例を入れてみる」を押すと、上の画面と同じ入力が入ります。
+<https://ozko00.github.io/setsuzei/> を開いて、働き方・売上・経費の 3 つに答えるだけです。「例を入れてみる」を押すと、上の画面と同じ入力が入ります。
 
 知りたいことが 1 つだけなら、項目を絞ったページもあります。それぞれ計算式と根拠、所得別・年収別の表、よくある質問を載せています。
 
@@ -89,7 +93,7 @@ URL に CLI と同じ名前のパラメータを付けると、入力済みの�
 npm には未公開なので、ソースを取得してビルドします。Node.js 20 以上と git が必要です。
 
 ```sh
-git clone --depth 1 --branch v0.2.4 https://github.com/ozko00/setsuzei.git
+git clone --depth 1 --branch v0.3.0 https://github.com/ozko00/setsuzei.git
 cd setsuzei
 npm ci
 npm run build
@@ -97,7 +101,7 @@ node dist/cli.js          # 対話形式で入力
 node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
-`v0.2.4` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
+`v0.3.0` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
 
 `git clone` が `Could not resolve host: github.com` などで止まったときは、ネットワークの一時的な失敗のことがあります。`npm ci` に進む前に、同じ `git clone` をもう一度実行してください（clone に失敗したまま `npm ci` を実行すると、「`package-lock.json` がない」という別のエラーになります）。`npm ci` が `ENOTFOUND` や `ETIMEDOUT` で止まったときも、同じコマンドをもう一度実行すれば続きから入ります。
 
@@ -107,12 +111,12 @@ node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance
 <summary>clone せずに 1 行で実行する（npx）</summary>
 
 ```sh
-npx --allow-git=all github:ozko00/setsuzei#v0.2.4 --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
+npx --allow-git=all github:ozko00/setsuzei#v0.3.0 --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
 - `--allow-git=all` は npm 12 以降で必要です。npm 12.0.0 から、git リポジトリからのパッケージ取得が既定で無効（`allow-git` の既定値が `none`）になり、付けないと `EALLOWGIT` のエラーで止まります（[npm のドキュメント](https://docs.npmjs.com/cli/v12/using-npm/config#allow-git)）。
 - npm 11 以前は付けなくても動きます。付けたままでも動きます（npm 10.8 / 11.19 / 11.20 / 12.2 で確認）。
-- npm 12 では `npm warn install-scripts ... setsuzei@0.2.4 (prepare: npm run build)` のような警告が出ることがあります。npm 12 が、依存パッケージのインストール時スクリプトを既定で実行しなくなったことの通知です。setsuzei のビルドは取得の時点で済んでいるので、そのまま使えます。`npm install-scripts approve` を実行する必要はありません。
+- npm 12 では `npm warn install-scripts ... setsuzei@0.3.0 (prepare: npm run build)` のような警告が出ることがあります。npm 12 が、依存パッケージのインストール時スクリプトを既定で実行しなくなったことの通知です。setsuzei のビルドは取得の時点で済んでいるので、そのまま使えます。`npm install-scripts approve` を実行する必要はありません。
 - このオプションは、その 1 回のコマンドに限って git からの取得を許可するものです。気になる場合は上の clone の手順を使ってください。
 
 </details>
@@ -164,7 +168,7 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 
 ### ライブラリとして使う
 
-計算コアは実行時依存ゼロの純粋関数です。`npm install --allow-git=all github:ozko00/setsuzei#v0.2.4` で入ります（`--allow-git=all` は npm 12 以降で必要。npm 12 で出る `install-scripts` の警告は、上の npx の説明と同じ理由で、そのままで動きます）。
+計算コアは実行時依存ゼロの純粋関数です。`npm install --allow-git=all github:ozko00/setsuzei#v0.3.0` で入ります（`--allow-git=all` は npm 12 以降で必要。npm 12 で出る `install-scripts` の警告は、上の npx の説明と同じ理由で、そのままで動きます）。
 
 ```ts
 import { calculate } from "setsuzei";
@@ -207,7 +211,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 
 そのうえで「今年あといくら節税できる？」のように聞くと、エージェントが必要な項目を質問し、CLI の結果をもとに答えます。
 
-- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、固定したタグ（`v0.2.4`）を `~/.cache/setsuzei` に取得してビルドします。
+- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、固定したタグ（`v0.3.0`）を `~/.cache/setsuzei` に取得してビルドします。
 - エージェントの権限設定で取得のコマンドが止まった場合は、Skill に書いてある 2 つのコマンドを自分で実行するか、エージェントに実行を許可してください。
 - Skill が聞き取りから結果の説明まで通ることは、[`scripts/skill-e2e.sh`](scripts/skill-e2e.sh) で確かめられます（Claude Code が必要）。
 

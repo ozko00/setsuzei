@@ -129,7 +129,7 @@
 
     <fieldset>
       <legend>家族</legend>
-      <label class="inline"><input type="checkbox" name="has-spouse"> 生計を一にする配偶者がいる<span class="sub inline-sub">（夫・妻。共働きでも入れて構いません）</span></label>
+      <label class="inline"><input type="checkbox" name="has-spouse"> <span>配偶者（夫・妻）がいる<span class="sub">生計を一にしている場合。配偶者の所得が多いと控除はなく、チェックしても結果は変わりません</span></span></label>
       <div class="only-spouse">
         <label>配偶者の合計所得金額<span class="sub">収入がなければ 0。給料だけなら「年収 − 給与所得控除」。133 万円を超えると控除はありません</span>
           <input name="spouse-income" inputmode="numeric" placeholder="0"></label>
@@ -181,6 +181,12 @@
       <button type="button" class="button" id="open-more">違うところを直して、もっと正確にする</button>
     </div>
 
+    <div class="budget">
+      <label for="budget">年内に出せるお金<span class="optional-mark">任意</span><span class="sub">入れると、その範囲で税金がいちばん減る組み合わせにします。空のままなら、上限まで実行した場合を出します</span></label>
+      <span class="amount-field"><input id="budget" name="budget" form="form" inputmode="numeric" placeholder="例: 10万"><span class="unit">円</span></span>
+      <p class="sub" id="budget-reason"></p>
+    </div>
+
     <ol class="actions">
       <li class="action" id="act-furusato">
         <h4><span class="action-name">ふるさと納税</span><span class="action-kind">自治体に寄附して、返礼品を受け取る</span></h4>
@@ -191,26 +197,38 @@
             <input type="range" id="furusato-range" min="0" step="1000" aria-label="ふるさと納税で払う額を動かす">
             <span class="sub" id="furusato-hint"></span></dd></div>
           <div><dt>減る税額</dt><dd class="saving" id="furusato-saving"></dd></div>
-          <div><dt>締切</dt><dd>ことしの分になるのは、12 月 31 日までに寄附（支払い）を済ませた分です。</dd></div>
-          <div><dt>注意</dt><dd>寄附した分だけお金は出ていきます。税金が減るのは「寄附した額 − 2,000 円」までで、得になるのは返礼品の分です。確定申告で申告します。
-            <details class="help"><summary>くわしい注意</summary><ul id="furusato-notes"></ul></details></dd></div>
         </dl>
+        <details class="help more-info">
+          <summary>締切と注意（12 月 31 日まで）</summary>
+          <dl class="info">
+            <div><dt>締切</dt><dd>ことしの分になるのは、12 月 31 日までに寄附（支払い）を済ませた分です。</dd></div>
+            <div><dt>注意</dt><dd>寄附した分だけお金は出ていきます。税金が減るのは「寄附した額 − 2,000 円」までで、得になるのは返礼品の分です。確定申告で申告します。</dd></div>
+          </dl>
+          <ul id="furusato-notes"></ul>
+        </details>
         <p class="action-off" id="furusato-off"></p>
       </li>
 
       <li class="action" id="act-kyosai">
-        <h4><span class="action-name">小規模企業共済</span><span class="action-kind">個人事業主が、自分の退職金を積み立てる制度（中小機構が運営）</span></h4>
+        <h4><span class="action-name">小規模企業共済</span><span class="action-kind" id="kyosai-kind">個人事業主が、自分の退職金を積み立てる制度（中小機構が運営）</span></h4>
         <dl class="steps">
           <div><dt>やること</dt><dd id="kyosai-do"></dd></div>
           <div class="pay"><dt><label for="kyosai-add">払う額</label></dt><dd>
-            <span class="amount-field"><input id="kyosai-add" name="kyosai-add" form="form" inputmode="numeric" aria-describedby="kyosai-hint"><span class="unit">円</span></span>
+            <span class="amount-field"><input id="kyosai-add" name="kyosai-add" form="form" inputmode="numeric" placeholder="0" aria-describedby="kyosai-hint"><span class="unit">円</span></span>
             <input type="range" id="kyosai-range" min="0" step="1000" aria-label="小規模企業共済で払う額を動かす">
             <span class="sub" id="kyosai-hint"></span></dd></div>
           <div><dt>減る税額</dt><dd class="saving" id="kyosai-saving"></dd></div>
-          <div><dt>締切</dt><dd>ことしの分になるのは、12 月 31 日までに支払った掛金です。新しく入る・掛金を増やす・先にまとめて払う手続きにかかる日数は、中小機構か窓口の金融機関に確かめてください。</dd></div>
-          <div><dt>注意</dt><dd>払った掛金は自分の積立として残り、事業をやめるときなどに受け取ります（受け取るときに税金がかかります）。払える額まで下げて試せます。
-            <details class="help"><summary>くわしい注意</summary><ul id="kyosai-notes"></ul></details></dd></div>
         </dl>
+        <details class="help more-info">
+          <summary>締切・注意・加入の手順</summary>
+          <dl class="info">
+            <div><dt>締切</dt><dd>ことしの分になるのは、12 月 31 日までに支払った掛金です。</dd></div>
+            <div><dt>加入の手順</dt><dd>いま入っていない方が 11 月・12 月に申し込んで、ことしの分にするには、中小機構の委託機関（商工会・商工会議所などの団体や、金融機関）の窓口で、掛金をその場で現金で払う方法（「現金あり」）で加入の手続きをします。年払いにして 12 か月分を現金で払えば、その全額がことしの分になります。オンラインでの申込みは、最初の引落しが翌々月になるため、ことしの分にするには 10 月中の申込みが必要でした（11 月・12 月のオンライン申込みは、来年の分になります）。窓口の受付日や必要な書類は、窓口に確かめてください。
+              <a href="https://www.smrj.go.jp/kyosai/skyosai/news/2026/qsktgp000000cx1u.html" rel="noopener noreferrer" target="_blank">中小機構のお知らせ（令和8年分の所得控除の対象）</a>、<a href="https://kyosai-web.smrj.go.jp/skyosai/entry/index_07.html" rel="noopener noreferrer" target="_blank">中小機構「加入後はじめての掛金納付方法」</a></dd></div>
+            <div><dt>注意</dt><dd>払った掛金は自分の積立として残り、事業をやめるときなどに受け取ります（受け取るときに税金がかかります）。加入済みの方が掛金を増やす・先の月の分をまとめて払う（前納）手続きと締切は、中小機構か窓口に確かめてください。</dd></div>
+          </dl>
+          <ul id="kyosai-notes"></ul>
+        </details>
       </li>
 
       <li class="action" id="act-ideco">
@@ -222,10 +240,15 @@
             <input type="range" id="ideco-range" min="0" step="1000" aria-label="iDeCo で追加して払う額を動かす">
             <span class="sub" id="ideco-hint"></span></dd></div>
           <div><dt>減る税額</dt><dd class="saving" id="ideco-saving"></dd></div>
-          <div><dt>締切</dt><dd>ことしの分になるのは、12 月の引落し分までです。</dd></div>
-          <div><dt>注意</dt><dd>掛金の額を変えられるのは年 1 回で、年内に増やせるかどうかは加入先と時期しだいです。原則 60 歳まで引き出せません。
-            <details class="help"><summary>くわしい注意</summary><ul id="ideco-notes"></ul></details></dd></div>
         </dl>
+        <details class="help more-info">
+          <summary>締切と注意</summary>
+          <dl class="info">
+            <div><dt>締切</dt><dd>ことしの分になるのは、12 月の引落し分までです。</dd></div>
+            <div><dt>注意</dt><dd>掛金の額を変えられるのは年 1 回で、年内に増やせるかどうかは加入先と時期しだいです。原則 60 歳まで引き出せません。</dd></div>
+          </dl>
+          <ul id="ideco-notes"></ul>
+        </details>
       </li>
     </ol>
 
@@ -297,7 +320,8 @@
     <li><strong>小規模企業共済</strong>: 掛金の年間上限までの残り枠と、追加で支払った場合に減る税額</li>
     <li><strong>青色申告特別控除</strong>: 白色申告・10 万円・55 万円・65 万円それぞれの税額と、その差</li>
   </ul>
-  <p>「年内にやること」の合計は、足し算ではなく、まとめて計算し直した額です。入れているのは、ふるさと納税と小規模企業共済です。iDeCo の追加は、払う額を自分で入れたときだけ合計に入れます（掛金額の変更は年 1 回で、年内に増やせるかどうかは加入先と時期しだいのため）。払う額は自分で動かして、税額がどう変わるかを試せます。</p>
+  <p>「年内にやること」の合計は、足し算ではなく、まとめて計算し直した額です。入れているのは、ふるさと納税と、小規模企業共済にすでに加入している方の掛金の追加です。いま加入していない方の小規模企業共済と、iDeCo の追加は、払う額を自分で入れたときだけ合計に入れます（年内に新しく加入して払うには窓口での手続きが必要で、iDeCo の掛金額の変更は年 1 回で年内に増やせるかどうかが加入先と時期しだいのため）。</p>
+  <p>払う額は自分で動かして、税額がどう変わるかを試せます。「年内に出せるお金」を入れると、その範囲で減る税額がいちばん大きくなる組み合わせを出します。ふるさと納税は払った額とほぼ同じだけ税金が減るので先に入りますが、寄附と引き換えで手元のお金は増えません。</p>
   <h3>前提</h3>
   <ul>
     <li>入力はすべて年末までの年間見込み額として扱います。</li>

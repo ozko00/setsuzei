@@ -41,6 +41,10 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 
 `npm run test:browser` は、ヘッドレスの Chrome でトップと説明ページを開き、キーボードとマウスで入力して、画面の金額を同じ入力の CLI の結果と突き合わせます。空入力・誤入力の表示、所得区分の切り替え、スマホ幅（375px）でのはみ出し、コンソールのエラー、ページの外への通信がないことも見ます。Node.js 22 以上と Chrome / Chromium が必要です（場所は環境変数 `CHROME_BIN` でも指定できます）。依存パッケージは使いません。`npm test` には含めず、CI では別のジョブで実行しています。ページの欄や見出しを変えたら、[`test/browser/e2e.mjs`](test/browser/e2e.mjs) も合わせて直してください。
 
+画面の使い勝手を変えたら、できれば「初めての人」に実際に操作してもらって確かめてください。`scripts/persona-browser.mjs` は、ヘッドレスの Chrome を「画面を見る・座標を押す・文字を打つ」だけで操作できるようにし、操作をすべて記録します（このプロジェクトを知らないエージェントに、人物像と課題だけを渡して使わせる想定です。使い方はファイルの先頭にあります）。
+
+- ブラウザ版で「社会保険料が分からない」ときに置く目安の数値は、[`src/data/2026-insurance-guide.ts`](src/data/2026-insurance-guide.ts) にあります。税額の計算には使わず、置いた額と幅を画面に示します。年度が変わったら、出典のページで確かめて更新してください。
+- 入力をこの端末に保存する機能（[`web/storage.ts`](web/storage.ts)）は、利用者が選んだときだけ働きます。保存先に触るコードは、このファイルだけに置きます。
 - 計算コアは実行時依存ゼロの純粋関数です。実行時の依存パッケージは増やしません。
 - 金額は円の整数、割合は整数（パーセントなど）で扱い、浮動小数の誤差が出ないようにします。
 - ブラウザ版（[`docs/`](docs)）は外部と通信しません。外部のスクリプト・フォント・解析ツールは入れません。
@@ -56,12 +60,12 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 2. **取得の手順**: SKILL.md の「CLI を用意する」にある 2 つのコマンドを、まっさらな環境でそのまま実行して確かめます。タグが公開済みなら、次のように Docker で試せます。
 
    ```sh
-   docker run --rm node:22 sh -c 'git clone --depth 1 --branch v0.2.4 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei && npm ci --prefix ~/.cache/setsuzei && node ~/.cache/setsuzei/dist/cli.js --version'
+   docker run --rm node:22 sh -c 'git clone --depth 1 --branch v0.3.0 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei && npm ci --prefix ~/.cache/setsuzei && node ~/.cache/setsuzei/dist/cli.js --version'
    ```
 
    取得がときどき失敗しないかを見るときは、`scripts/verify-install.sh` で同じ手順をくり返し実行できます（Node 20 / 22 / 24 / 26 で 10 回ずつ。出力はすべてログに残ります）。取得はネットワークに依存するので、失敗したらログのエラーの文面（`Could not resolve host` など）を先に確かめてください。
 
-版を上げるときは、`package.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.2.4` のような表記）をそろえます。そろっていないとテストが落ちます。マージ後に、その版のタグと GitHub Release を作ります。
+版を上げるときは、`package.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.3.0` のような表記）をそろえます。そろっていないとテストが落ちます。マージ後に、その版のタグと GitHub Release を作ります。
 
 ## プルリクエスト
 

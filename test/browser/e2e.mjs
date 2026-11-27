@@ -53,6 +53,7 @@ const READ = `(() => {
     return {
       hidden: li.hidden,
       off: li.classList.contains("off"),
+      optional: li.classList.contains("optional"),
       amount: document.querySelector("#" + name + "-add").value,
       saving: text(document.querySelector("#" + name + "-saving")),
       hint: text(document.querySelector("#" + name + "-hint")),
@@ -76,8 +77,10 @@ const READ = `(() => {
       assumed: document.querySelector("#assumed").hidden ? [] : Array.from(document.querySelectorAll("#assumed-list li")).map(text),
       furusato: action("furusato"), kyosai: action("kyosai"), ideco: action("ideco"),
       resetShown: !document.querySelector("#plan-reset").hidden,
+      budget: text(document.querySelector("#budget-reason")),
     } : null,
     text: document.querySelector("main").innerText,
+    effective: plan && plan.dataset.effective ? JSON.parse(plan.dataset.effective) : null,
     invalid: Array.from(document.querySelectorAll('[aria-invalid="true"]')).map((e) => e.name),
     jump: jump
       ? { text: text(jump), error: jump.classList.contains("error"), shown: !jump.hidden && getComputedStyle(jump).display !== "none" }
@@ -170,7 +173,10 @@ const checked = (page, selector) => page.evaluate(`document.querySelector(${JSON
 
 /** 「もっと正確にする」を開く */
 async function openMore(page) {
-  if (!(await page.evaluate('document.querySelector("#more").open'))) await page.click("#more > summary");
+  if (await page.evaluate('document.querySelector("#more").open')) return;
+  await page.click("#more > summary");
+  // 開いたあと、開いた先頭が見える位置へ画面が送られるのを待つ
+  await page.evaluate("new Promise((r) => setTimeout(r, 50))");
 }
 
 /**
@@ -217,6 +223,17 @@ async function fillTop(page, values, exact = true) {
 
 const BLUE_LABEL = { none: "白色申告", 10: "青色 10万円", 55: "青色 55万円", 65: "青色 65万円" };
 
+/**
+ * トップページと同じ条件で CLI を実行する。
+ * トップページは、小規模企業共済にいま入っていない人には、払う額を入れるまで合計に入れない（--kyosai-add=0 と同じ）。
+ */
+function topCli(values) {
+  const first = cli(values);
+  if (!first.ok || "kyosai-add" in values) return first;
+  const k = first.result.measures.kyosai;
+  return k.applicable && k.paid === 0 ? cli({ ...values, "kyosai-add": "0" }) : first;
+}
+
 /** トップページに出ている金額が、CLI の結果と同じであること。 */
 function assertTopMatches(view, r, { customFurusato = false } = {}) {
   const b = r.baseline;
@@ -232,7 +249,7 @@ function assertTopMatches(view, r, { customFurusato = false } = {}) {
     assert.equal(
       view.plan.lead,
       c.totalPayment > 0
-        ? `年内に合わせて ${yen(c.totalPayment)}払うと、税金が ${yen(c.saving.total)}減る見込みです。`
+        ? `年内に${[c.furusatoAdditional, c.kyosaiAdditional, c.idecoAdditional].filter((n) => n > 0).length > 1 ? "合わせて " : " "}${yen(c.totalPayment)}払うと、税金が ${yen(c.saving.total)}減る見込みです。`
         : "いまの見込みでは、年内に追加で払って税金が減るものはありません。",
     );
     // やることの一覧: 払う額と、減る税額
@@ -244,9 +261,11 @@ function assertTopMatches(view, r, { customFurusato = false } = {}) {
     }
     assert.equal(view.plan.kyosai.hidden, !m.kyosai.applicable);
     if (m.kyosai.applicable) assert.equal(amountOf(view.plan.kyosai.amount), c.kyosaiAdditional);
+    // いま入っていない人で、額を入れていなければ「さらに減らしたい場合」として合計の外に出す
+    if (m.kyosai.applicable) assert.equal(view.plan.kyosai.optional, m.kyosai.paid === 0 && view.plan.kyosai.amount === "");
     assert.equal(amountOf(view.plan.ideco.amount), c.idecoAdditional);
     assert.equal(view.plan.ideco.amount !== "", c.includesIdeco);
-    if (m.kyosai.applicable && c.idecoAdditional === 0) {
+    if (m.kyosai.applicable && c.idecoAdditional === 0 && !view.plan.kyosai.optional) {
       assert.ok(view.plan.kyosai.saving.startsWith(yen(c.savingFromContributions.total)), view.plan.kyosai.saving);
     }
     if (!m.kyosai.applicable && c.includesIdeco) assert.ok(view.plan.ideco.saving.startsWith(yen(c.savingFromContributions.total)));
@@ -385,7 +404,13 @@ browserTest("トップ: 3 つ答えるだけで結果が出て、仮に置いた
   const view = await page.evaluate(READ);
   const effective = await page.evaluate(EFFECTIVE);
   assert.deepEqual(effective, { revenue: "380万", expenses: "55万", "social-insurance": "573000" });
-  assertTopMatches(view, cli(effective).result);
+  assert.deepEqual(view.effective, { ...effective, "kyosai-add": "0" });
+  const quick = topCli(effective).result;
+  assertTopMatches(view, quick);
+  // 見出しの金額は、ふるさと納税だけ。小規模企業共済は「さらに減らしたい場合」として別に出る
+  assert.equal(view.plan.lead, `年内に ${yen(quick.measures.furusato.remaining)}払うと、税金が ${yen(quick.measures.furusato.saving.total)}減る見込みです。`);
+  assert.equal(view.plan.kyosai.optional, true);
+  assert.match(view.plan.kyosai.hint, /840,000 円を払った場合は、それだけで税金が [\d,]+ 円減ります（合計には入れていません）/);
   assert.equal(view.plan.assumed.length, 4);
   assert.ok(view.plan.assumed[0].startsWith("社会保険料: 目安の 573,000 円"));
   assert.ok(view.plan.assumed[1].startsWith("青色申告特別控除: なし"));
@@ -399,7 +424,7 @@ browserTest("トップ: 3 つ答えるだけで結果が出て、仮に置いた
   await page.click('input[name="has-spouse"]');
   const exact = { revenue: "380万", expenses: "55万", blue: "65", "social-insurance": "50.4万", "furusato-paid": "1万", "spouse-income": "0" };
   const after = await page.evaluate(READ);
-  assertTopMatches(after, cli(exact).result);
+  assertTopMatches(after, topCli(exact).result);
   assert.deepEqual(after.plan.assumed, []);
 });
 
@@ -416,7 +441,7 @@ browserTest("トップ: 会社員 + 副業の 3 問は、年収・副業の売�
   const view = await page.evaluate(READ);
   const effective = await page.evaluate(EFFECTIVE);
   assert.deepEqual(effective, { salary: "620万", revenue: "90万", expenses: "12万", misc: true, "social-insurance": "911000" });
-  const expected = cli(effective).result;
+  const expected = topCli(effective).result;
   assertTopMatches(view, expected);
   assert.equal(view.plan.kyosai.hidden, true);
   assert.ok(view.plan.assumed.some((line) => line.startsWith("副業の所得の種類: 雑所得")));
@@ -425,7 +450,7 @@ browserTest("トップ: 会社員 + 副業の 3 問は、年収・副業の売�
   const back = await page.evaluate(EFFECTIVE);
   assert.equal(back.salary, undefined);
   assert.equal(back.misc, undefined);
-  assertTopMatches(await page.evaluate(READ), cli(back).result);
+  assertTopMatches(await page.evaluate(READ), topCli(back).result);
 });
 
 browserTest("トップ: 「例を入れてみる」の結果が CLI と一致し、「入力を消す」で案内に戻る", async (page) => {
@@ -433,7 +458,7 @@ browserTest("トップ: 「例を入れてみる」の結果が CLI と一致し
   await page.click("#example");
   const effective = await page.evaluate(EFFECTIVE);
   assert.equal(effective.revenue, "480万");
-  assertTopMatches(await page.evaluate(READ), cli(effective).result);
+  assertTopMatches(await page.evaluate(READ), topCli(effective).result);
   await page.click('#form button[type="reset"]');
   await page.evaluate("new Promise((r) => setTimeout(r, 50))"); // 消したあとの再計算は、次のタイミングで行われる
   const view = await page.evaluate(READ);
@@ -445,7 +470,7 @@ browserTest("トップ: キーボードで打ち込んだ結果が CLI と一致
   await page.goto(server.base);
   const values = { salary: "600万", revenue: "120万", expenses: "20万", misc: true, "social-insurance": "88万" };
   await fillTop(page, values);
-  const expected = cli(values);
+  const expected = topCli(values);
   assert.ok(expected.ok);
   assertTopMatches(await page.evaluate(READ), expected.result);
 });
@@ -456,12 +481,12 @@ browserTest("トップ: 所得の種類を切り替えると、青色申告の�
   await fillTop(page, business);
   const blueShown = 'document.querySelector(\'select[name="blue"]\').checkVisibility()';
   assert.equal(await page.evaluate(blueShown), true);
-  assertTopMatches(await page.evaluate(READ), cli(business).result);
+  assertTopMatches(await page.evaluate(READ), topCli(business).result);
 
   // 雑所得にすると、青色申告の欄が消え、選んであった 65 万円は使われない
   await page.click('input[name="income-type"][value="misc"]');
   assert.equal(await page.evaluate(blueShown), false);
-  const misc = cli({ revenue: "500万", expenses: "100万", misc: true, "social-insurance": "70万" });
+  const misc = topCli({ revenue: "500万", expenses: "100万", misc: true, "social-insurance": "70万" });
   const view = await page.evaluate(READ);
   assertTopMatches(view, misc.result);
   assert.equal(misc.result.measures.blueReturn.applicable, false);
@@ -470,19 +495,19 @@ browserTest("トップ: 所得の種類を切り替えると、青色申告の�
   // 事業所得に戻すと、元の結果に戻る
   await page.click('input[name="income-type"][value="business"]');
   assert.equal(await page.evaluate(blueShown), true);
-  assertTopMatches(await page.evaluate(READ), cli(business).result);
+  assertTopMatches(await page.evaluate(READ), topCli(business).result);
 });
 
 browserTest("トップ: 16 歳未満の扶養親族を入れると、住民税の所得割の非課税が反映される", async (page) => {
   await page.goto(server.base);
   const without = { revenue: "250万", expenses: "30万", blue: "65", "social-insurance": "30万", "spouse-income": "0" };
   await fillTop(page, without);
-  const before16 = cli(without);
+  const before16 = topCli(without);
   assertTopMatches(await page.evaluate(READ), before16.result);
   assert.equal(before16.result.baseline.residentTax.incomeLevyExempt, false);
 
   await page.type('input[name="dependents-under16"]', "3");
-  const after16 = cli({ ...without, "dependents-under16": "3" });
+  const after16 = topCli({ ...without, "dependents-under16": "3" });
   assert.equal(after16.result.baseline.residentTax.incomeLevyExempt, true);
   const view = await page.evaluate(READ);
   assertTopMatches(view, after16.result);
@@ -500,7 +525,7 @@ browserTest("トップ: 払う額を自分で動かすと、その額で計算�
   const base = { revenue: "800万", expenses: "150万", blue: "65", "social-insurance": "90万", "ideco-paid": "27.6万", "furusato-paid": "3万" };
   await fillTop(page, base);
   const first = await page.evaluate(READ);
-  const initial = cli(base).result;
+  const initial = topCli(base).result;
   assert.equal(initial.measures.combined.includesIdeco, false);
   assertTopMatches(first, initial);
   assert.ok(cardStarting(first, "iDeCo の追加も年内に間に合う場合"), "iDeCo も間に合う場合の欄がありません");
@@ -508,7 +533,7 @@ browserTest("トップ: 払う額を自分で動かすと、その額で計算�
 
   // iDeCo の払う額を入れると、合計に入る
   await fillTop(page, { "ideco-add": "10万" });
-  const added = cli({ ...base, "ideco-add": "10万" });
+  const added = topCli({ ...base, "ideco-add": "10万" });
   assert.equal(added.result.measures.combined.includesIdeco, true);
   assert.equal(added.result.measures.combined.idecoAdditional, 100000);
   assertTopMatches(await page.evaluate(READ), added.result);
@@ -516,14 +541,14 @@ browserTest("トップ: 払う額を自分で動かすと、その額で計算�
   // 小規模企業共済を 30 万円に下げ、細かい条件も使う
   const all = { "ideco-limit": "60万", "ideco-add": "5万", "kyosai-add": "30万", "nhi-rate": "11.5" };
   await fillTop(page, all);
-  const withAll = cli({ ...base, ...all }).result;
+  const withAll = topCli({ ...base, ...all }).result;
   assertTopMatches(await page.evaluate(READ), withAll);
 
   // ふるさと納税を 2 万円にする: 掛金と寄附を「支払済み」に足した入力で CLI を実行した税額との差になる
   await fillTop(page, { "furusato-add": "2万" });
   const custom = await page.evaluate(READ);
   assertTopMatches(custom, withAll, { customFurusato: true });
-  const after = cli({ ...base, "ideco-limit": "60万", "nhi-rate": "11.5", "ideco-paid": String(276000 + 50000), "kyosai-paid": "300000", "furusato-paid": String(30000 + 20000) }).result;
+  const after = topCli({ ...base, "ideco-limit": "60万", "nhi-rate": "11.5", "ideco-paid": String(276000 + 50000), "kyosai-paid": "300000", "furusato-paid": String(30000 + 20000) }).result;
   const saved = withAll.baseline.totalTax - after.baseline.totalTax;
   assert.deepEqual(custom.figures, {
     減る税額の合計: yen(saved),
@@ -545,7 +570,44 @@ browserTest("トップ: 払う額を自分で動かすと、その額で計算�
 
   // 「おすすめの額に戻す」で、計算コアが決めた額に戻る
   await page.click("#plan-reset");
-  assertTopMatches(await page.evaluate(READ), cli({ ...base, "ideco-limit": "60万", "nhi-rate": "11.5" }).result);
+  assertTopMatches(await page.evaluate(READ), topCli({ ...base, "ideco-limit": "60万", "nhi-rate": "11.5" }).result);
+});
+
+browserTest("トップ: 年内に出せるお金を入れると、その範囲の配分になり、理由が出る。締切・注意・加入の手順は開いて読む", async (page) => {
+  await page.goto(server.base);
+  const member = { revenue: "950万", expenses: "430万", blue: "65", "social-insurance": "120.8万", "kyosai-paid": "36万" };
+  await fillTop(page, member);
+  const full = await page.evaluate(READ);
+  assertTopMatches(full, topCli(member).result);
+  assert.equal(full.plan.kyosai.optional, false);
+  assert.equal(full.plan.budget, "");
+
+  await page.type("#budget", "10万");
+  await page.evaluate("document.activeElement.blur()");
+  const view = await page.evaluate(READ);
+  const paid = amountOf(view.plan.furusato.amount) + amountOf(view.plan.kyosai.amount);
+  assert.ok(paid <= 100000 && paid > 0, `払う額の合計 ${paid}`);
+  assert.equal(view.figures["そのために年内に払う額"], yen(paid));
+  assert.match(view.plan.budget, /出せるお金の範囲で、減る税額がいちばん大きくなる組み合わせです。.*手元のお金は増えません/);
+  // 画面の合計は、その配分を「支払済み」に足して CLI を実行した税額の差
+  const before = cli(member).result.baseline.totalTax;
+  const after = cli({ ...member, "kyosai-paid": String(360000 + amountOf(view.plan.kyosai.amount)), "furusato-paid": String(amountOf(view.plan.furusato.amount)) }).result.baseline.totalTax;
+  assert.equal(view.figures["減る税額の合計"], yen(before - after));
+  // 空に戻すと、上限まで実行した場合に戻る
+  await page.type("#budget", "");
+  await page.evaluate("document.activeElement.blur()");
+  assertTopMatches(await page.evaluate(READ), topCli(member).result);
+
+  // 各項目でいつも見えているのは 3 行。締切・注意・加入の手順は、開くと読める
+  const info = 'Array.from(document.querySelectorAll("#act-kyosai .info dt")).filter((el) => el.checkVisibility()).map((el) => el.textContent)';
+  assert.deepEqual(await page.evaluate(info), []);
+  assert.deepEqual(
+    await page.evaluate('Array.from(document.querySelectorAll("#act-kyosai .steps dt")).filter((el) => el.checkVisibility()).map((el) => el.textContent)'),
+    ["やること", "払う額", "減る税額"],
+  );
+  await page.click("#act-kyosai details.more-info > summary");
+  assert.deepEqual(await page.evaluate(info), ["締切", "加入の手順", "注意"]);
+  assert.match(await page.evaluate('document.querySelector("#act-kyosai .info").textContent'), /窓口で、掛金をその場で現金で払う方法/);
 });
 
 browserTest("トップ: 家族と控除の欄をすべて使った結果が CLI と一致する", async (page) => {
@@ -567,7 +629,7 @@ browserTest("トップ: 家族と控除の欄をすべて使った結果が CLI 
     "income-adjustment": true,
   };
   await fillTop(page, values);
-  const expected = cli(values);
+  const expected = topCli(values);
   assert.ok(expected.ok);
   assert.ok(expected.result.baseline.incomeAdjustment > 0);
   assertTopMatches(await page.evaluate(READ), expected.result);
@@ -575,7 +637,7 @@ browserTest("トップ: 家族と控除の欄をすべて使った結果が CLI 
   // 「配偶者がいる」を外すと、入れてあった配偶者の所得は使われない
   await page.click('input[name="has-spouse"]');
   const { "spouse-income": _income, "spouse-70": _age, ...single } = values;
-  assertTopMatches(await page.evaluate(READ), cli(single).result);
+  assertTopMatches(await page.evaluate(READ), topCli(single).result);
 });
 
 browserTest("トップ: 誤った入力は、欄の名前つきで CLI と同じ指摘が出る", async (page) => {
@@ -598,7 +660,7 @@ browserTest("トップ: 誤った入力は、欄の名前つきで CLI と同じ
   // 払う額の欄は、エラーの間も直せる。直すと結果が出て、印が消える
   await fillTop(page, { "ideco-add": "", "spouse-income": "0" });
   const fixed = await page.evaluate(READ);
-  assertTopMatches(fixed, cli({ revenue: "100万", "spouse-income": "0" }).result);
+  assertTopMatches(fixed, topCli({ revenue: "100万", "spouse-income": "0" }).result);
   assert.deepEqual(fixed.invalid, []);
   // ふるさと納税の払う額の誤りも、欄の名前つきで出る
   await fillTop(page, { revenue: "500万", "furusato-add": "たくさん" });
@@ -618,7 +680,7 @@ browserTest("トップ: URL のクエリで入力を引き継げる（引き継�
     "spouse-income": "0",
     "ideco-add": "10万",
   };
-  assertTopMatches(await page.evaluate(READ), cli(values).result);
+  assertTopMatches(await page.evaluate(READ), topCli(values).result);
   // 引き継いだ値は、どれも画面に見えている（閉じた欄の中に隠れたまま結果に効かない）
   assert.deepEqual(await page.evaluate(HIDDEN_VALUES), []);
   assert.equal(await page.evaluate("location.search"), "");
@@ -731,7 +793,7 @@ browserTest("トップ: スマホ幅（375px）で、横スクロールもはみ
   });
   await page.click(".disclaimer details > summary");
   await page.click("#breakdown > summary");
-  await page.click("#act-furusato details.help > summary");
+  await page.click("#act-furusato details.more-info > summary");
   const view = await page.evaluate(READ);
   assert.equal(view.alert, null);
   assert.deepEqual(await page.evaluate(OVERFLOW), [], "結果が出ているとき");
@@ -872,7 +934,7 @@ for (const spec of PAGES) {
     // 「全項目で計算する」へ、いまの入力を引き継ぐ
     await page.navigateBy(() => page.click("#full"));
     assert.equal(await page.evaluate("location.pathname"), "/setsuzei/");
-    assertTopMatches(await page.evaluate(READ), changed.result);
+    assertTopMatches(await page.evaluate(READ), topCli(values).result);
     assert.deepEqual(await page.evaluate(HIDDEN_VALUES), [], "引き継いだ値が、閉じた欄の中に隠れています");
   });
 
@@ -1006,7 +1068,7 @@ browserTest("令和7年分との比較: 初期値と、打ち込んだ値の結�
   // 「全項目で計算する」へ、いまの入力を引き継ぐ
   await page.navigateBy(() => page.click("#full"));
   assert.equal(await page.evaluate("location.pathname"), "/setsuzei/");
-  assertTopMatches(await page.evaluate(READ), cli(freelance).result);
+  assertTopMatches(await page.evaluate(READ), topCli(freelance).result);
   assert.deepEqual(await page.evaluate(HIDDEN_VALUES), []);
 });
 

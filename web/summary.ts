@@ -81,6 +81,12 @@ export function summaryText(top: Done, date: string): string {
       out.push("※ ふるさと納税の分は寄附と引き換えで、手元のお金は増えません（得になるのは返礼品の分）。掛金は自分の積立として残ります。");
     }
   }
+  if (plan.budget) out.push(`※ 年内に出せるお金を ${yen(plan.budget.amount)}として配分しています。${plan.budget.reason}`);
+  if (plan.kyosai?.ifJoined && !plan.kyosai.custom) {
+    out.push(
+      `※ 小規模企業共済は、いま加入していないので合計に入れていません。新しく加入して ${yen(plan.kyosai.ifJoined.amount)}を年内に払えた場合は、それだけで税金が ${yen(plan.kyosai.ifJoined.saving.total)}減ります（11 月・12 月の申込みは、窓口で現金で払う手続きが必要）。`,
+    );
+  }
   if (!plan.ideco.included && r.measures.ideco.additional > 0) {
     out.push(
       `※ iDeCo は合計に入れていません。限度額までの残り ${yen(r.measures.ideco.additional)}を年内に払えた場合は、それだけで税金が ${yen(r.measures.ideco.saving.total)}減ります（年内に増やせるかは加入先と時期しだい）。`,

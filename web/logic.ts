@@ -111,8 +111,9 @@ export function isBlank(values: FormValues): boolean {
  * - blue: "unknown"（分からない = 控除なしで計算）も取る
  * - misc-assumed: 所得の種類（雑所得）を利用者が選んでおらず、既定のままか
  * - furusato-add: ふるさと納税で追加して寄附する額（空なら上限の目安まで）
+ * - budget: 年内に出せるお金（任意。入れたら、その範囲で減る税額が大きくなる配分にする）
  */
-export const TOP_ONLY_NAMES = ["work", "si-mode", "misc-assumed", "furusato-add"] as const;
+export const TOP_ONLY_NAMES = ["work", "si-mode", "misc-assumed", "furusato-add", "budget"] as const;
 
 /** 結果に添える「仮に置いた値」 */
 export interface Assumption {
@@ -141,7 +142,18 @@ export interface Plan {
     readonly over: number;
   };
   /** 小規模企業共済。対象外なら null。 */
-  readonly kyosai: (PlanAction & { readonly max: number; readonly paid: number; readonly custom: boolean }) | null;
+  readonly kyosai:
+    | (PlanAction & {
+        readonly max: number;
+        readonly paid: number;
+        readonly custom: boolean;
+        /**
+         * いま加入していない人が、新しく加入して払える上限まで払った場合の額と減る税額。
+         * 加入していない人には、額を自分で入れるまで合計に入れず、「さらに減らしたい場合」として示す。加入済みなら null。
+         */
+        readonly ifJoined: PlanAction | null;
+      })
+    | null;
   readonly ideco: PlanAction & {
     /** 年間の限度額までの残り枠 */
     readonly max: number;
@@ -149,6 +161,14 @@ export interface Plan {
     /** 合計に含めているか（利用者が追加額を入れたときだけ） */
     readonly included: boolean;
   };
+  /** 「年内に出せるお金」を入れたときの配分。入れていなければ null。 */
+  readonly budget: {
+    readonly amount: number;
+    /** 出せるお金を超えている額（払う額を自分で決めた結果、超えた場合） */
+    readonly over: number;
+    /** 配分の理由（画面にそのまま出す） */
+    readonly reason: string;
+  } | null;
   readonly totalPayment: number;
   readonly saving: Saving;
   readonly taxBefore: number;
@@ -214,29 +234,39 @@ export function computeTop(values: FormValues): TopOutcome {
       insurance = estimateInsurance(kind, first.input.salaryRevenue, first.baseline.totalIncome);
       v["social-insurance"] = String(insurance.amount);
     }
-    const effective = valuesToFlags(v);
-    const input = flagsToInput(effective) as TaxInput;
-    const result = calculate(input);
-
-    let furusatoCustom: number | null = null;
-    const furusatoText = values["furusato-add"];
-    if (typeof furusatoText === "string" && furusatoText.trim() !== "") {
-      furusatoCustom = parseAmount(furusatoText);
-      if (furusatoCustom === null) {
+    const amountOf = (name: string): number | null => {
+      const text = values[name];
+      if (typeof text !== "string" || text.trim() === "") return null;
+      const amount = parseAmount(text);
+      if (amount === null) {
         issues.push(
-          /^\s*[-−ー－]/.test(furusatoText)
-            ? `--furusato-add: 0 以上の金額で指定してください（受け取った値: ${JSON.stringify(furusatoText)}）`
-            : `--furusato-add: 金額として読めません（${JSON.stringify(furusatoText)}）`,
+          /^\s*[-−ー－]/.test(text)
+            ? `--${name}: 0 以上の金額で指定してください（受け取った値: ${JSON.stringify(text)}）`
+            : `--${name}: 金額として読めません（${JSON.stringify(text)}）`,
         );
       }
-    }
-    if (issues.length > 0) return { ok: false, issues };
+      return amount;
+    };
+    const furusatoCustom = amountOf("furusato-add");
+    const budgetAmount = amountOf("budget");
 
-    // --- 年内にやること ---
-    const n = result.input;
-    const m = result.measures;
-    const c = m.combined;
-    const { idecoAdditional: _i, kyosaiAdditional: _k, ...base } = input;
+    // まず、払う額を自分で決めたもの以外は計算コアに任せて計算する
+    const first = calculate(flagsToInput(valuesToFlags(v)) as TaxInput);
+    if (issues.length > 0) return { ok: false, issues };
+    const kyosaiCustom = filled(values["kyosai-add"]);
+    const idecoCustom = filled(values["ideco-add"]);
+    // 小規模企業共済にいま加入していない人には、額を自分で入れるまで合計に入れない
+    // （年内に新しく加入して払うのは、手続きも金額も重いので、「さらに減らしたい場合」として別に示す）
+    const joining = first.measures.kyosai.applicable && first.input.kyosaiPaid === 0;
+    const ifJoined: PlanAction | null =
+      joining && first.measures.kyosai.additional > 0
+        ? { amount: first.measures.kyosai.additional, saving: first.measures.kyosai.saving }
+        : null;
+    if (joining && !kyosaiCustom) v["kyosai-add"] = "0";
+
+    // 計算コアに通す部品: 掛金・寄附を「支払済み」に足した入力で、税額を計算する
+    const n = first.input;
+    const { idecoAdditional: _i, kyosaiAdditional: _k, ...base } = flagsToInput(valuesToFlags(v)) as TaxInput;
     const at = (kyosai: number, ideco: number, furusato: number): SetsuzeiResult =>
       calculate({
         ...base,
@@ -244,13 +274,72 @@ export function computeTop(values: FormValues): TopOutcome {
         idecoPaid: n.idecoPaid + ideco,
         furusatoPaid: n.furusatoPaid + furusato,
       });
+
+    // --- 年内に出せるお金を入れたとき: その範囲で、減る税額がいちばん大きくなる配分を探す ---
+    let budget: Plan["budget"] = null;
+    let furusatoPlanned = furusatoCustom;
+    if (budgetAmount !== null) {
+      const fixedIdeco = idecoCustom ? calculate(flagsToInput(valuesToFlags(v)) as TaxInput).measures.combined.idecoAdditional : 0;
+      const kyosaiFree = first.measures.kyosai.applicable && !joining && !kyosaiCustom;
+      const fixedKyosai = kyosaiFree ? 0 : kyosaiCustom ? calculate(flagsToInput(valuesToFlags(v)) as TaxInput).measures.combined.kyosaiAdditional : 0;
+      const room = Math.max(0, budgetAmount - fixedIdeco - fixedKyosai - (furusatoCustom ?? 0));
+      const kyosaiMax = kyosaiFree ? Math.min(room, first.measures.kyosai.noEffectBeyond ?? first.measures.kyosai.remaining) : 0;
+      const tryAt = (k: number): { k: number; f: number; saved: number; paid: number } => {
+        const kk = fixedKyosai + k;
+        const contributions = kk + fixedIdeco > 0 ? at(kk, fixedIdeco, 0) : first;
+        const f = furusatoCustom ?? Math.min(room - k, Math.max(0, contributions.measures.furusato.limit - n.furusatoPaid));
+        const after = f > 0 ? at(kk, fixedIdeco, f) : contributions;
+        return { k, f, saved: first.baseline.totalTax - after.baseline.totalTax, paid: k + f };
+      };
+      const better = (a: ReturnType<typeof tryAt>, b: ReturnType<typeof tryAt>): boolean =>
+        a.saved > b.saved || (a.saved === b.saved && a.paid < b.paid);
+      let best = tryAt(0);
+      if (kyosaiMax > 0) {
+        // 粗く探してから、いちばん良かった額のまわりを 1,000 円きざみで探す
+        const step = Math.max(10_000, Math.ceil(kyosaiMax / 40 / 1_000) * 1_000);
+        const candidates = new Set<number>([kyosaiMax]);
+        for (let k = step; k < kyosaiMax; k += step) candidates.add(k);
+        for (const k of candidates) {
+          const t = tryAt(k);
+          if (better(t, best)) best = t;
+        }
+        const center = best.k;
+        for (let k = Math.max(0, center - step); k <= Math.min(kyosaiMax, center + step); k += 1_000) {
+          const t = tryAt(k);
+          if (better(t, best)) best = t;
+        }
+      }
+      if (kyosaiFree) v["kyosai-add"] = String(best.k);
+      furusatoPlanned = best.f;
+      const parts = [best.f > 0 ? "ふるさと納税" : "", best.k > 0 ? "小規模企業共済" : ""].filter((t) => t !== "");
+      budget = {
+        amount: budgetAmount,
+        over: Math.max(0, fixedIdeco + fixedKyosai + (furusatoCustom ?? 0) - budgetAmount),
+        reason:
+          parts.length === 0
+            ? "この範囲で、年内に払って税金が減るものはありません。"
+            : `出せるお金の範囲で、減る税額がいちばん大きくなる組み合わせです。${
+                best.f > 0
+                  ? "ふるさと納税は払った額とほぼ同じだけ税金が減るので、先に入れています。ただし寄附と引き換えなので、手元のお金は増えません（得になるのは返礼品の分）。"
+                  : ""
+              }${best.k > 0 ? "残りを小規模企業共済の掛金に回しています。掛金は自分の積立として残るので、手元に残るお金を重く見るなら、掛金を多めにしてください。" : ""}`,
+      };
+    }
+
+    const effective = valuesToFlags(v);
+    const input = flagsToInput(effective) as TaxInput;
+    const result = calculate(input);
+
+    // --- 年内にやること ---
+    const m = result.measures;
+    const c = m.combined;
     const k = c.kyosaiAdditional;
     const i = c.idecoAdditional;
     const afterKyosai = k > 0 ? at(k, 0, 0) : result;
     const afterContributions = i > 0 ? at(k, i, 0) : afterKyosai;
     const limit = afterContributions.measures.furusato.limit;
     const recommended = Math.max(0, limit - n.furusatoPaid);
-    const f = furusatoCustom ?? recommended;
+    const f = furusatoPlanned ?? recommended;
     const afterAll = f > 0 ? at(k, i, f) : afterContributions;
     const plan: Plan = {
       furusato: {
@@ -268,7 +357,8 @@ export function computeTop(values: FormValues): TopOutcome {
             saving: savingBetween(result.baseline, afterKyosai.baseline),
             max: m.kyosai.remaining,
             paid: m.kyosai.paid,
-            custom: filled(values["kyosai-add"]),
+            custom: kyosaiCustom,
+            ifJoined,
           }
         : null,
       ideco: {
@@ -278,6 +368,7 @@ export function computeTop(values: FormValues): TopOutcome {
         paid: m.ideco.paid,
         included: c.includesIdeco,
       },
+      budget,
       totalPayment: k + i + f,
       saving: savingBetween(result.baseline, afterAll.baseline),
       taxBefore: result.baseline.totalTax,

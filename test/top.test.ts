@@ -45,6 +45,9 @@ const CASES: readonly FormValues[] = [
   { work: "freelance", revenue: "480万", expenses: "75万", blue: "65", "si-mode": "enter", "social-insurance": "59万", "furusato-paid": "1万", "furusato-add": "2万", "kyosai-add": "12万" },
   // 「給料はない」を選んでいる間は、残っている給与の値を使わない
   { work: "freelance", salary: "500万", revenue: "300万", "si-mode": "estimate", blue: "unknown" },
+  // 年内に出せるお金を入れた場合
+  { work: "freelance", revenue: "950万", expenses: "430万", blue: "65", "si-mode": "enter", "social-insurance": "120.8万", "kyosai-paid": "36万", budget: "15万" },
+  { ...QUICK, budget: "1万" },
 ];
 
 describe("トップページ: 計算に使った値を CLI に渡すと、同じ結果になる", () => {
@@ -79,7 +82,7 @@ describe("トップページ: 計算に使った値を CLI に渡すと、同じ
 
   it("払う額を自分で決めていなければ、計算コアの「まとめて実行した場合」と同じ", () => {
     for (const values of CASES) {
-      if (typeof values["furusato-add"] === "string") continue;
+      if (typeof values["furusato-add"] === "string" || typeof values["budget"] === "string") continue;
       const { plan, result } = done(values);
       const c = result.measures.combined;
       assert.equal(plan.furusato.amount, c.furusatoAdditional);
@@ -106,6 +109,65 @@ describe("トップページ: 計算に使った値を CLI に渡すと、同じ
     const outcome = computeTop({ ...QUICK, "furusato-add": "たくさん" });
     assert.equal(outcome.ok, false);
     assert.match(outcome.ok ? "" : (outcome.issues[0] ?? ""), /^--furusato-add: 金額として読めません/);
+  });
+});
+
+describe("トップページ: 小規模企業共済と、年内に出せるお金", () => {
+  const MEMBER: FormValues = { work: "freelance", revenue: "950万", expenses: "430万", blue: "65", "si-mode": "enter", "social-insurance": "120.8万", "kyosai-paid": "36万" };
+  const tax = (flags: Record<string, string | boolean | undefined>): number => runCli(flags)["baseline"].totalTax as number;
+
+  it("いま加入していない人には、額を入れるまで合計に入れず、加入した場合の額を別に示す", () => {
+    const top = done(QUICK);
+    assert.equal((top.effective as Record<string, string>)["kyosai-add"], "0");
+    assert.equal(top.plan.kyosai?.amount, 0);
+    assert.equal(top.plan.totalPayment, top.plan.furusato.amount);
+    // 加入した場合の額は、CLI の既定（残り枠まで）と同じ
+    const { "kyosai-add": _k, ...flags } = top.effective as Record<string, string>;
+    const byDefault = runCli(flags)["measures"].kyosai;
+    assert.deepEqual(top.plan.kyosai?.ifJoined, { amount: byDefault.additional, saving: byDefault.saving });
+    assert.ok((top.plan.kyosai?.ifJoined?.amount ?? 0) > 0);
+    // 額を入れると合計に入る
+    const joined = done({ ...QUICK, "kyosai-add": "12万" });
+    assert.equal(joined.plan.kyosai?.amount, 120_000);
+    assert.equal(joined.plan.totalPayment, 120_000 + joined.plan.furusato.amount);
+  });
+
+  it("加入済みで掛金を入れている人には、残り枠を合計に入れる", () => {
+    const top = done(MEMBER);
+    assert.equal((top.effective as Record<string, string>)["kyosai-add"], undefined);
+    assert.equal(top.plan.kyosai?.ifJoined, null);
+    assert.equal(top.plan.kyosai?.amount, 480_000);
+  });
+
+  it("年内に出せるお金を入れると、その範囲に収め、減る税額はふるさと納税だけ・共済だけの配分より小さくならない", () => {
+    for (const budget of [30_000, 100_000, 300_000]) {
+      const top = done({ ...MEMBER, budget: String(budget) });
+      const { plan } = top;
+      assert.ok(plan.totalPayment <= budget, `${budget}: ${plan.totalPayment}`);
+      assert.equal(plan.budget?.amount, budget);
+      assert.equal(plan.budget?.over, 0);
+      const flags = top.effective as Record<string, string>;
+      const { "kyosai-add": _k, ...base } = flags;
+      const before = tax(base);
+      // 画面の「減る税額」は、掛金・寄附を支払済みに足して CLI を実行した税額の差
+      assert.equal(plan.saving.total, before - tax({ ...base, "kyosai-paid": String(360_000 + (plan.kyosai?.amount ?? 0)), "furusato-paid": String(plan.furusato.amount) }));
+      const onlyKyosai = before - tax({ ...base, "kyosai-paid": String(360_000 + budget) });
+      const limit = runCli(base)["measures"].furusato.limit as number;
+      const onlyFurusato = before - tax({ ...base, "furusato-paid": String(Math.min(budget, limit)) });
+      assert.ok(plan.saving.total >= onlyKyosai && plan.saving.total >= onlyFurusato, `${budget}: ${plan.saving.total} / ${onlyKyosai} / ${onlyFurusato}`);
+      assert.match(plan.budget?.reason ?? "", /手元のお金は増えません/);
+    }
+  });
+
+  it("加入していない人の「出せるお金」は、ふるさと納税だけに配分する。払う額を自分で決めて超えたら、超えた額を示す", () => {
+    const top = done({ ...QUICK, budget: "2万" });
+    assert.equal(top.plan.furusato.amount, 20_000);
+    assert.equal(top.plan.kyosai?.amount, 0);
+    assert.equal(top.plan.totalPayment, 20_000);
+    const over = done({ ...QUICK, budget: "2万", "kyosai-add": "5万" });
+    assert.equal(over.plan.budget?.over, 30_000);
+    const wrong = computeTop({ ...QUICK, budget: "いっぱい" });
+    assert.match(wrong.ok ? "" : (wrong.issues[0] ?? ""), /^--budget: 金額として読めません/);
   });
 });
 
@@ -224,7 +286,12 @@ describe("トップページの HTML と見た目", () => {
     assert.ok(html.indexOf('id="results"') < plan && plan < html.indexOf('id="result"') && html.indexOf('id="result"') < disclaimer);
     const inPlan = html.slice(plan, html.indexOf('id="result"'));
     assert.match(inPlan, /<strong>概算です。<\/strong>/);
-    for (const word of ["やること", "払う額", "減る税額", "締切", "注意"]) assert.ok(inPlan.includes(`>${word}<`), word);
+    for (const word of ["やること", "払う額", "減る税額", "締切", "注意", "加入の手順"]) assert.ok(inPlan.includes(`>${word}<`), word);
+    // 各項目で、いつも見えているのは「やること・払う額・減る税額」の 3 行。締切・注意・加入の手順は、開いて読む
+    for (const steps of inPlan.matchAll(/<dl class="steps">([\s\S]*?)<\/dl>/g)) {
+      assert.deepEqual([...(steps[1] ?? "").matchAll(/<dt>(?:<label[^>]*>)?([^<]+)/g)].map((m) => m[1]), ["やること", "払う額", "減る税額"]);
+    }
+    assert.equal([...inPlan.matchAll(/<details class="help more-info">/g)].length, 3);
     assert.match(html.slice(disclaimer), /計算していないもの/);
   });
 

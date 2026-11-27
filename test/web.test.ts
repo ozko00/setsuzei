@@ -169,7 +169,7 @@ describe("ブラウザ版: 公開する静的ファイル（docs/）", () => {
 
   it("フォームの入力名はすべて CLI のフラグ名に対応する", () => {
     const names = [...html.matchAll(/<(?:input|select)[^>]*\bname="([^"]+)"/g)].map((m) => m[1] ?? "");
-    const known = new Set<string>([...INPUT_STRING_FLAGS, ...INPUT_BOOLEAN_FLAGS, "has-spouse", "income-type", "work", "si-mode", "furusato-add"]);
+    const known = new Set<string>([...INPUT_STRING_FLAGS, ...INPUT_BOOLEAN_FLAGS, "has-spouse", "income-type", "work", "si-mode", "furusato-add", "budget"]);
     assert.ok(names.length >= 15);
     for (const name of names) assert.ok(known.has(name), `知らない入力名: ${name}`);
   });

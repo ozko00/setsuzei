@@ -124,7 +124,7 @@ input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; margin:
 .question label + label { margin-top: 16px; }
 .num { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; margin-right: 8px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; vertical-align: 0.08em; }
 .segmented { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
-.seg { position: relative; display: block; margin: 0; }
+.segmented .seg { position: relative; display: block; margin: 0; }
 .seg input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .seg > span { display: block; height: 100%; padding: 10px 12px; border: 1px solid var(--strong-border); border-radius: 10px; background: var(--surface); font-size: 0.95rem; font-weight: 700; line-height: 1.4; }
 .seg small { display: block; margin-top: 2px; color: var(--muted); font-size: 0.8rem; font-weight: 400; }
@@ -202,6 +202,16 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .assumed-title { margin: 0; font-weight: 700; color: var(--caution); }
 .assumed ul { margin: 6px 0 10px; padding-left: 1.2em; }
 .assumed li + li { margin-top: 2px; }
+.budget { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.budget label { margin: 0 0 6px; }
+.budget p { margin: 6px 0 0; }
+.budget p:empty { display: none; }
+.optional-mark { margin-left: 8px; padding: 0 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 0.75rem; font-weight: 400; }
+.info { margin: 4px 0 0; font-size: 0.9rem; }
+.info > div { padding: 6px 0; }
+.info dt { color: var(--muted); font-size: 0.8rem; font-weight: 700; }
+.info dd { margin: 0; }
+.action.off .more-info { display: none; }
 .actions { list-style: none; margin: 16px 0 0; padding: 0; counter-reset: action; display: grid; gap: 12px; }
 .action { border: 1px solid var(--border); border-radius: 10px; padding: 14px; counter-increment: action; }
 .action[hidden] { display: none; }

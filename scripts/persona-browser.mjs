@@ -67,10 +67,16 @@ const VISIBLE = `(() => {
       continue;
     }
     const el = node;
-    if (!shown(el) || seen.has(el)) continue;
     const tag = el.tagName;
+    // 見た目を作り込んだ選択肢（透明な input を重ねたもの）も、押せるものとして出す
+    const overlay = tag === "INPUT" && (el.type === "radio" || el.type === "checkbox") && el.checkVisibility();
+    if ((!shown(el) && !overlay) || seen.has(el)) continue;
     const r = el.getBoundingClientRect();
     if (!onScreen(r) || clippedOut(el.parentElement, r)) continue;
+    // 画面に固定された帯などの下に隠れているものは、押せるものとして出さない
+    const cx = (Math.max(0, r.left) + Math.min(r.right, vw)) / 2, cy = (Math.max(0, r.top) + Math.min(r.bottom, vh)) / 2;
+    const top = document.elementFromPoint(cx, cy);
+    if (top && top !== el && !el.contains(top) && !top.contains(el) && !(top.closest("label")?.contains(el))) continue;
     let mark = null;
     if (tag === "INPUT" && (el.type === "checkbox" || el.type === "radio")) mark = (el.type === "radio" ? (el.checked ? "(●)" : "(○)") : (el.checked ? "[✓]" : "[ ]")) + " @" + center(r);
     else if (tag === "INPUT" && el.type === "range") mark = "[スライダー " + el.min + "〜" + el.max + " いま " + el.value + "] @" + center(r);

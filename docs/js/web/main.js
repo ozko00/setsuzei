@@ -277,12 +277,12 @@ function start() {
         saved["income-type-touched"] = incomeTypeTouched;
         return saved;
     };
-    const setPlanField = (name, amount, max) => {
+    const setPlanField = (name, amount, max, blank = false) => {
         const input = planInput(name);
         const range = planRange(name);
         // 自分で打っている途中の欄は書き換えない
         if (!custom[name] && document.activeElement !== input)
-            input.value = name === "ideco" && amount === 0 ? "" : digits(amount);
+            input.value = blank || (name === "ideco" && amount === 0) ? "" : digits(amount);
         range.max = String(Math.ceil(Math.max(max, amount) / 1_000) * 1_000);
         range.value = String(amount);
         range.disabled = max === 0 && amount === 0;
@@ -294,8 +294,13 @@ function start() {
         const plan = top.plan;
         const split = (s) => `${yen(s.total)}（所得税 ${yen(s.incomeTax)}・住民税 ${yen(s.residentTax)}）`;
         text("plan-lead", plan.totalPayment > 0
-            ? `年内に合わせて ${yen(plan.totalPayment)}払うと、税金が ${yen(plan.saving.total)}減る見込みです。`
+            ? `年内に${[plan.furusato.amount, plan.kyosai?.amount ?? 0, plan.ideco.amount].filter((n) => n > 0).length > 1 ? "合わせて " : " "}${yen(plan.totalPayment)}払うと、税金が ${yen(plan.saving.total)}減る見込みです。`
             : "いまの見込みでは、年内に追加で払って税金が減るものはありません。");
+        // 年内に出せるお金
+        const budgetNotes = plan.budget ? [plan.budget.reason] : [];
+        if (plan.budget && plan.budget.over > 0)
+            budgetNotes.push(`自分で決めた払う額が、出せるお金を ${yen(plan.budget.over)}超えています。`);
+        text("budget-reason", budgetNotes.join(""));
         // 仮に置いた値
         $("assumed").hidden = top.assumptions.length === 0;
         $("assumed-list").replaceChildren(...top.assumptions.map((a) => h("li", {}, a.text)));
@@ -324,23 +329,34 @@ function start() {
         const k = plan.kyosai;
         $("act-kyosai").hidden = k === null;
         if (k) {
-            text("kyosai-do", k.amount === 0
-                ? k.custom
-                    ? "追加で払わない（0 円にしています）"
-                    : "これ以上払っても、税額は減りません"
-                : k.paid > 0
-                    ? `掛金を、年内にあと ${yen(k.amount)}多く払う（掛金の増額か、先の月の分をまとめて払う前納）`
-                    : `加入して、年内に ${yen(k.amount)}の掛金を払う`);
-            const limitOfEffect = m.kyosai.noEffectBeyond;
+            // いま加入していない人には、額を入れるまで合計に入れず、「さらに減らしたい場合」として出す
+            const optional = k.ifJoined !== null && !k.custom;
+            $("act-kyosai").classList.toggle("optional", optional);
+            text("kyosai-kind", k.ifJoined !== null
+                ? "さらに減らしたい場合。個人事業主が、自分の退職金を積み立てる制度（中小機構が運営）"
+                : "個人事業主が、自分の退職金を積み立てる制度（中小機構が運営）");
+            text("kyosai-do", optional
+                ? "いま入っていない方は、新しく加入して年内に掛金を払うと、さらに税金が減ります。払える額を「払う額」に入れると、合計に入ります"
+                : k.amount === 0
+                    ? k.custom || plan.budget
+                        ? "追加で払わない（0 円にしています）"
+                        : "これ以上払っても、税額は減りません"
+                    : k.paid > 0
+                        ? `掛金を、年内にあと ${yen(k.amount)}多く払う（掛金の増額か、先の月の分をまとめて払う前納）`
+                        : `新しく加入して、年内に ${yen(k.amount)}の掛金を払う`);
+            const limitOfEffect = k.ifJoined ? k.ifJoined.amount : m.kyosai.noEffectBeyond;
             const hint = [`年間の上限（月 70,000 円 × 12 か月）までの残りは ${yen(k.max)}です。`];
-            if (limitOfEffect !== null)
+            if (k.ifJoined && optional) {
+                hint.push(`${yen(k.ifJoined.amount)}を払った場合は、それだけで税金が ${yen(k.ifJoined.saving.total)}減ります（合計には入れていません）。払った掛金は、自分の積立として残ります。`);
+            }
+            else if (limitOfEffect !== null && limitOfEffect < k.max)
                 hint.push(`${yen(limitOfEffect)}を超えて払っても、税額はそれ以上減りません。`);
             const typed = parseAmount(planInput("kyosai").value);
             if (k.custom && typed !== null && typed > k.amount)
                 hint.push(`入れた額のうち、税額が減る ${yen(k.amount)}までで計算しています。`);
             text("kyosai-hint", hint.join(""));
-            text("kyosai-saving", split(k.saving));
-            setPlanField("kyosai", k.amount, limitOfEffect ?? k.max);
+            text("kyosai-saving", optional ? "合計に入れていません" : split(k.saving));
+            setPlanField("kyosai", k.amount, limitOfEffect ?? k.max, optional);
             $("kyosai-notes").replaceChildren(...m.kyosai.notes.map((n) => h("li", {}, browserNote(n))));
         }
         // iDeCo
@@ -395,7 +411,9 @@ function start() {
             return;
         }
         const e = top.insurance;
-        box.replaceChildren(h("p", { class: "guide-amount" }, "目安: ", h("strong", {}, yen(e.amount)), `（幅 ${yen(e.low)}〜${yen(e.high)}）`), h("ul", { class: "guide-parts" }, ...e.parts.map((p) => h("li", {}, `${p.label}: ${yen(p.amount)}`))), h("details", { class: "help" }, h("summary", {}, "目安の出し方と、正確な額の調べ方"), h("ul", {}, ...e.basis.map((line) => h("li", {}, line)))));
+        box.replaceChildren(h("p", { class: "guide-amount" }, "目安: ", h("strong", {}, yen(e.amount)), `（幅 ${yen(e.low)}〜${yen(e.high)}）`), h("ul", { class: "guide-parts" }, ...e.parts.map((p) => h("li", {}, `${p.label}: ${yen(p.amount)}`))), h("p", { class: "sub" }, e.kind === "freelance"
+            ? "国民年金の免除や猶予を受けている方、家族の分も払っている方は、この目安と大きく違います。「金額を入れる」を選んでください。"
+            : "健康保険組合や共済組合に入っている方、賞与が多い方は、この目安と違うことがあります。"), h("details", { class: "help" }, h("summary", {}, "目安の出し方と、正確な額の調べ方"), h("ul", {}, ...e.basis.map((line) => h("li", {}, line)))));
     };
     const update = () => {
         const values = readForm();
@@ -442,12 +460,22 @@ function start() {
         current = top;
         planBox.hidden = false;
         planBox.classList.remove("stale");
+        // 計算に使った値（CLI のフラグ名 → 値）。同じ値を CLI に渡すと、同じ結果になる
+        planBox.dataset["effective"] = JSON.stringify(top.effective);
         planBox.removeAttribute("aria-busy");
         renderPlan(top);
         renderGuide(top);
         const r = top.result;
         notice.replaceChildren(...(r.warnings.length > 0 ? [h("section", { class: "card caution" }, h("h3", {}, "注意"), notes(r.warnings))] : []));
-        output.replaceChildren(h("details", { class: "breakdown", id: "breakdown" }, h("summary", {}, "内訳を見る", h("span", { class: "summary-sub" }, "いまの税額、それぞれの上限と残り枠、青色申告の区分ごとの税額、計算に使った値")), ...renderBreakdown(top)));
+        output.replaceChildren(h("details", { class: "breakdown", id: "breakdown", ...(output.querySelector("#breakdown")?.open ? { open: "" } : {}) }, h("summary", {}, "内訳を見る", h("span", { class: "summary-sub" }, "いまの税額、それぞれの上限と残り枠、青色申告の区分ごとの税額、計算に使った値")), ...renderBreakdown(top)));
+        const breakdown = output.querySelector("#breakdown");
+        // 自分で開いたときだけ、開いた先頭が見える位置へ送る（再計算で描き直したときは動かさない）
+        breakdown?.querySelector("summary")?.addEventListener("click", () => {
+            setTimeout(() => {
+                if (breakdown.open)
+                    breakdown.scrollIntoView({ block: "start" });
+            }, 0);
+        });
         const p = top.plan;
         setJump(p.totalPayment > 0
             ? `${yen(p.totalPayment)}払うと 税金 −${yen(p.saving.total)}　結果を見る`
@@ -509,7 +537,7 @@ function start() {
             return current.plan.furusato.recommended;
         if (name === "ideco")
             return current.plan.ideco.max;
-        return current.result.measures.kyosai.noEffectBeyond ?? current.plan.kyosai?.max ?? 0;
+        return current.plan.kyosai?.ifJoined?.amount ?? current.result.measures.kyosai.noEffectBeyond ?? current.plan.kyosai?.max ?? 0;
     };
     const onInput = (event) => {
         const target = event.target;
@@ -545,6 +573,8 @@ function start() {
             }
         });
     }
+    for (const type of ["input", "change"])
+        $("budget").addEventListener(type, onInput);
     form.addEventListener("submit", (event) => event.preventDefault());
     form.addEventListener("reset", () => {
         const keep = saveBox.checked;
@@ -563,9 +593,16 @@ function start() {
         }
         update();
     });
+    // 「もっと正確にする」を自分で開いたら、開いた先頭が見える位置へ送る（開いたことが分かるように）
+    more.querySelector(":scope > summary")?.addEventListener("click", () => {
+        setTimeout(() => {
+            if (more.open)
+                more.scrollIntoView({ block: "start" });
+        }, 0);
+    });
     $("open-more").addEventListener("click", () => {
         more.open = true;
-        more.scrollIntoView({ behavior: "smooth", block: "start" });
+        more.scrollIntoView({ block: "start" });
         more.querySelector("summary")?.focus({ preventScroll: true });
     });
     document.querySelector("#example")?.addEventListener("click", () => {
