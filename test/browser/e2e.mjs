@@ -523,6 +523,18 @@ browserTest("トップ: 16 歳未満の扶養親族を入れると、住民税�
   assert.equal(view.plan.furusato.off, true);
   assert.ok(card(view, "注意").notes.length > 0, "非課税についての注意が出ていません");
 
+  // 寄附額を自分で入れてあるときは、上限の目安が 0 円になっても、その欄を直せる
+  await page.type('input[name="dependents-under16"]', "");
+  await fillTop(page, { "furusato-add": "1万" });
+  await page.type('input[name="dependents-under16"]', "3");
+  const kept = await page.evaluate(READ);
+  assert.equal(kept.plan.furusato.off, false);
+  assert.equal(await page.evaluate('document.querySelector("#furusato-add").checkVisibility()'), true);
+  assert.match(kept.plan.furusato.saving, /上限の目安を 10,000 円超えています/);
+  assert.match(await page.evaluate('document.querySelector("#furusato-off").textContent'), /^今回は対象になりません。/);
+  await fillTop(page, { "furusato-add": "" });
+  assert.equal((await page.evaluate(READ)).plan.furusato.off, true);
+
   // 人数を消すと元に戻る
   await page.type('input[name="dependents-under16"]', "");
   assertTopMatches(await page.evaluate(READ), before16.result);

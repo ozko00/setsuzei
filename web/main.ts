@@ -355,9 +355,10 @@ function start(): void {
 
     // ふるさと納税
     const f = plan.furusato;
-    const furusatoOff = f.limit === 0;
+    // 上限の目安が 0 円でも、自分で入れた寄附額が残っている間は、その欄を出しておく（直せるように）
+    const furusatoOff = f.limit === 0 && f.amount === 0 && !custom.furusato;
     $("act-furusato").classList.toggle("off", furusatoOff);
-    text("furusato-off", furusatoOff ? `今回は対象になりません。${browserNote(m.furusato.notes[0] ?? "")}` : "");
+    text("furusato-off", f.limit === 0 ? `今回は対象になりません。${browserNote(m.furusato.notes[0] ?? "")}` : "");
     if (!furusatoOff) {
       text(
         "furusato-do",
