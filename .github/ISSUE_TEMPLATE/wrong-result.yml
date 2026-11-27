@@ -56,4 +56,4 @@ body:
     attributes:
       label: バージョン
       description: "`setsuzei --version` の結果、またはブラウザ版の一番下に出ている表示"
-      placeholder: setsuzei 0.3.2
+      placeholder: setsuzei 0.4.0

@@ -60,18 +60,28 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 2. **取得の手順**: SKILL.md の「CLI を用意する」にあるコマンドを、まっさらな環境でそのまま実行して確かめます。npm に公開済みの版なら、次のように Docker で試せます。
 
    ```sh
-   docker run --rm node:22 npx --yes setsuzei@0.3.1 --version
+   docker run --rm node:22 npx --yes setsuzei@0.3.2 --version
    ```
 
    補足の手順（GitHub のタグから取得してビルド）は、`scripts/verify-install.sh` でくり返し実行できます（Node 20 / 22 / 24 / 26 で 10 回ずつ。出力はすべてログに残ります）。取得はネットワークに依存するので、失敗したらログのエラーの文面（`Could not resolve host` など）を先に確かめてください。
+
+## MCP サーバーを変えたとき
+
+`setsuzei mcp`（[`src/mcp/`](src/mcp)）は、依存パッケージを使わずに MCP の JSON-RPC を処理しています。ツールは計算コアを呼ぶだけで、ここで税の計算はしません。
+
+- 仕様は記憶で書かず、公式の仕様（<https://modelcontextprotocol.io/specification>）で確かめてください。現行の版（リクエストごとに版を名乗る方式）と、それ以前の版（接続時に版を決める方式）の両方に対応しています。
+- 出力の形を変えたら、[`src/mcp/schema.ts`](src/mcp/schema.ts) のスキーマも合わせます。実際の出力がスキーマに合うことは `npm test` が確かめます。
+- 標準出力には MCP のメッセージ以外を書きません。外部とは通信しません。
+- 実際のクライアントでも確かめてください。公式の MCP Inspector なら、`npx -y @modelcontextprotocol/inspector --cli node dist/cli.js mcp --method tools/list` で一覧を、`--method tools/call --tool-name furusato_nozei_limit --tool-arg salaryRevenue=5000000` で呼び出しを試せます。
+- 公式の MCP Registry への登録は、[`server.json`](server.json) と `package.json` の `mcpName` を使います。版を上げるときは `server.json` の 2 か所の版もそろえます（テストが確かめます）。登録は、その版が npm に出て動作を確かめたあとに、[`.github/workflows/mcp-registry.yml`](.github/workflows/mcp-registry.yml) をタグを選んで手で実行します（認証は GitHub Actions の OIDC。トークンは使いません）。
 
 ### リリースの手順
 
 npm の固定版（`npx setsuzei@…` で案内する版）が、いつも npm に実在する版を指すように、次の順で進めます。
 
-1. **リリースの PR**: `package.json`・`package-lock.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.3.2` のような表記）を新しい版にそろえます（そろっていないとテストが落ちます）。
+1. **リリースの PR**: `package.json`・`package-lock.json`・`src/version.ts`・`server.json` と、README・SKILL.md のタグ（`v0.4.0` のような表記）を新しい版にそろえます（そろっていないとテストが落ちます）。
    `npx setsuzei@…` で案内する版（`package.json` の `config.npmPinned` と、README・SKILL.md・この文書の表記）は、**その時点で npm に公開済みの最新の版**にします。これから出す版は、まだ npm にないので書きません。つまり固定版は、いつも 1 つ前の公開済みの版です。
-2. **マージ → タグ**: CI が通ったらマージし、その版のタグ（`v0.3.2` の形）を push して GitHub Release を作ります。タグは付け直せないので、`package.json` の版と同じであることを push の前に確かめます。
+2. **マージ → タグ**: CI が通ったらマージし、その版のタグ（`v0.4.0` の形）を push して GitHub Release を作ります。タグは付け直せないので、`package.json` の版と同じであることを push の前に確かめます。
 3. **npm への公開**: タグの push で [`.github/workflows/publish.yml`](.github/workflows/publish.yml) が npm に公開し、公開された版を `npm view` で確かめます。トークンは使わず、npm の Trusted Publishing（GitHub Actions の OIDC）で認証します（npmjs.com 側の登録: リポジトリ `ozko00/setsuzei`、workflow のファイル名 `publish.yml`、environment は空欄。リポジトリの変数 `NPM_TRUSTED_PUBLISHING` が `true` の間、公開の失敗はそのまま失敗になります）。
 4. **固定版を上げる**: 次のリリースの PR で、固定版を、公開を確かめた版に上げます（急ぐ理由があれば、公開の確認後に固定版だけを上げる PR を出しても構いません）。
 

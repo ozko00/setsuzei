@@ -37,7 +37,8 @@ describe("workflow（.github/workflows）", () => {
       const permissions = /^permissions:\n((?: {2}.+\n)+)/m.exec(text)?.[1];
       assert.ok(permissions, `${file}: 最上位の permissions がない`);
       const entries = Object.fromEntries(permissions.trim().split("\n").map((line) => line.replace(/#.*$/, "").trim().split(/:\s*/)));
-      const expected = file.endsWith("publish.yml") ? { "id-token": "write", contents: "read" } : { contents: "read" };
+      // 公開（npm・MCP Registry）の workflow だけ、OIDC のための id-token: write を持つ
+      const expected = /(publish|mcp-registry)\.yml$/.test(file) ? { "id-token": "write", contents: "read" } : { contents: "read" };
       assert.deepEqual(entries, expected, file);
       // ジョブごとに権限を広げない。トークンや秘密の値を使わない
       assert.equal([...text.matchAll(/^\s*permissions:/gm)].length, 1, file);

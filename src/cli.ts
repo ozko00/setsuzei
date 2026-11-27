@@ -8,6 +8,7 @@ import { flagsToInput, INPUT_BOOLEAN_FLAGS, INPUT_STRING_FLAGS, issueWithFlagNam
 import { formatResult } from "./cli/format.js";
 import { askInteractively } from "./cli/interactive.js";
 import { DEFAULT_YEAR, getSources, supportedYears } from "./data/index.js";
+import { runStdioServer } from "./mcp/server.js";
 import { VERSION } from "./version.js";
 
 const HELP = `setsuzei ${VERSION}
@@ -17,6 +18,7 @@ const HELP = `setsuzei ${VERSION}
   setsuzei                       対話形式で入力
   setsuzei [オプション]          フラグで入力
   setsuzei --input FILE          JSON ファイルで入力（- で標準入力）。フラグを併用するとフラグが優先
+  setsuzei mcp                   MCP サーバーとして起動（stdio）。AI エージェントから、計算をツールとして呼べる
 
 金額は円。600万 / 6,000,000 / 6000000 のどの書き方でも指定できます。
 
@@ -140,6 +142,15 @@ function readJsonInput(path: string): Record<string, unknown> {
 }
 
 async function main(argv: readonly string[]): Promise<number> {
+  if (argv[0] === "mcp") {
+    if (argv.length > 1) {
+      process.stderr.write("setsuzei mcp: オプションはありません（標準入出力で MCP のメッセージをやり取りします）\n");
+      return 2;
+    }
+    // 標準出力には MCP のメッセージだけを書く。標準入力が閉じたら終わる
+    await runStdioServer(process.stdin, process.stdout);
+    return 0;
+  }
   const wantsJson = argv.includes("--json");
   try {
     const flags = parseFlags(argv);
