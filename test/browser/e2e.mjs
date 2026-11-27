@@ -763,6 +763,13 @@ browserTest("トップ: 入力の保存は、自分で選んだときだけ。�
   await fillTop(page, { "kyosai-add": "12万" }, false);
   const before = await page.evaluate(READ);
   assert.notEqual(await page.evaluate(stored), "{}");
+  // 保存先は決まったキー 1 つだけ。中身は入力欄の値で、計算結果（税額）は入っていない
+  assert.deepEqual(await page.evaluate("Object.keys(localStorage)"), ["setsuzei:input:v1"]);
+  const savedText = await page.evaluate('localStorage.getItem("setsuzei:input:v1")');
+  assert.deepEqual(Object.keys(JSON.parse(savedText)).filter((k) => !/^[a-z0-9-]+$/.test(k)), []);
+  assert.equal(JSON.parse(savedText).revenue, "380万");
+  assert.doesNotMatch(savedText, /totalTax|saving|baseline/);
+  assert.equal(await page.evaluate("document.cookie"), "");
   await page.goto(server.base);
   const restored = await page.evaluate(READ);
   assert.deepEqual(restored.figures, before.figures);
