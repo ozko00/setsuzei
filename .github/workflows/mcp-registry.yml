@@ -1,0 +1,43 @@
+# 公式の MCP Registry（https://registry.modelcontextprotocol.io）に、server.json を登録する。
+#
+# 手で実行する（Actions → Publish to MCP Registry → Run workflow で、登録したい版のタグを選ぶ）。
+# 先に、その版が npm に公開されていること（publish.yml）と、動くことを確かめてから実行する。
+#
+# 認証は GitHub Actions の OIDC（`mcp-publisher login github-oidc`）。トークンや秘密の値は使わない。
+# 名前空間 io.github.ozko00/* は、このリポジトリの所有者であることで確かめられる。
+# npm のパッケージとの対応は、package.json の mcpName で確かめられる。
+# https://modelcontextprotocol.io/registry/github-actions
+name: Publish to MCP Registry
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # OIDC に必要
+  contents: read
+
+jobs:
+  publish:
+    # タグからの実行だけ
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: server.json・package.json・タグの版が同じで、その版が npm にあることを確かめる
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "::error::タグ $GITHUB_REF_NAME と package.json の版 $version が違います"; exit 1; }
+          node -e '
+            const s = require("./server.json"), p = require("./package.json");
+            const ok = s.version === p.version && s.packages[0].version === p.version && s.packages[0].identifier === p.name && s.name === p.mcpName;
+            if (!ok) { console.error("::error::server.json と package.json の名前・版がそろっていません"); process.exit(1); }'
+          test "$(npm view "setsuzei@$version" version)" = "$version" || { echo "::error::setsuzei@$version が npm にありません"; exit 1; }
+      - name: mcp-publisher を取得する（版を固定）
+        env:
+          PUBLISHER_VERSION: v1.8.17
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/download/${PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher --help | head -1
+      - run: ./mcp-publisher validate
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher publish

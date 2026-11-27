@@ -1,0 +1,29 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ozko00/setsuzei",
+  "title": "setsuzei: Japanese tax estimate engine",
+  "description": "Cited, tested Japanese income/resident tax estimates (furusato nozei, iDeCo). Local, no network.",
+  "repository": {
+    "url": "https://github.com/ozko00/setsuzei",
+    "source": "github"
+  },
+  "websiteUrl": "https://ozko00.github.io/setsuzei/",
+  "version": "0.4.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "setsuzei",
+      "version": "0.4.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ]
+}

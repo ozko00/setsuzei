@@ -1,16 +1,93 @@
 # setsuzei
 
 [![CI](https://github.com/ozko00/setsuzei/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ozko00/setsuzei/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/setsuzei)](https://www.npmjs.com/package/setsuzei)
 
-**ブラウザ版: <https://ozko00.github.io/setsuzei/>**（インストール不要。入力はブラウザの中だけで処理します）
+日本語 | [English](README.en.md)
 
-> **Japan income tax & resident tax savings calculator for freelancers and side-job workers** (tax year 2026 / Reiwa 8). Runs in the browser, as a CLI, as a TypeScript library, and as an Agent Skill.
-> Estimates the furusato nozei (hometown tax donation) deduction limit and how much tax iDeCo, Small Enterprise Mutual Aid (shokibo kigyo kyosai), and the blue-return special deduction (aoiro shinkoku) can still save before year-end.
-> Every rate and threshold is taken from primary sources (National Tax Agency, MIC, e-Gov) and cited in the data file. Inputs never leave your machine. Estimates only; not tax advice.
+**LLM に日本の税額を暗算させないための、出典つき・テスト済みの計算エンジンです。** MCP サーバー / CLI / Agent Skill / ブラウザ版で使えます。
 
-**年末までに、あと何をすればいくら税金が減るか**を概算する道具です。フリーランス・副業のエンジニア向け。令和8年分（2026年分）に対応しています。
+フリーランス・副業の人の、令和8年分（2026年分）の所得税と住民税を概算し、**ふるさと納税・iDeCo・小規模企業共済・青色申告特別控除**で年内にあといくら税金が減るかを出します。
 
-年間の見込みの収入・経費・家族構成を入れると、いまの所得税・住民税の見込みと、**ふるさと納税・iDeCo・小規模企業共済・青色申告特別控除**でそれぞれいくら減るか、そのためにいくら支払うか、まとめて実行するといくら減るかが出ます。
+> **A cited, tested calculation engine so that LLMs don't have to do Japanese tax arithmetic in their heads** (income tax and resident tax, tax year 2026 / Reiwa 8). MCP server, CLI, Agent Skill and browser version. Local only, zero runtime dependencies. Estimates only; not tax advice. → [README in English](README.en.md)
+
+- **数値はすべて一次情報から**: 税率・控除額・上限は、国税庁・総務省・e-Gov の条文などで確かめた数値だけを使い、数値ごとに出典の URL を付けています（[`src/data/2026.ts`](src/data/2026.ts)）。
+- **200 件を超えるテスト**: 国税庁や総務省が公表している計算例との突き合わせ、境界値、条文の式から手計算した期待値（[テストでの突き合わせ](#テストでの突き合わせ)）。
+- **モデルは計算しない**: エージェントは利用者の数字をツールに渡し、返ってきた数字をそのまま伝えます。出力は構造化されていて、概算である旨・前提・出典が必ず付きます。
+- **手元だけで動く**: 外部と通信しません。実行時の依存パッケージはなく、`npx setsuzei` で入るのは 1 パッケージだけです。
+
+> [!IMPORTANT]
+> 結果は概算です。税理士や税務署・市区町村の判断に代わるものではありません。重要な判断の前に、必ず専門家か所轄の窓口に確認してください。
+
+## エージェントに入れる
+
+Node.js 20 以上が必要です。
+
+### MCP サーバー
+
+`setsuzei mcp` は、標準入出力（stdio）で動く MCP サーバーです。クライアントの MCP の設定に、次を足します。
+
+```json
+{
+  "mcpServers": {
+    "setsuzei": {
+      "command": "npx",
+      "args": ["-y", "setsuzei", "mcp"]
+    }
+  }
+}
+```
+
+Claude Code なら、次の 1 行で入ります。
+
+```sh
+claude mcp add setsuzei -- npx -y setsuzei mcp
+```
+
+`mcp` は 0.4.0 から使えます。
+
+| ツール | 返すもの |
+| --- | --- |
+| `estimate_tax_savings` | いまの所得税・住民税と、策ごとの上限・残り枠・減る税額、まとめて実行した場合（計算し直した額） |
+| `furusato_nozei_limit` | ふるさと納税の上限の目安・残り・減る税額だけ |
+| `compare_furusato_limit_with_2025` | 同じ入力での、令和7年分と令和8年分の上限と、変わった理由 |
+| `validate_tax_input` | 入力の誤りの一覧（計算はしない） |
+| `list_tax_sources` | 数値の根拠にした一次情報の一覧 |
+
+- 入力は年額・円・整数です。知らない項目や整数でない金額は、モデルが直してやり直せる文面で拒みます。
+- どの結果にも `meta`（`estimate: true`、免責、前提、計算していないもの、出典）が付きます。結果の中の注記と注意は日本語です。
+- 対応している MCP の版: 現行の 2026-07-28（リクエストごとに版を名乗る方式。`server/discover` に対応）と、それ以前の、接続時に版を決める方式（2025-11-25 / 2025-06-18 / 2025-03-26 / 2024-11-05）。提供するのはツールだけです。
+- 動作を確かめたクライアント: Claude Code、公式の MCP Inspector（CLI）、公式 TypeScript SDK のクライアント。**Claude Desktop では未確認**です（上の設定は標準の書き方です）。
+- 公式 SDK は使わず、JSON-RPC を自前で処理しています（依存を増やさないため）。壊れた JSON・巨大な入力・知らないメソッド・型の違う引数で落ちないことをテストしています。
+
+### Agent Skill
+
+[`skills/setsuzei/SKILL.md`](skills/setsuzei/SKILL.md) は、エージェントに「必要な項目を聞く → CLI を実行する → 結果を説明する（自分では計算しない）」をさせる手順書です。入れ方は[下の節](#agent-skill-として使う)にあります。
+
+### CLI
+
+```sh
+npx setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万 --json
+```
+
+`--json` の出力は、MCP のツールが `result` に入れて返すものと同じ形です。フラグの一覧は[使い方](#使い方)にあります。
+
+## モデルだけで答えさせた場合との違い（測った結果）
+
+2026-11-27 に、同じ 3 つの問いを、モデルだけ（Claude Sonnet 5.5、ツールなし、各 3 回）と、setsuzei の MCP ツールあり（各 1 回）で答えさせました。
+
+| 問い（令和8年分） | 正しい値 | モデルだけ（3 回） | ツールあり |
+| --- | --- | --- | --- |
+| 給与 500 万円・社会保険料 75 万円・独身の、ふるさと納税の上限 | 57,000 円 | 57,000 / **61,000** / **61,000** | 57,000 |
+| フリーランス（売上 800 万円・経費 150 万円・青色 65 万円・社会保険料 90 万円）の、所得税 + 住民税 | 891,900 円 | 891,900 / 891,900 / 891,900 | 891,900 |
+| フリーランス（売上 480 万円・経費 75 万円・青色 65 万円・社会保険料 59 万円）の、ふるさと納税の上限 | 57,000 円 | **61,000** / **61,000** / **61,000** | 57,000 |
+
+- モデルだけでも、税額の合計は 3 回とも合っていました。外れたのはふるさと納税の上限で、6 回のうち 5 回が 61,000 円でした。これは令和7年分までの値で、令和8年分は基礎控除の引上げでこの所得帯の上限が 57,000 円に下がります。
+- 問いは 3 つ、モデルは 1 種類だけの小さな測定です。ほかのモデルや問いでどうなるかは測っていません。問いの全文・方法・限界は [evaluation/model-vs-tool.md](evaluation/model-vs-tool.md) にあります。
+
+## ブラウザ版（エージェントを使わない人向け）
+
+**<https://ozko00.github.io/setsuzei/>**（インストール不要。入力はブラウザの中だけで処理します）
 
 <p>
   <img src="docs/img/desktop.png" alt="ブラウザ版の画面（PC 幅）。左に「働き方・ことしの売上・経費」の 3 つの質問、右に「年内に 75,000 円払うと、税金が 73,000 円減る見込みです」と、仮に置いた値、やること（ふるさと納税）の払う額と減る税額が並ぶ" width="68%">
@@ -27,7 +104,7 @@
 
 ```console
 $ setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万 --ideco-paid 27.6万 --furusato-paid 3万
-setsuzei 0.3.2 ｜ 令和8年分（2026年分）の概算
+setsuzei 0.4.0 ｜ 令和8年分（2026年分）の概算
 
 ■ 現状の見込み
   事業所得（青色申告特別控除 650,000 円を控除後）  5,850,000 円
@@ -67,13 +144,6 @@ setsuzei 0.3.2 ｜ 令和8年分（2026年分）の概算
   （それぞれの注記と、策ごとの内訳・注意点・免責は省略しています）
 ```
 
-> [!IMPORTANT]
-> 結果は概算です。税理士や税務署・市区町村の判断に代わるものではありません。重要な判断の前に、必ず専門家か所轄の窓口に確認してください。
-
-- 税率・控除額・上限は、国税庁・総務省・e-Gov などの**一次情報で確かめた数値だけ**を使い、数値ごとに出典の URL を付けています（[`src/data/2026.ts`](src/data/2026.ts)）。
-- 入力は手元だけで処理します。ブラウザ版は外部と通信せず、CLI もネットワークを使いません。
-- CLI・ブラウザ版・TypeScript ライブラリ・Agent Skill の 4 通りで使えます。
-
 ## 30 秒で試す
 
 ### ブラウザ版
@@ -101,7 +171,7 @@ npx setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90�
 
 はじめて実行するときに、npm から [setsuzei](https://www.npmjs.com/package/setsuzei) を取得します（1 MB 未満。ほかのパッケージは入りません）。計算は手元だけで行い、入力した金額はどこにも送信しません。
 
-- いつ実行しても同じ版を使いたいときは、`npx setsuzei@0.3.1` のように版を付けます。
+- いつ実行しても同じ版を使いたいときは、`npx setsuzei@0.3.2` のように版を付けます。
 - よく使うなら `npm install -g setsuzei` で入れておくと、`setsuzei` だけで実行できます。
 
 以下の例は `setsuzei` と書いています。入れていない場合は `npx setsuzei` に読み替えてください。
@@ -112,14 +182,14 @@ npx setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90�
 git が必要です。
 
 ```sh
-git clone --depth 1 --branch v0.3.2 https://github.com/ozko00/setsuzei.git
+git clone --depth 1 --branch v0.4.0 https://github.com/ozko00/setsuzei.git
 cd setsuzei
 npm ci
 npm run build
 node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
-`v0.3.2` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
+`v0.4.0` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
 
 `git clone` が `Could not resolve host: github.com` などで止まったときは、ネットワークの一時的な失敗のことがあります。`npm ci` に進む前に、同じ `git clone` をもう一度実行してください（clone に失敗したまま `npm ci` を実行すると、「`package-lock.json` がない」という別のエラーになります）。`npm ci` が `ENOTFOUND` や `ETIMEDOUT` で止まったときも、同じコマンドをもう一度実行すれば続きから入ります。
 
@@ -215,7 +285,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 
 そのうえで「今年あといくら節税できる？」のように聞くと、エージェントが必要な項目を質問し、CLI の結果をもとに答えます。
 
-- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、版を固定した `npx setsuzei@0.3.1` で実行します（npm から取得。ほかのパッケージは入りません）。
+- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、版を固定した `npx setsuzei@0.3.2` で実行します（npm から取得。ほかのパッケージは入りません）。
 - エージェントの権限設定でコマンドが止まった場合は、Skill に書いてあるコマンドを自分で実行するか、エージェントに実行を許可してください。
 - Skill が聞き取りから結果の説明まで通ることは、[`scripts/skill-e2e.sh`](scripts/skill-e2e.sh) で確かめられます（Claude Code が必要）。
 
