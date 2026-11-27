@@ -358,3 +358,41 @@ describe("MCP の登録用のファイルと、README の案内", () => {
     assert.match(help, /setsuzei mcp\s+MCP サーバーとして起動/);
   });
 });
+
+describe("Claude Code のプラグインとマーケットプレイス（.claude-plugin/）", () => {
+  const read = (file: string): string => readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
+  const pkg = JSON.parse(read("package.json")) as Json;
+  const plugin = JSON.parse(read(".claude-plugin/plugin.json")) as Json;
+  const market = JSON.parse(read(".claude-plugin/marketplace.json")) as Json;
+
+  it("プラグイン: 版はいまの版。MCP サーバーは、npm に公開済みの版を固定して起動する", () => {
+    assert.equal(plugin["name"], "setsuzei");
+    assert.equal(plugin["version"], VERSION);
+    assert.deepEqual(plugin["mcpServers"], { setsuzei: { command: "npx", args: ["-y", `setsuzei@${pkg["config"].npmPinned}`, "mcp"] } });
+    assert.equal(plugin["license"], "MIT");
+    // Skill は、プラグインの既定の場所（skills/<名前>/SKILL.md）にある
+    assert.match(read("skills/setsuzei/SKILL.md"), /^---\nname: setsuzei\n/);
+  });
+
+  it("マーケットプレイス: このリポジトリの直下がプラグイン（/plugin install setsuzei@setsuzei）", () => {
+    assert.equal(market["name"], "setsuzei");
+    assert.equal(market["plugins"].length, 1);
+    assert.equal(market["plugins"][0].name, "setsuzei");
+    assert.equal(market["plugins"][0].source, "./");
+    assert.ok(market["owner"].name);
+  });
+
+  it("README（日本語・英語）: エージェントに入れる手順の先頭は、プラグインの 2 行", () => {
+    for (const [file, heading] of [["README.md", "## エージェントに入れる"], ["README.en.md", "## Add it to your agent"]] as const) {
+      const text = read(file);
+      const section = text.slice(text.indexOf(heading));
+      const first = /```\n([\s\S]*?)```/.exec(section)?.[1] ?? "";
+      assert.equal(first, "/plugin marketplace add ozko00/setsuzei\n/plugin install setsuzei@setsuzei\n", file);
+      assert.ok(section.indexOf("/plugin marketplace add") < section.indexOf('"mcpServers"'), file);
+    }
+  });
+
+  it("Skill: MCP のツールが使えるなら、CLI を取得せずにそれを使う", () => {
+    assert.match(read("skills/setsuzei/SKILL.md"), /MCP のツール（`estimate_tax_savings`・`furusato_nozei_limit` など）が使える環境では、CLI を用意せず、そのツールを使う/);
+  });
+});

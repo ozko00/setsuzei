@@ -23,6 +23,17 @@
 
 Node.js 20 以上が必要です。
 
+### Claude Code（プラグイン）
+
+Claude Code の中で、次の 2 行を実行します。
+
+```
+/plugin marketplace add ozko00/setsuzei
+/plugin install setsuzei@setsuzei
+```
+
+MCP サーバー（下の 5 つのツール）と Agent Skill がまとめて入ります。端末からなら `claude plugin marketplace add ozko00/setsuzei` と `claude plugin install setsuzei@setsuzei` です。MCP サーバーは、はじめて使うときに npm から `setsuzei`（版を固定。ほかのパッケージは入りません）を取得して、手元で動きます。
+
 ### MCP サーバー
 
 `setsuzei mcp` は、標準入出力（stdio）で動く MCP サーバーです。クライアントの MCP の設定に、次を足します。
@@ -38,7 +49,7 @@ Node.js 20 以上が必要です。
 }
 ```
 
-Claude Code なら、次の 1 行で入ります。
+Claude Code に MCP サーバーだけを入れるなら、次の 1 行です。
 
 ```sh
 claude mcp add setsuzei -- npx -y setsuzei@0.4.0 mcp
