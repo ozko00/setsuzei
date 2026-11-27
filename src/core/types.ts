@@ -290,3 +290,42 @@ export interface SetsuzeiResult {
   /** 免責 */
   readonly disclaimer: string;
 }
+
+/** ある年分の、ふるさと納税の上限の目安と計算の途中の値（compareFurusatoLimit の結果） */
+export interface FurusatoYearLimit {
+  /** 年分の表記（「令和8年分」など） */
+  readonly label: string;
+  /** 対応する住民税の年度（「令和9年度」など） */
+  readonly residentTaxLabel: string;
+  /** 上限の目安（1,000 円未満切り捨て。出せない場合は 0） */
+  readonly limit: number;
+  /** 給与所得（所得金額調整控除後） */
+  readonly salaryIncome: number;
+  /** 所得税の基礎控除額 */
+  readonly incomeTaxBasicDeduction: number;
+  /** 住民税の課税総所得金額 */
+  readonly residentTaxableIncome: number;
+  /** 住民税の所得割額（調整控除後、寄附金税額控除前） */
+  readonly incomeLevy: number;
+  /** 特例分の上限（所得割額の 20%） */
+  readonly specialCap: number;
+  /** 人的控除差調整額 */
+  readonly adjustmentAmount: number;
+  /** 特例分の割合を決める金額（住民税の課税総所得金額 − 人的控除差調整額） */
+  readonly rateBase: number;
+  /** 特例分の割合（10 万分率。84,895 = 84.895%） */
+  readonly specialRatePer100k: number;
+  /** 所得割が非課税か、非課税限度額による減額を受ける（上限の目安を出さない） */
+  readonly exempt: boolean;
+}
+
+/** ふるさと納税の上限の目安の、令和 8 年分と令和 7 年分の比較 */
+export interface FurusatoComparison {
+  readonly current: FurusatoYearLimit;
+  readonly previous: FurusatoYearLimit;
+  /** current.limit − previous.limit（マイナスなら下がった） */
+  readonly difference: number;
+  /** 変わった理由。specialRate = 特例分の割合の区分、incomeLevy = 住民税の所得割額 */
+  readonly reasons: readonly ("specialRate" | "incomeLevy")[];
+  readonly notes: readonly string[];
+}

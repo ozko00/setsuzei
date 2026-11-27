@@ -5,14 +5,14 @@
  * - 生成結果は docs/ にコミットし、test/site.test.ts が「コミット済みのファイル = いま生成した結果」を確かめる。
  * - 外部へのリンクは、src/data の出典一覧にある一次情報だけにする（テストで確認）。
  */
-import { calculate } from "../src/core/calculate.js";
-import type { SetsuzeiResult, TaxInput } from "../src/core/types.js";
+import { calculate, compareFurusatoLimit } from "../src/core/calculate.js";
+import type { FurusatoComparison, SetsuzeiResult, TaxInput } from "../src/core/types.js";
 import { getTaxYear } from "../src/data/index.js";
 
 export const SITE_URL = "https://ozko00.github.io/setsuzei/";
 export const REPO_URL = "https://github.com/ozko00/setsuzei";
 /** ページの内容を最後に見直した日（sitemap の lastmod と本文の表示に使う） */
-export const LAST_REVIEWED = "2026-11-25";
+export const LAST_REVIEWED = "2026-11-27";
 
 const data = getTaxYear(2026);
 const MAN = 10_000;
@@ -66,6 +66,21 @@ const SRC = {
   ],
   kyosaiFee: ["中小機構 小規模企業共済の掛金", "https://kyosai-web.smrj.go.jp/customer/skyosai/installment/index.html"],
   kyosaiEntry: ["中小機構 小規模企業共済の加入資格", "https://kyosai-web.smrj.go.jp/skyosai/entry/index_02.html"],
+  salaryDeduction: ["国税庁 No.1410 給与所得控除", "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1410.htm"],
+  localTax202604: [
+    "e-Gov 地方税法（令和8年4月1日施行の条文）",
+    "https://laws.e-gov.go.jp/law/325AC0000000226/20260401_508AC0000000002",
+  ],
+  mofKaisetsu: [
+    "財務省 令和8年度税制改正の解説 地方税法等の改正（p.931-932）",
+    "https://www.mof.go.jp/tax_policy/tax_reform/outline/fy2026/explanation/PDF/p0921-0989.pdf",
+  ],
+  incomeTaxLaw: ["e-Gov 所得税法", "https://laws.e-gov.go.jp/law/340AC0000000033"],
+  nerima: [
+    "練馬区 寄附金税額控除～ふるさと納税の仕組みなど～",
+    "https://www.city.nerima.tokyo.jp/kurashi/zei/jyuminzei/zeigakukojo/kifukinzeigakukojo.html",
+  ],
+  ikoma: ["生駒市 令和8年度から適用される個人住民税の主な改正点", "https://www.city.ikoma.lg.jp/0000038581.html"],
 } as const satisfies Record<string, readonly [string, string]>;
 
 function link(key: keyof typeof SRC, text?: string): string {
@@ -159,10 +174,110 @@ export function blueRows(): { income: number; s10: number; s55: number; s65: num
 }
 
 // ---------------------------------------------------------------------------
+// 令和 7 年分と令和 8 年分の、ふるさと納税の上限の比較
+// ---------------------------------------------------------------------------
+
+/**
+ * 同じ前提（給与収入 500 万円・独身・社会保険料 75 万円）で、令和 7 年分 → 令和 8 年分の上限を
+ * 独立に計算している第三者の解説。一次情報ではないので、出典の一覧には入れず、突き合わせとして載せる。
+ * どれも 2026-11-27 に閲覧し、同じ前提で 61,0xx 円 → 57,480 円（千円未満を切り捨てると 61,000 円 → 57,000 円）
+ * と書いてあることを確かめた。
+ */
+export const CROSS_CHECKS = [
+  {
+    title: "いしい税理士・行政書士事務所「2026年分ふるさと納税の控除上限額はどう変わる？」",
+    url: "https://ishihide-tax.com/tax/furusato-nozei-limit-2026/",
+  },
+  {
+    title: "progo-tax.com「ふるさと納税シミュレーション｜税理士がつくった限度額計算」",
+    url: "https://progo-tax.com/furusato-simulator/",
+  },
+  {
+    title: "kmp.or.jp「ふるさと納税の上限額は2026年いくら？令和8年分の計算方法と年収・家族構成別の早見表」",
+    url: "https://kmp.or.jp/furusato-nozei-jogengaku-keisan-2026/",
+  },
+] as const;
+
+export const YEAR_FAMILIES = [
+  { key: "single", label: "独身（配偶者控除・扶養控除なし）", input: {} },
+  { key: "couple", label: "所得のない配偶者がいる", input: { spouse: { income: 0 } } },
+  { key: "coupleChild", label: "所得のない配偶者と高校生 1 人", input: { spouse: { income: 0 }, dependents: { general: 1 } } },
+] as const satisfies readonly { key: string; label: string; input: TaxInput }[];
+
+/** 比較表に載せる給与収入 */
+export const YEAR_SALARIES = [
+  2_000_000, 3_000_000, 4_000_000, 4_500_000, 5_000_000, 5_500_000, 6_000_000, 6_500_000, 7_000_000, 8_000_000, 10_000_000,
+  12_000_000, 15_000_000, 20_000_000,
+] as const;
+
+/** 比較表・走査の前提: 社会保険料は給与収入（フリーランスは所得）の 15% */
+export function yearSalaryInput(salary: number, family: TaxInput = {}): TaxInput {
+  return { salaryRevenue: salary, socialInsurance: (salary * EXAMPLE_SOCIAL_INSURANCE_PERCENT) / 100, ...family };
+}
+
+export function yearSalaryRows(): { salary: number; cells: FurusatoComparison[] }[] {
+  return YEAR_SALARIES.map((salary) => ({
+    salary,
+    cells: YEAR_FAMILIES.map((f) => compareFurusatoLimit(yearSalaryInput(salary, f.input))),
+  }));
+}
+
+export function yearFreelanceRows(): { income: number; cell: FurusatoComparison }[] {
+  return EXAMPLE_INCOMES.map((income) => ({ income, cell: compareFurusatoLimit(exampleInput(income)) }));
+}
+
+/** 走査する範囲: 給与収入（フリーランスは所得）100 万円〜 2,500 万円を 1 万円きざみ */
+export const YEAR_SCAN = { from: 1_000_000, to: 25_000_000, step: 10_000 } as const;
+
+export interface YearScan {
+  readonly total: number;
+  readonly lower: number;
+  readonly same: number;
+  readonly higher: number;
+  /** 上限が下がる範囲（収入の下端〜上端）と、その中で最も大きい下がり幅 */
+  readonly ranges: readonly { from: number; to: number; maxDrop: number }[];
+}
+
+/** 1 万円きざみで走査して、上限が下がる・変わらない・上がる収入を数える。 */
+export function scanYear(toInput: (amount: number) => TaxInput): YearScan {
+  const ranges: { from: number; to: number; maxDrop: number }[] = [];
+  let open: { from: number; to: number; maxDrop: number } | null = null;
+  let total = 0;
+  let lower = 0;
+  let higher = 0;
+  for (let amount: number = YEAR_SCAN.from; amount <= YEAR_SCAN.to; amount += YEAR_SCAN.step) {
+    const { difference } = compareFurusatoLimit(toInput(amount));
+    total++;
+    if (difference > 0) higher++;
+    if (difference < 0) {
+      lower++;
+      if (!open) {
+        open = { from: amount, to: amount, maxDrop: 0 };
+        ranges.push(open);
+      }
+      open.to = amount;
+      open.maxDrop = Math.max(open.maxDrop, -difference);
+    } else open = null;
+  }
+  return { total, lower, same: total - lower - higher, higher, ranges };
+}
+
+/** 比較表のセル: 「61,000 円 → 57,000 円（−4,000 円）」か「77,000 円（変わらず）」 */
+export function yearCell(c: FurusatoComparison): string {
+  const limit = (n: number): string => (n > 0 ? yen(n) : "目安なし");
+  if (c.difference === 0) return `${limit(c.current.limit)}（変わらず）`;
+  const sign = c.difference < 0 ? "−" : "+";
+  return `${limit(c.previous.limit)} → ${limit(c.current.limit)}（${sign}${yen(Math.abs(c.difference))}）`;
+}
+
+const scanRangeText = (scan: YearScan): string =>
+  scan.ranges.map((r) => `${man(r.from)}〜${man(r.to)}（最大 ${yen(r.maxDrop)}）`).join("、");
+
+// ---------------------------------------------------------------------------
 // ページの定義
 // ---------------------------------------------------------------------------
 
-export type PageKind = "furusato" | "ideco" | "kyosai" | "blue";
+export type PageKind = "furusato" | "ideco" | "kyosai" | "blue" | "furusato-year";
 
 interface Faq {
   readonly q: string;
@@ -185,6 +300,10 @@ interface PageDef {
   readonly examples: string;
   readonly faqs: readonly Faq[];
   readonly sources: readonly (keyof typeof SRC)[];
+  /** 計算機の入力欄をページ専用のものにする場合の HTML（fieldset の並び）。なければ共通の欄 + extraFields */
+  readonly form?: string;
+  /** 「計算例」の節の見出しを変える場合 */
+  readonly examplesTitle?: string;
 }
 
 const field = (name: string, label: string, sub: string, placeholder = "", value = ""): string =>
@@ -428,7 +547,174 @@ function buildPages(): PageDef[] {
       ],
       sources: ["blue", "blueApply", "blueR9", "blueR9Nta", "rate", "resident", "nhi", "localTax"],
     },
+    furusatoYearPage(),
   ];
+}
+
+const pct = (per100k: number): string => `${per100k / 1_000}%`;
+
+/** 上限まで（または指定した額を）寄附したときの自己負担: 寄附額 − 減る税額（令和 8 年分の計算） */
+export function yearOutOfPocket(input: TaxInput, donation: number): number {
+  const before = calculate(input).baseline.totalTax;
+  const after = calculate({ ...input, furusatoPaid: donation }).baseline.totalTax;
+  return donation - (before - after);
+}
+
+function furusatoYearPage(): PageDef {
+  const input500 = yearSalaryInput(5_000_000);
+  const c500 = compareFurusatoLimit(input500);
+  const c600 = compareFurusatoLimit(yearSalaryInput(6_000_000));
+  const c200 = compareFurusatoLimit(yearSalaryInput(2_000_000));
+  const { previous: p, current: c } = c500;
+  const burdenAtNew = yearOutOfPocket(input500, c.limit);
+  const burdenAtOld = yearOutOfPocket(input500, p.limit);
+  const salaryRows = yearSalaryRows();
+  const freelanceRows = yearFreelanceRows();
+  const scans = YEAR_FAMILIES.map((f) => ({ label: f.label, scan: scanYear((amount) => yearSalaryInput(amount, f.input)) }));
+  const freelanceScan = scanYear((amount) => exampleInput(amount));
+  const single = scans[0]?.scan;
+  if (!single) throw new Error("走査の結果がありません");
+  if ([...scans.map((x) => x.scan), freelanceScan].some((x) => x.higher > 0)) {
+    throw new Error("上限が上がる収入があります。本文の「上がる人はいません」を直してください");
+  }
+  const scanNote = `給与収入（フリーランスは所得）${man(YEAR_SCAN.from)}〜${man(YEAR_SCAN.to)}を ${man(YEAR_SCAN.step)}きざみで計算した ${String(single.total).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} 通りの内訳です。社会保険料は収入（所得）の ${EXAMPLE_SOCIAL_INSURANCE_PERCENT}% と仮定しています。`;
+  const count = (n: number): string => `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} 通り`;
+
+  return {
+    slug: "furusato-nozei-jogen-reiwa8",
+    kind: "furusato-year",
+    keyword: "ふるさと納税 上限 下がる 令和8年 基礎控除",
+    title: "ふるさと納税の上限は令和8年分で下がる？ 令和7年分と比べる計算機（基礎控除の引上げ） ｜ setsuzei",
+    h1: "ふるさと納税の上限は令和8年分で下がる？ 基礎控除の引上げの影響を令和7年分と比べる",
+    description:
+      "ふるさと納税の上限の目安を、令和7年分と令和8年分（2026年の寄附）で比べます。基礎控除の引上げで上限が下がるのは一部の所得帯だけで、多くの人は変わりません。年収別の比較表と、条文にもとづく理由を載せています。入力は送信しません。",
+    lead: `令和8年分（2026年中の寄附）は、所得税の基礎控除の引上げにより、一部の所得帯で上限の目安が令和7年分より下がります。多くの人は変わらず、同じ収入で上がる人はいません。たとえば給与収入 500 万円・独身は ${yen(p.limit)} → ${yen(c.limit)}、600 万円・独身は ${yen(c600.current.limit)} のままです（社会保険料 ${EXAMPLE_SOCIAL_INSURANCE_PERCENT}% の前提）。収入を入れると、両方の年分の上限と、変わる理由を出します。`,
+    extraFields: "",
+    form: `<fieldset>
+    <legend>収入</legend>
+    ${field("salary", "給与収入", "源泉徴収票の「支払金額」の年間見込み", "例: 500万", "500万")}
+    ${field("social-insurance", "社会保険料", "源泉徴収票の「社会保険料等の金額」。国民健康保険・国民年金も含む年額", "例: 75万", "75万")}
+    ${field("revenue", "フリーランス・副業の売上", "ない場合は空欄", "例: 800万")}
+    ${field("expenses", "その必要経費", "", "例: 150万")}
+    <label>青色申告特別控除
+      <select name="blue">
+        <option value="none" selected>なし（給与のみ・白色申告）</option>
+        <option value="10">青色 10万円</option>
+        <option value="55">青色 55万円</option>
+        <option value="65">青色 65万円</option>
+      </select></label>
+  </fieldset>
+  <fieldset>
+    <legend>家族と控除</legend>
+    <label>配偶者<span class="sub">配偶者に所得がある場合の比較には対応していません</span>
+      <select name="spouse-income">
+        <option value="" selected>配偶者控除を受けない（独身・共働きなど）</option>
+        <option value="0">所得のない配偶者がいる</option>
+      </select></label>
+    ${field("dependents", "扶養親族（16〜18 歳・23〜69 歳）の人数", "", "0")}
+    ${field("dependents-specific", "扶養親族（19〜22 歳）の人数", "", "0")}
+    ${field("ideco-paid", "iDeCo の掛金", "年末までの拠出見込み", "例: 27.6万")}
+    ${field("kyosai-paid", "小規模企業共済の掛金", "年末までの支払見込み")}
+    ${field("other-deductions", "その他の所得控除の合計", "生命保険料控除・医療費控除など")}
+  </fieldset>
+  <p class="hint">iDeCo や小規模企業共済を増やした場合の税額なども見るときは、<a id="full" href="../">すべての項目を入れられる計算ページ</a>を使ってください。</p>`,
+    formula: `<p>結論から書きます。令和8年分で上限の目安が下がるのは、次のどちらかに当てはまる人だけです。それ以外の人は、同じ収入・同じ控除なら令和7年分と同じです。同じ収入・同じ控除で上がる場合はありません（下の表の走査でも 0 通り）。</p>
+  <ul>
+    <li><strong>特例分の割合の区分の境目（0 円・195 万円・330 万円・695 万円・900 万円・1,800 万円）のすぐ上にいた人</strong>（例: 給与収入 ${scanRangeText({ ...single, ranges: single.ranges.filter((r) => r.from >= 2_200_000) })}。独身・社会保険料 ${EXAMPLE_SOCIAL_INSURANCE_PERCENT}% の前提）。</li>
+    <li><strong>給与収入が 220 万円未満の人</strong>。給与所得控除の最低額が 65 万円から 74 万円に上がり（${link("salaryDeduction")}）、住民税の所得割額が減るためです（目安は 1,000 円未満を切り捨てるので、変わらない場合もあります）。</li>
+  </ul>
+  <h3>上限の式</h3>
+  <p class="formula">上限の目安 = 住民税の所得割額 × 20% ÷ 特例分の割合 + 2,000 円</p>
+  <ul>
+    <li>ふるさと納税の住民税の控除のうち「特例分」は、所得割額の 20% が上限です。ここに達する寄附額が、自己負担がおおむね 2,000 円で済む上限です（${link("localTax202604", "地方税法 第314条の7第1項・第11項、道府県民税は第37条の2")}、${link("furusatoMic")}）。</li>
+    <li>特例分の割合は「90% − 所得税率 × 1.021」で、84.895%（所得税率 5%）、79.79%（10%）、69.58%（20%）…と段階になっています（同項第1号の表と附則第5条の6）。</li>
+    <li>どの段階になるかは、「住民税の課税総所得金額 − 人的控除差調整額」で決まります（同項第1号）。</li>
+  </ul>
+  <h3>何が変わったのか</h3>
+  <ul>
+    <li>令和8年法律第2号で、第314条の7第11項第1号（道府県民税は第37条の2第11項第1号）が改正され、人的控除差調整額に<strong>「所得税の基礎控除額 − 48 万円」</strong>（マイナスなら 0）が加わりました。施行は令和8年4月1日で、令和8年度分の住民税（＝令和7年中の寄附）から適用されています（${link("localTax202604", "改正後の条文と同法附則第11条第1項")}、${link("mofKaisetsu")}）。所得税の基礎控除だけが引き上げられ、住民税の基礎控除（43 万円）は据え置かれたので、所得税の実際の税率に合うように割合の決め方を直したものです。</li>
+    <li>式が変わったのは令和7年分からです。令和8年分でさらに差が出るのは、所得税の基礎控除がもう一度上がったためです（${link("basic")}）。合計所得金額 489 万円以下は 88 万円・68 万円（132 万円以下は 95 万円）から 104 万円へ、489 万円超 655 万円以下は 63 万円から 67 万円へ、655 万円超 2,350 万円以下は 58 万円から 62 万円へ。引く額が増えるので、割合を決める金額が下がり、一段低い所得税率の区分に移る人が出ます。</li>
+    <li>区分が一段下がると、特例分の割合は上がります（たとえば 79.79% → 84.895%）。割合が上がると、同じ寄附額でも特例分が大きくなり、上限（所得割額の 20%）に少ない寄附額で達します。そのため上限の目安が下がります。</li>
+    <li>住民税の所得割額は、給与収入 220 万円以上なら変わりません。住民税の基礎控除・配偶者控除・扶養控除・調整控除は、どちらの年度も同じ条文です（地方税法 第314条の2、第314条の6）。</li>
+  </ul>
+  <h3>給与収入 500 万円・独身の計算（社会保険料 75 万円）</h3>
+  ${table(
+    "給与収入 500 万円・独身の上限の計算（令和7年分と令和8年分）",
+    ["", p.label, c.label],
+    [
+      ["給与所得（500 万円 − 給与所得控除 144 万円）", yen(p.salaryIncome), yen(c.salaryIncome)],
+      ["住民税の課税総所得金額（− 社会保険料 75 万円 − 基礎控除 43 万円）", yen(p.residentTaxableIncome), yen(c.residentTaxableIncome)],
+      ["住民税の所得割額（× 10% − 調整控除 2,500 円）", yen(p.incomeLevy), yen(c.incomeLevy)],
+      ["特例分の上限（所得割額 × 20%）", yen(p.specialCap), yen(c.specialCap)],
+      ["所得税の基礎控除", yen(p.incomeTaxBasicDeduction), yen(c.incomeTaxBasicDeduction)],
+      ["人的控除差調整額（5 万円 + 所得税の基礎控除 − 48 万円）", yen(p.adjustmentAmount), yen(c.adjustmentAmount)],
+      ["割合を決める金額（課税総所得金額 − 人的控除差調整額）", yen(p.rateBase), yen(c.rateBase)],
+      ["特例分の割合", pct(p.specialRatePer100k), pct(c.specialRatePer100k)],
+      ["上限の目安（特例分の上限 ÷ 割合 + 2,000 円。1,000 円未満切り捨て）", yen(p.limit), yen(c.limit)],
+    ],
+  )}
+  <p class="note">令和7年分は割合を決める金額が 195 万円を超えるので 79.79%、令和8年分は 195 万円以下なので 84.895% になります。所得割額はどちらも同じです。</p>
+  <h3>ほかの資料との突き合わせ</h3>
+  <ul>
+    <li>総務省の「年間上限の目安」の表は、基礎控除の引上げより前の税制で作られたものです（給与収入 500 万円・独身は 6.1 万円）。令和8年分を反映した公的な早見表は、確認した範囲では見つかりませんでした。このページの令和8年分の数字は、上の条文から計算したものです。</li>
+    <li>式の変更そのものは、自治体も同じ内容を説明しています（${link("nerima")}、${link("ikoma")}）。</li>
+    <li>同じ前提（給与収入 500 万円・独身・社会保険料 75 万円）で、令和7年分 約 6.1 万円 → 令和8年分 約 5.7 万円と独立に計算している解説があり、このページの結果と一致します（一次情報ではありません）: ${CROSS_CHECKS.map((x) => `<a href="${esc(x.url)}" rel="noopener noreferrer">${esc(x.title)}</a>`).join("、")}。</li>
+  </ul>`,
+    examplesTitle: "年収別の比較表",
+    examples:
+      table(
+        "給与収入別のふるさと納税の上限の目安（令和7年分 → 令和8年分）",
+        ["給与収入", ...YEAR_FAMILIES.map((f) => f.label)],
+        salaryRows.map((r) => [man(r.salary), ...r.cells.map(yearCell)]),
+      ) +
+      `\n  <p class="note">表の前提: 給与収入のみ、社会保険料は給与収入の ${EXAMPLE_SOCIAL_INSURANCE_PERCENT}% と仮定、ほかの所得控除なし。「変わらず」は、同じ収入・同じ控除なら令和7年分と同じ額という意味です。令和7年分は、所得税の基礎控除と給与所得控除だけを当時の額にして計算しています。</p>\n  ` +
+      table(
+        "フリーランスの所得別のふるさと納税の上限の目安（令和7年分 → 令和8年分）",
+        ["所得（売上 − 経費）", "独身・青色申告特別控除 65 万円"],
+        freelanceRows.map((r) => [man(r.income), yearCell(r.cell)]),
+      ) +
+      `\n  <p class="note">表の前提: 給与収入のないフリーランス、青色申告特別控除 65 万円、扶養親族なし、社会保険料は所得（売上 − 経費）の ${EXAMPLE_SOCIAL_INSURANCE_PERCENT}% と仮定。</p>\n  ` +
+      table(
+        "上限の目安が下がる人・変わらない人・上がる人の内訳",
+        ["前提", "下がる", "変わらない", "上がる", "下がる収入の範囲（最大の下がり幅）"],
+        [
+          ...scans.map((x) => [`給与収入のみ・${x.label}`, count(x.scan.lower), count(x.scan.same), count(x.scan.higher), scanRangeText(x.scan)]),
+          ["フリーランス・独身・青色 65 万円（所得で走査）", count(freelanceScan.lower), count(freelanceScan.same), count(freelanceScan.higher), scanRangeText(freelanceScan)],
+        ],
+      ) +
+      `\n  <p class="note">${esc(scanNote)}範囲は社会保険料や控除の額で前後するので、自分の数字は上の計算機で確かめてください。高い収入の範囲は幅が狭い代わりに、下がり幅が大きくなります。</p>`,
+    faqs: [
+      {
+        q: "令和8年分は、全員のふるさと納税の上限が下がるのですか？",
+        a: `いいえ。下がるのは一部の所得帯だけです。給与収入のみ・独身・社会保険料 ${EXAMPLE_SOCIAL_INSURANCE_PERCENT}% の前提で、給与収入 ${man(YEAR_SCAN.from)}〜${man(YEAR_SCAN.to)}を ${man(YEAR_SCAN.step)}きざみで計算すると、${count(single.total)}のうち下がるのは ${count(single.lower)}、変わらないのは ${count(single.same)}、上がるのは ${count(single.higher)}でした。たとえば給与収入 600 万円・独身は ${yen(c600.previous.limit)} のままです。`,
+      },
+      {
+        q: "なぜ基礎控除が上がると、上限が下がる人がいるのですか？",
+        a: `上限は「住民税の所得割額 × 20% ÷ 特例分の割合 + 2,000 円」で決まり、特例分の割合は所得税率が低いほど高くなります（90% − 所得税率 × 1.021）。所得税の基礎控除が上がって所得税率の区分が一段下がると、割合が上がり、所得割額の 20% という上限に少ない寄附額で達します。住民税の基礎控除は 43 万円のままなので、所得割額は増えません。割合の決め方に所得税の基礎控除を反映させたのは、令和8年法律第2号による地方税法 第314条の7第11項第1号の改正です（${link("localTax202604")}、${link("mofKaisetsu")}）。`,
+      },
+      {
+        q: "上限が下がるのは、損をしているということですか？",
+        a: `寄附できる額の目安が下がるだけで、税の負担が増えるわけではありません。上限が下がるのは、所得税が減って所得税率の区分が下がった人です。給与収入 500 万円・独身の例では、令和8年分の上限の目安 ${yen(c.limit)} を寄附したときの自己負担は ${yen(burdenAtNew)} です（寄附額 − 減る所得税と住民税。この計算機の令和8年分の計算）。ふるさと納税は、寄附した額から自己負担を引いた額だけ税が減る仕組みで、手元のお金が増えるものではありません（${link("furusatoMic")}）。`,
+      },
+      {
+        q: "令和7年分の上限のつもりで寄附すると、どうなりますか？",
+        a: `上限を超えた分は、特例分の控除が頭打ちになり、自己負担が増えます。給与収入 500 万円・独身の例で、令和7年分の上限の目安 ${yen(p.limit)} を令和8年分（2026年中）に寄附すると、自己負担は ${yen(burdenAtOld)} になります（上限の目安 ${yen(c.limit)} なら ${yen(burdenAtNew)}）。早見表や去年の額をそのまま使わず、今年の見込みで計算し直すのが安全です。`,
+      },
+      {
+        q: "総務省の早見表では給与収入 500 万円・独身は 6.1 万円です。どちらが正しいですか？",
+        a: `総務省の表は、基礎控除の引上げより前の税制で作られた目安です。令和7年分までは、この前提の上限は ${yen(p.limit)} で表と同じです。令和8年分（2026年中の寄附）は、条文どおりに計算すると ${yen(c.limit)} になります（${link("localTax202604", "地方税法 第314条の7第11項第1号")}、${link("basic")}）。令和8年分を反映した公的な早見表は確認した範囲では見つからなかったため、このページの数字は条文からの計算です。実際の額は、翌年 6 月ごろに届く住民税の決定通知書で確認できます。`,
+      },
+      {
+        q: "給与収入が 220 万円未満だと、なぜ下がるのですか？",
+        a: `給与所得控除の最低額が、令和7年分の 65 万円から令和8年分は 74 万円に上がったためです（${link("salaryDeduction")}）。給与所得が減ると住民税の所得割額も減り、その 20% である特例分の上限も下がります。たとえば給与収入 200 万円・独身（社会保険料 30 万円）は ${yen(c200.previous.limit)} → ${yen(c200.current.limit)} です。`,
+      },
+      {
+        q: "2026年のいつの寄附から、この計算になりますか？",
+        a: `2026年1月1日から12月31日までの寄附が令和8年分で、令和8年分の所得税と令和9年度の住民税から控除されます。基礎控除の引上げは令和8年12月1日施行ですが、令和8年分の所得税の全体に適用されます（${link("kaisei")}、${link("basic")}）。`,
+      },
+    ],
+    sources: ["localTax202604", "mofKaisetsu", "basic", "salaryDeduction", "incomeTaxLaw", "furusatoMic", "kaisei", "nerima", "ikoma", "rate", "resident"],
+  };
 }
 
 const KIND_LABEL: Record<PageKind, string> = {
@@ -436,6 +722,7 @@ const KIND_LABEL: Record<PageKind, string> = {
   ideco: "iDeCo の節税額（個人事業主）",
   kyosai: "小規模企業共済の節税額",
   blue: "青色申告特別控除 65万・55万・10万の差",
+  "furusato-year": "ふるさと納税の上限（令和7年分と令和8年分の比較）",
 };
 
 function jsonLd(value: unknown): string {
@@ -459,6 +746,28 @@ export function webApplicationLd(url: string, name: string, description: string)
     license: "https://opensource.org/license/mit",
     codeRepository: REPO_URL,
   };
+}
+
+/** 共通の入力欄（売上・経費・青色申告・社会保険料 + ページごとの欄） */
+function defaultForm(p: PageDef): string {
+  return `<fieldset>
+    <legend>売上と経費</legend>
+    ${field("revenue", "フリーランス・個人事業の売上", "", "例: 800万", "800万")}
+    ${field("expenses", "その必要経費", "", "例: 150万", "150万")}
+    <label>青色申告特別控除${p.kind === "blue" ? "（現在の見込み）" : ""}
+      <select name="blue">
+        <option value="none">白色申告（控除なし）</option>
+        <option value="10">青色 10万円</option>
+        <option value="55">青色 55万円</option>
+        <option value="65" selected>青色 65万円</option>
+      </select></label>
+    ${field("social-insurance", "社会保険料", "国民健康保険・国民年金などの年額", "例: 90万", "90万")}
+  </fieldset>
+  <fieldset>
+    <legend>${p.kind === "blue" ? "国民健康保険料への影響（任意）" : "掛金・寄附"}</legend>
+    ${p.extraFields}
+  </fieldset>
+  <p class="hint">給与収入がある方、配偶者や扶養親族がいる方は、<a id="full" href="../">すべての項目を入れられる計算ページ</a>を使ってください。</p>`;
 }
 
 function renderPage(p: PageDef, all: readonly PageDef[]): string {
@@ -519,29 +828,12 @@ ${jsonLd(breadcrumbLd)}
 <main>
 <form id="form" autocomplete="off" novalidate data-kind="${p.kind}">
   <p class="hint">すべて<strong>年間の見込み額</strong>を入れます。<code>600万</code> / <code>6,000,000</code> のどちらでも書けます。はじめは例の数字が入っています。</p>
-  <fieldset>
-    <legend>売上と経費</legend>
-    ${field("revenue", "フリーランス・個人事業の売上", "", "例: 800万", "800万")}
-    ${field("expenses", "その必要経費", "", "例: 150万", "150万")}
-    <label>青色申告特別控除${p.kind === "blue" ? "（現在の見込み）" : ""}
-      <select name="blue">
-        <option value="none">白色申告（控除なし）</option>
-        <option value="10">青色 10万円</option>
-        <option value="55">青色 55万円</option>
-        <option value="65" selected>青色 65万円</option>
-      </select></label>
-    ${field("social-insurance", "社会保険料", "国民健康保険・国民年金などの年額", "例: 90万", "90万")}
-  </fieldset>
-  <fieldset>
-    <legend>${p.kind === "blue" ? "国民健康保険料への影響（任意）" : "掛金・寄附"}</legend>
-    ${p.extraFields}
-  </fieldset>
-  <p class="hint">給与収入がある方、配偶者や扶養親族がいる方は、<a id="full" href="../">すべての項目を入れられる計算ページ</a>を使ってください。</p>
+  ${p.form ?? defaultForm(p)}
 </form>
 
 <div class="results" id="results">
   <h2>結果</h2>
-  <div id="result" aria-live="polite"><p class="placeholder">売上を入力すると、ここに結果が出ます。</p></div>
+  <div id="result" aria-live="polite"><p class="placeholder">${p.kind === "furusato-year" ? "収入" : "売上"}を入力すると、ここに結果が出ます。</p></div>
   <noscript><p class="card error">計算機には JavaScript が必要です。下の計算例の表は JavaScript なしで読めます。</p></noscript>
   <section class="card disclaimer">
     <h3>この結果について</h3>
@@ -557,7 +849,7 @@ ${jsonLd(breadcrumbLd)}
 </section>
 
 <section>
-  <h2>計算例</h2>
+  <h2>${esc(p.examplesTitle ?? "計算例")}</h2>
   ${p.examples}
 </section>
 

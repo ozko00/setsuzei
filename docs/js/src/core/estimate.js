@@ -279,18 +279,32 @@ export function estimate(data, s) {
  * 住民税が減らないので、自己負担が 2,000 円で済む寄附額がない）。
  */
 export function furusatoLimit(data, s) {
+    return furusatoLimitDetail(data, s).limit;
+}
+/** ふるさと納税の上限の目安を、計算の途中の値つきで返す。 */
+export function furusatoLimitDetail(data, s) {
     const e = estimate(data, { ...s, donation: 0 });
     const levy = e.residentTax.incomeLevyBeforeDonation;
-    if (levy <= 0 || e.residentTax.incomeLevyExempt || e.residentTax.exemptionReduction > 0)
-        return 0;
+    const exempt = e.residentTax.incomeLevyExempt || e.residentTax.exemptionReduction > 0;
     const don = data.residentTax.donation;
     const adj = data.residentTax.adjustmentCredit;
     const spouse = spouseAmounts(data, e.totalIncome, s.spouse);
     const humanDifference = adj.basicDifference + spouse.difference + dependentTotal(adj.dependentDifference, s.dependents);
     const adjustmentAmount = humanDifference + Math.max(0, e.incomeTax.deductions.basic - don.basicDeductionReference);
     const ratePer100k = specialCreditRatePer100k(data, e.residentTax.taxableIncome, adjustmentAmount);
-    const specialCap = Math.floor((levy * don.specialCapPercent) / 100);
-    const limit = floorTo(Math.floor((specialCap * 100_000) / ratePer100k) + don.floor, 1_000);
-    // 自己負担の 2,000 円以下の寄附では税は減らない
-    return limit > don.floor ? limit : 0;
+    const specialCap = Math.floor((Math.max(0, levy) * don.specialCapPercent) / 100);
+    const raw = floorTo(Math.floor((specialCap * 100_000) / ratePer100k) + don.floor, 1_000);
+    return {
+        // 自己負担の 2,000 円以下の寄附では税は減らない
+        limit: levy <= 0 || exempt || raw <= don.floor ? 0 : raw,
+        salaryIncome: e.salaryIncome,
+        incomeTaxBasicDeduction: e.incomeTax.deductions.basic,
+        residentTaxableIncome: e.residentTax.taxableIncome,
+        incomeLevy: Math.max(0, levy),
+        specialCap,
+        adjustmentAmount,
+        rateBase: e.residentTax.taxableIncome - adjustmentAmount,
+        specialRatePer100k: ratePer100k,
+        exempt,
+    };
 }

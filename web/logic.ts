@@ -3,8 +3,8 @@
  * 入力の名前は CLI のフラグ名と同じで、CLI と同じ flagsToInput → calculate を通す。
  */
 import { flagsToInput, INPUT_BOOLEAN_FLAGS, INPUT_STRING_FLAGS, issueFlag, type InputFlags } from "../src/cli/flags.js";
-import { calculate } from "../src/core/calculate.js";
-import type { SetsuzeiResult } from "../src/core/types.js";
+import { calculate, compareFurusatoLimit } from "../src/core/calculate.js";
+import type { FurusatoComparison, SetsuzeiResult } from "../src/core/types.js";
 import { InputError } from "../src/core/validate.js";
 
 /** フォームの値。キーは CLI のフラグ名（+ has-spouse）。 */
@@ -40,6 +40,22 @@ export function valuesToFlags(values: FormValues): InputFlags {
 export function compute(values: FormValues): Outcome {
   try {
     return { ok: true, result: calculate(flagsToInput(valuesToFlags(values))) };
+  } catch (error) {
+    if (error instanceof InputError) return { ok: false, issues: error.issues };
+    if (error instanceof RangeError) return { ok: false, issues: [error.message] };
+    throw error;
+  }
+}
+
+export type ComparisonOutcome =
+  | { readonly ok: true; readonly result: SetsuzeiResult; readonly comparison: FurusatoComparison }
+  | { readonly ok: false; readonly issues: readonly string[] };
+
+/** フォームの値から、令和 8 年分の結果と、ふるさと納税の上限の令和 7 年分との比較を計算する。 */
+export function computeComparison(values: FormValues): ComparisonOutcome {
+  try {
+    const input = flagsToInput(valuesToFlags(values));
+    return { ok: true, result: calculate(input), comparison: compareFurusatoLimit(input) };
   } catch (error) {
     if (error instanceof InputError) return { ok: false, issues: error.issues };
     if (error instanceof RangeError) return { ok: false, issues: [error.message] };

@@ -629,3 +629,133 @@ for (const spec of PAGES) {
     assert.deepEqual(await page.evaluate(OVERFLOW), [], "空のとき");
   });
 }
+
+// ───────────── 令和7年分と令和8年分の、ふるさと納税の上限の比較のページ ─────────────
+
+const YEAR_URL = () => `${server.base}furusato-nozei-jogen-reiwa8/`;
+/** ページの初期値（給与収入 500 万円・社会保険料 75 万円） */
+const YEAR_DEFAULTS = { salary: "500万", "social-insurance": "75万" };
+const { compareFurusatoLimit } = await import(new URL("../../dist/index.js", import.meta.url).href);
+
+async function fillYear(page, values) {
+  for (const [name, value] of Object.entries(values)) {
+    if (name === "blue" || name === "spouse-income") await page.select(`select[name="${name}"]`, value);
+    else await page.type(`input[name="${name}"]`, value);
+  }
+}
+
+/** 画面の比較が、同じ入力を Node.js 側の計算コア（dist/）に渡した結果と同じであること。 */
+function assertYearMatches(view, values) {
+  const expected = cli(values);
+  assert.ok(expected.ok, `CLI がこの入力を受け付けません: ${JSON.stringify(values)}`);
+  const r = expected.result;
+  const c = compareFurusatoLimit({
+    salaryRevenue: r.input.salaryRevenue,
+    businessRevenue: r.input.businessRevenue,
+    businessExpenses: r.input.businessExpenses,
+    businessIncomeType: r.input.businessIncomeType,
+    blueReturn: r.input.blueReturn,
+    socialInsurance: r.input.socialInsurance,
+    idecoPaid: r.input.idecoPaid,
+    kyosaiPaid: r.input.kyosaiPaid,
+    ...(r.input.spouse ? { spouse: r.input.spouse } : {}),
+    dependents: r.input.dependents,
+    otherDeductions: r.input.otherDeductions,
+  });
+  const limit = (n) => (n > 0 ? yen(n) : "目安なし");
+  const diff = c.difference === 0 ? "変わりません" : c.difference < 0 ? `${yen(-c.difference)} 下がります` : `${yen(c.difference)} 上がります`;
+  assert.equal(view.alert, null, "入力エラーが出ています");
+  assert.deepEqual(view.figures, {
+    令和7年分の上限の目安: limit(c.previous.limit),
+    令和8年分の上限の目安: limit(c.current.limit),
+    同じ入力での差: diff,
+  });
+  // 令和 8 年分の上限は、CLI の上限と同じ
+  assert.equal(c.current.limit, r.measures.furusato.limit);
+  const detail = card(view, "上限の目安の比較と、計算の途中の値");
+  assert.equal(detail.rows["令和7年分（令和8年度の住民税）"], limit(c.previous.limit));
+  assert.equal(detail.rows["令和8年分（令和9年度の住民税）"], limit(c.current.limit));
+  assert.deepEqual(detail.notes, c.notes);
+  baselineRows(view, r);
+  assert.deepEqual(card(view, "注意")?.notes ?? [], r.warnings);
+  assert.ok(view.jump.text.includes(limit(c.current.limit)));
+  return c;
+}
+
+browserTest("令和7年分との比較: 初期値と、打ち込んだ値の結果が計算コア・CLI と一致する", async (page) => {
+  await page.goto(YEAR_URL());
+  // 初期値は、ページの本文に書いてある例（61,000 円 → 57,000 円）
+  let view = await page.evaluate(READ);
+  assert.deepEqual(view.figures, {
+    令和7年分の上限の目安: "61,000 円",
+    令和8年分の上限の目安: "57,000 円",
+    同じ入力での差: "4,000 円 下がります",
+  });
+  assertYearMatches(view, YEAR_DEFAULTS);
+
+  // 変わらない例
+  await fillYear(page, { salary: "600万", "social-insurance": "90万" });
+  view = await page.evaluate(READ);
+  assert.equal(view.figures["同じ入力での差"], "変わりません");
+  assertYearMatches(view, { salary: "600万", "social-insurance": "90万" });
+
+  // 家族と控除の欄をすべて使う
+  const family = {
+    salary: "720万",
+    "social-insurance": "108万",
+    "spouse-income": "0",
+    dependents: "1",
+    "dependents-specific": "1",
+    "ideco-paid": "27.6万",
+    "kyosai-paid": "12万",
+    "other-deductions": "8万",
+  };
+  await fillYear(page, family);
+  assertYearMatches(await page.evaluate(READ), family);
+
+  // フリーランス（給与なし）
+  const freelance = { ...family, salary: "", revenue: "700万", expenses: "155万", blue: "65", "social-insurance": "81.75万", "spouse-income": "", dependents: "", "dependents-specific": "" };
+  await fillYear(page, freelance);
+  const c = assertYearMatches(await page.evaluate(READ), freelance);
+  assert.ok(c.current.limit > 0);
+
+  // 「全項目で計算する」へ、いまの入力を引き継ぐ
+  await page.navigateBy(() => page.click("#full"));
+  assert.equal(await page.evaluate("location.pathname"), "/setsuzei/");
+  assertTopMatches(await page.evaluate(READ), cli(freelance).result);
+  assert.deepEqual(await page.evaluate(HIDDEN_VALUES), []);
+});
+
+browserTest("令和7年分との比較: 空入力は案内、誤入力は欄の名前つきの指摘になる", async (page) => {
+  await page.goto(YEAR_URL());
+  await fillYear(page, { salary: "" });
+  let view = await page.evaluate(READ);
+  assert.equal(view.placeholder, "収入を入力すると、ここに結果が出ます。");
+  assert.equal(view.jump, null);
+  for (const wrong of [{ salary: "abc" }, { salary: "-100万" }, { salary: "500万", "social-insurance": "-1", dependents: "1.5" }]) {
+    await fillYear(page, wrong);
+    const expected = cli({ ...YEAR_DEFAULTS, ...wrong });
+    assert.equal(expected.ok, false);
+    assertIssuesMatch(await page.evaluate(READ), expected.issues);
+  }
+  await fillYear(page, { "social-insurance": "75万", dependents: "" });
+  view = await page.evaluate(READ);
+  assert.deepEqual(view.invalid, []);
+  assertYearMatches(view, YEAR_DEFAULTS);
+});
+
+browserTest("令和7年分との比較: スマホ幅（375px）で、横スクロールもはみ出しもない", async (page) => {
+  await page.viewport(375, 720, true);
+  await page.goto(YEAR_URL());
+  assert.deepEqual(await page.evaluate(OVERFLOW), [], "初期値のとき");
+  assert.ok(
+    await page.evaluate('Array.from(document.querySelectorAll("table")).every((t) => ["auto", "scroll"].includes(getComputedStyle(t.closest(".table-wrap")).overflowX))'),
+  );
+  await fillYear(page, { salary: "9,876,543,210", "spouse-income": "0", dependents: "2" });
+  assert.deepEqual(await page.evaluate(OVERFLOW), [], "桁の多い金額のとき");
+  await fillYear(page, { salary: "あいうえおかきくけこさしすせそたちつてとなにぬねの", "social-insurance": "-5" });
+  assert.ok((await page.evaluate(READ)).alert);
+  assert.deepEqual(await page.evaluate(OVERFLOW), [], "入力エラーのとき");
+  await fillYear(page, { salary: "", "social-insurance": "" });
+  assert.deepEqual(await page.evaluate(OVERFLOW), [], "空のとき");
+});
