@@ -256,7 +256,19 @@ describe("MCP サーバー: ツール", () => {
     assert.equal(bad["normalized"], null);
     const good = out[1]?.["result"].structuredContent as Json;
     assert.deepEqual([good["valid"], good["issues"], good["normalized"].blueReturn, good["normalized"].year], [true, [], "none", 2026]);
+    // 返す入力は、そのまま計算のツールの入力のスキーマに合う（配偶者がいなければ、項目ごと省く）
+    assert.equal("spouse" in good["normalized"], false);
+    assert.deepEqual(check(tools[0]?.["inputSchema"], good["normalized"]), []);
     for (const structured of [bad, good]) assert.deepEqual(check(tools[3]?.["outputSchema"], structured), []);
+
+    // 返ってきた入力を計算のツールに渡しても、元の入力と同じ結果になる（試算の条件を落とさない）
+    const plan = { businessRevenue: 8_000_000, idecoAnnualLimit: 240_000, idecoAdditional: 100_000, kyosaiAdditional: 0, nhiIncomeRatePercent: 11.5, spouse: { income: 0 } };
+    const validated = talk([INIT, call(2, "validate_tax_input", plan)]).replies[1]?.["result"].structuredContent as Json;
+    assert.deepEqual(check(tools[3]?.["outputSchema"], validated), []);
+    assert.deepEqual(check(tools[0]?.["inputSchema"], validated["normalized"]), []);
+    const both = talk([INIT, call(2, "estimate_tax_savings", plan), call(3, "estimate_tax_savings", validated["normalized"])]).replies.slice(1);
+    assert.deepEqual(both[1]?.["result"].structuredContent.result, both[0]?.["result"].structuredContent.result);
+    assert.equal(both[0]?.["result"].structuredContent.result.measures.combined.kyosaiAdditional, 0);
   });
 
   it("list_tax_sources: CLI の --sources と同じ一覧", () => {

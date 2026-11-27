@@ -188,7 +188,7 @@ const nhiMeasure = obj({
   notes,
 });
 
-const normalizedInput = obj({
+const normalizedFields: Record<string, JsonSchema> = {
   year: amount(),
   salaryRevenue: amount(),
   businessRevenue: amount(),
@@ -204,7 +204,13 @@ const normalizedInput = obj({
   incomeAdjustment: { type: "boolean" },
   otherDeductions: amount(),
   otherDeductionsResident: amount(),
-});
+};
+const normalizedInput = obj(normalizedFields);
+/** validate_tax_input が返す入力: 既定値を埋めたものに、指定された試算の条件を残したもの。そのまま計算のツールに渡せる */
+const validatedInput = obj(
+  { ...normalizedFields, spouse: obj({ income: amount(), age70OrOlder: { type: "boolean" } }, ["age70OrOlder"]), idecoAnnualLimit: amount(), idecoAdditional: amount(), kyosaiAdditional: amount(), nhiIncomeRatePercent: { type: "number" } },
+  ["spouse", "idecoAnnualLimit", "idecoAdditional", "kyosaiAdditional", "nhiIncomeRatePercent"],
+);
 
 /** calculate() の結果（SetsuzeiResult）と同じ形 */
 export const resultSchema: JsonSchema = obj({
@@ -282,7 +288,7 @@ export const outputSchemas = {
   validation: obj({
     valid: { type: "boolean" },
     issues: list(text(), "One message per problem, in Japanese, prefixed with the field name"),
-    normalized: nullable(normalizedInput),
+    normalized: nullable(validatedInput),
     meta: metaSchema,
   }),
   sources: obj({ year: amount(), sources: list(source), meta: metaSchema }),

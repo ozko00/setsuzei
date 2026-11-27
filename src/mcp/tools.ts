@@ -122,14 +122,26 @@ export const TOOLS: readonly Tool[] = [
     title: "Validate an input without calculating",
     description:
       "Check an input object for `estimate_tax_savings` without returning tax figures: unknown fields, non-integer or negative amounts, unsupported values. " +
-      "Returns `valid`, the list of problems (in Japanese, prefixed with the field name), and the normalized input with defaults filled in." +
+      "Returns `valid`, the list of problems (in Japanese, prefixed with the field name), and the normalized input with defaults filled in (it can be passed to the other tools as is)." +
       COMMON,
     inputSchema: { type: "object", description: "The input object to check. Any shape is accepted; problems are reported in the result.", additionalProperties: true },
     outputSchema: outputSchemas.validation,
     run: (args) => {
       try {
         const input = validateInput(args);
-        return { valid: true, issues: [], normalized: calculate(input).input, meta: meta(input.year ?? DEFAULT_YEAR) };
+        // 既定値を埋めた入力。試算の条件（限度額・追加額・国保の料率）は、指定されたものをそのまま残す
+        // （落とすと、この値を計算のツールに渡したときに、利用者の条件が変わってしまう）
+        // 配偶者がいないときは、項目ごと省く（入力のスキーマでは、配偶者は「省くか、オブジェクト」）
+        const { spouse, ...filled } = calculate(input).input;
+        const normalized = {
+          ...filled,
+          ...(spouse ? { spouse } : {}),
+          ...(input.idecoAnnualLimit !== undefined ? { idecoAnnualLimit: input.idecoAnnualLimit } : {}),
+          ...(input.idecoAdditional !== undefined ? { idecoAdditional: input.idecoAdditional } : {}),
+          ...(input.kyosaiAdditional !== undefined ? { kyosaiAdditional: input.kyosaiAdditional } : {}),
+          ...(input.nhiIncomeRatePercent !== undefined ? { nhiIncomeRatePercent: input.nhiIncomeRatePercent } : {}),
+        };
+        return { valid: true, issues: [], normalized, meta: meta(input.year ?? DEFAULT_YEAR) };
       } catch (error) {
         if (error instanceof InputError) return { valid: false, issues: [...error.issues], normalized: null, meta: meta() };
         if (error instanceof RangeError) return { valid: false, issues: [error.message], normalized: null, meta: meta() };
