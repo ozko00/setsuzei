@@ -169,7 +169,7 @@ describe("ブラウザ版: 公開する静的ファイル（docs/）", () => {
 
   it("フォームの入力名はすべて CLI のフラグ名に対応する", () => {
     const names = [...html.matchAll(/<(?:input|select)[^>]*\bname="([^"]+)"/g)].map((m) => m[1] ?? "");
-    const known = new Set<string>([...INPUT_STRING_FLAGS, ...INPUT_BOOLEAN_FLAGS, "has-spouse", "income-type"]);
+    const known = new Set<string>([...INPUT_STRING_FLAGS, ...INPUT_BOOLEAN_FLAGS, "has-spouse", "income-type", "work", "si-mode", "furusato-add"]);
     assert.ok(names.length >= 15);
     for (const name of names) assert.ok(known.has(name), `知らない入力名: ${name}`);
   });
@@ -186,7 +186,9 @@ describe("ブラウザ版: 公開する静的ファイル（docs/）", () => {
     assert.doesNotMatch(css, /url\(|@import/);
     for (const file of listFiles(join(root, "docs/js"))) {
       const js = readFileSync(file, "utf8");
-      assert.doesNotMatch(js, /\b(fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage|indexedDB|document\.cookie)\b/, file);
+      assert.doesNotMatch(js, /\b(fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|sessionStorage|indexedDB|document\.cookie)\b/, file);
+      // この端末への保存（利用者が選んだときだけ）に触るのは、web/storage.js だけ
+      if (!file.endsWith(join("web", "storage.js"))) assert.doesNotMatch(js, /\blocalStorage\b/, file);
       // Node 専用のモジュールを読み込んでいない
       assert.doesNotMatch(js, /from "node:/, file);
     }
