@@ -286,7 +286,7 @@ function assertTopMatches(view, r, { customFurusato = false } = {}) {
       assert.ok(view.plan.kyosai.saving.startsWith(yen(c.savingFromContributions.total)), view.plan.kyosai.saving);
     }
     if (!m.kyosai.applicable && c.includesIdeco) assert.ok(view.plan.ideco.saving.startsWith(yen(c.savingFromContributions.total)));
-    if (!c.includesIdeco) assert.equal(view.plan.ideco.saving, "合計に入れていません");
+    if (!c.includesIdeco) assert.equal(view.plan.ideco.saving, "やることに入れていません（払う額を入れると入ります）");
   }
 
   const now = card(view, `現状の見込み（${r.label}）`);
@@ -444,6 +444,9 @@ browserTest("トップ: 3 つ答えるだけで結果が出て、仮に置いた
   await page.select('select[name="blue"]', "65");
   await page.type('input[name="furusato-paid"]', "1万");
   await page.click('input[name="has-spouse"]');
+  // チェックしただけでは、配偶者なしのまま（所得 0 円の配偶者として計算しない）
+  assert.ok((await page.evaluate(READ)).plan.assumed.some((line) => line.startsWith("配偶者: 所得（または給料の年収）を入れるまでは")));
+  await page.type('input[name="spouse-salary"]', "0");
   const exact = { revenue: "380万", expenses: "55万", blue: "65", "social-insurance": "50.4万", "furusato-paid": "1万", "spouse-income": "0" };
   const after = await page.evaluate(READ);
   assertTopMatches(after, topCli(exact).result);

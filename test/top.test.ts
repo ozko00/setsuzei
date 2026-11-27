@@ -39,7 +39,7 @@ const CASES: readonly FormValues[] = [
   QUICK,
   { work: "employee", salary: "620万", revenue: "90万", expenses: "12万", "si-mode": "estimate", blue: "unknown", misc: true, "misc-assumed": true },
   { work: "employee", salary: "620万", revenue: "90万", expenses: "12万", "si-mode": "enter", "social-insurance": "91.2万", misc: true, "ideco-paid": "14.4万", "furusato-paid": "3万" },
-  { work: "freelance", revenue: "950万", expenses: "430万", blue: "65", "si-mode": "enter", "social-insurance": "120.8万", "kyosai-paid": "36万", "has-spouse": true, "dependents-under16": "1", dependents: "1", "other-deductions": "8万" },
+  { work: "freelance", revenue: "950万", expenses: "430万", blue: "65", "si-mode": "enter", "social-insurance": "120.8万", "kyosai-paid": "36万", "has-spouse": true, "spouse-income": "0", "dependents-under16": "1", dependents: "1", "other-deductions": "8万" },
   { work: "freelance", revenue: "105万", expenses: "45万", "si-mode": "enter", "social-insurance": "6万", blue: "none" },
   { work: "freelance", revenue: "800万", expenses: "150万", blue: "65", "si-mode": "enter", "social-insurance": "90万", "ideco-paid": "27.6万", "ideco-add": "10万", "kyosai-add": "30万" },
   { work: "freelance", revenue: "480万", expenses: "75万", blue: "65", "si-mode": "enter", "social-insurance": "59万", "furusato-paid": "1万", "furusato-add": "2万", "kyosai-add": "12万" },
@@ -196,7 +196,7 @@ describe("トップページ: 割に合わないものは、やることに入�
   });
 
   it("出せるお金に合わせて掛金を減らしたとき、ふるさと納税の上限の目安が上がる理由を添える", () => {
-    const top = done({ work: "freelance", revenue: "950万", expenses: "430万", blue: "65", "si-mode": "enter", "social-insurance": "120.8万", "kyosai-paid": "36万", "has-spouse": true, "dependents-under16": "1", dependents: "1", "other-deductions": "8万", budget: "20万" });
+    const top = done({ work: "freelance", revenue: "950万", expenses: "430万", blue: "65", "si-mode": "enter", "social-insurance": "120.8万", "kyosai-paid": "36万", "has-spouse": true, "spouse-income": "0", "dependents-under16": "1", dependents: "1", "other-deductions": "8万", budget: "20万" });
     assert.equal(top.plan.furusato.amount, 39_000);
     assert.equal(top.plan.kyosai?.amount, 161_000);
     assert.match(top.plan.budget?.reason ?? "", /ふるさと納税の上限の目安は 31,000 円から 39,000 円に上がっています。$/);
@@ -220,8 +220,28 @@ describe("トップページ: 仮に置いた値を結果に示す", () => {
     assert.equal(done({ ...QUICK, "si-mode": "enter", "social-insurance": "0" }).result.input.socialInsurance, 0);
   });
 
+  it("「配偶者がいる」にチェックしただけでは、所得 0 円の配偶者として計算しない。給料の年収を入れると、給与所得を計算して使う", () => {
+    const base: FormValues = { work: "employee", salary: "620万", "si-mode": "enter", "social-insurance": "91.2万" };
+    const single = done(base);
+    const checked = done({ ...base, "has-spouse": true });
+    assert.equal(checked.result.input.spouse, null);
+    assert.equal(checked.result.baseline.totalTax, single.result.baseline.totalTax);
+    assert.match(checked.assumptions.find((a) => a.key === "family")?.text ?? "", /入れるまでは、配偶者なしで計算しています/);
+    // 年収 400 万円の配偶者: 給与所得は 276 万円（133 万円を超えるので控除なし。税額は配偶者なしと同じ）
+    const working = done({ ...base, "has-spouse": true, "spouse-salary": "400万" });
+    assert.equal(working.result.input.spouse?.income, 2_760_000);
+    assert.equal(working.result.baseline.totalTax, single.result.baseline.totalTax);
+    assert.equal((working.effective as Record<string, string>)["spouse-income"], "2760000");
+    // 収入のない配偶者は 0 と入れる。配偶者控除が入って税額が下がる
+    const none = done({ ...base, "has-spouse": true, "spouse-salary": "0" });
+    assert.equal(none.result.input.spouse?.income, 0);
+    assert.ok(none.result.baseline.totalTax < single.result.baseline.totalTax);
+    // 合計所得金額を入れたときは、そちらを使う
+    assert.equal(done({ ...base, "has-spouse": true, "spouse-salary": "400万", "spouse-income": "50万" }).result.input.spouse?.income, 500_000);
+  });
+
   it("入力した項目は、仮に置いた値から消える", () => {
-    const top = done({ ...QUICK, "si-mode": "enter", "social-insurance": "50万", blue: "65", "has-spouse": true, "ideco-paid": "0" });
+    const top = done({ ...QUICK, "si-mode": "enter", "social-insurance": "50万", blue: "65", "has-spouse": true, "spouse-income": "0", "ideco-paid": "0" });
     assert.deepEqual(top.assumptions, []);
     assert.equal(top.insurance, null);
     assert.equal(top.result.input.socialInsurance, 500_000);

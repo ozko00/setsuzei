@@ -367,7 +367,7 @@ function start() {
             if (k.custom && typed !== null && typed > k.amount)
                 hint.push(`入れた額のうち、税額が減る ${yen(k.amount)}までで計算しています。`);
             text("kyosai-hint", hint.join(""));
-            text("kyosai-saving", optional ? "合計に入れていません" : split(k.saving));
+            text("kyosai-saving", optional ? "やることに入れていません（払う額を入れると入ります）" : split(k.saving));
             text("kyosai-worth", !optional && k.amount > 0
                 ? `手元に残るもの: 払った ${yen(k.amount)}は、将来受け取る自分の積立です。得になるのは、いま税金が減る ${yen(k.saving.total)}です（受け取るときに税金がかかります）。`
                 : "");
@@ -386,7 +386,7 @@ function start() {
             idecoHint.push(`${yen(m.ideco.additional)}を年内に払えた場合は、それだけで税金が ${yen(m.ideco.saving.total)}減ります（合計には入れていません）。`);
         }
         text("ideco-hint", idecoHint.join(""));
-        text("ideco-saving", i.included ? split(i.saving) : "合計に入れていません");
+        text("ideco-saving", i.included ? split(i.saving) : "やることに入れていません（払う額を入れると入ります）");
         text("ideco-worth", i.included && i.amount > 0
             ? `手元に残るもの: 払った ${yen(i.amount)}は、60 歳以降に受け取る自分の年金の積立です。得になるのは、いま税金が減る ${yen(i.saving.total)}です（受け取るときに税金がかかります）。`
             : "");
@@ -397,7 +397,7 @@ function start() {
         text("total-saving", yen(plan.saving.total));
         text("total-payment", yen(plan.totalPayment));
         text("total-tax", `${yen(plan.taxBefore)} → ${yen(plan.taxAfter)}`);
-        const totalNotes = [];
+        const totalNotes = [`税額は、所得税と住民税（${r.residentTaxLabel}）の合計です。`];
         if ([f.amount, k?.amount ?? 0, i.amount].filter((n) => n > 0).length > 1) {
             totalNotes.push("合計は、まとめて計算し直した額です。それぞれの「減る税額」は、小規模企業共済・iDeCo・ふるさと納税の順に実行したときの額です。");
         }
@@ -419,7 +419,7 @@ function start() {
                 ? `青色申告特別控除が 65 万円なら、税額はいまの計算より ${yen(best.savingVsCurrent.total)}少なくなります。`
                 : "いまの所得では、青色申告特別控除で税額は変わりません。") +
                 (unknown
-                    ? "ただし、使えるのは「青色申告承認申請書」を期限までに税務署に出している方だけです。出していて、複式簿記の帳簿と e-Tax での申告ができる方は、「もっと正確にする」の青色申告特別控除で 65 万円を選んでください。上の金額も変わります。"
+                    ? "ただし、ことしの分に使えるのは「青色申告承認申請書」を期限までに税務署に出している方だけです（これから出す場合は、来年分からです）。出していて、複式簿記の帳簿と e-Tax での申告ができる方は、「もっと正確にする」の青色申告特別控除で 65 万円を選んでください。上の金額も変わります。"
                     : "65 万円にするには、複式簿記の帳簿と、e-Tax での期限内の申告が必要です。"));
         }
     };

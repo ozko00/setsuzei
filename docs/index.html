@@ -129,10 +129,12 @@
 
     <fieldset>
       <legend>家族</legend>
-      <label class="inline"><input type="checkbox" name="has-spouse"> <span>配偶者（夫・妻）がいる<span class="sub">生計を一にしている場合。配偶者の所得が多いと控除はなく、チェックしても結果は変わりません</span></span></label>
+      <label class="inline"><input type="checkbox" name="has-spouse"> <span>配偶者（夫・妻）がいる<span class="sub">生計を一にしている場合。チェックしたら、下のどちらかを入れてください（入れるまでは、配偶者なしで計算します）</span></span></label>
       <div class="only-spouse">
-        <label>配偶者の合計所得金額<span class="sub">収入がなければ 0。給料だけなら「年収 − 給与所得控除」。133 万円を超えると控除はありません</span>
-          <input name="spouse-income" inputmode="numeric" placeholder="0"></label>
+        <label>配偶者の給料の年収<span class="sub">配偶者の収入が給料だけの場合。税金や保険料が引かれる前の額（額面）。収入がなければ 0</span>
+          <input name="spouse-salary" inputmode="numeric" placeholder="例: 400万"></label>
+        <label>配偶者の合計所得金額<span class="sub">給料以外の収入がある場合や、所得が分かっている場合は、こちらに入れます（こちらを優先します）。133 万円を超えると控除はありません</span>
+          <input name="spouse-income" inputmode="numeric" placeholder="例: 0"></label>
         <label class="inline"><input type="checkbox" name="spouse-70"> 配偶者は 70 歳以上</label>
       </div>
       <p class="field-label">扶養している家族の人数<span class="sub">ことしの 12 月 31 日時点の年齢で分けます。16 歳未満の子は扶養控除の対象外ですが、住民税がかからなくなる所得の上限に関わるので入れてください</span></p>

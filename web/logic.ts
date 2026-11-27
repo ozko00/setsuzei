@@ -113,7 +113,7 @@ export function isBlank(values: FormValues): boolean {
  * - furusato-add: ふるさと納税で追加して寄附する額（空なら上限の目安まで）
  * - budget: 年内に出せるお金（任意。入れたら、その範囲で減る税額が大きくなる配分にする）
  */
-export const TOP_ONLY_NAMES = ["work", "si-mode", "misc-assumed", "furusato-add", "budget"] as const;
+export const TOP_ONLY_NAMES = ["work", "si-mode", "misc-assumed", "furusato-add", "budget", "spouse-salary"] as const;
 
 /** 結果に添える「仮に置いた値」 */
 export interface Assumption {
@@ -212,6 +212,14 @@ function normalizeTop(values: FormValues): FormValues {
   if (v["work"] === "freelance") v["salary"] = "";
   if (v["blue"] === "unknown") v["blue"] = "";
   if (usesEstimate(values)) v["social-insurance"] = "";
+  // 配偶者: 所得が空で、給料の年収が入っていれば、年収から給与所得を計算して使う（計算コアの給与所得と同じ）
+  if (v["has-spouse"] === true && !filled(v["spouse-income"]) && filled(v["spouse-salary"])) {
+    const salary = parseAmount(String(v["spouse-salary"]));
+    if (salary !== null) v["spouse-income"] = String(calculate({ salaryRevenue: salary }).baseline.salaryIncome);
+  }
+  // 「配偶者がいる」にチェックしただけで、所得も年収も入っていない間は、配偶者なしで計算する
+  // （所得 0 円の配偶者として計算すると、共働きの人の税額が実際より低く出るため）
+  if (v["has-spouse"] === true && !filled(v["spouse-income"])) v["has-spouse"] = false;
   return v;
 }
 
@@ -423,7 +431,9 @@ export function computeTop(values: FormValues): TopOutcome {
       assumptions.push({ key: "incomeType", text: "副業の所得の種類: 雑所得（開業届を出して帳簿をつけている事業なら「事業所得」）" });
     }
     const dependents = ["dependents", "dependents-specific", "dependents-elderly", "dependents-elderly-cohabiting", "dependents-under16"];
-    if (values["has-spouse"] !== true && !dependents.some((name) => filled(values[name]))) {
+    if (values["has-spouse"] === true && v["has-spouse"] === false) {
+      assumptions.push({ key: "family", text: "配偶者: 所得（または給料の年収）を入れるまでは、配偶者なしで計算しています" });
+    } else if (values["has-spouse"] !== true && !dependents.some((name) => filled(values[name]))) {
       assumptions.push({ key: "family", text: "配偶者・扶養している家族: なし" });
     }
     if (!["ideco-paid", "kyosai-paid", "furusato-paid", "other-deductions"].some((name) => filled(values[name]))) {
