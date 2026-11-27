@@ -36,7 +36,10 @@ npm ci
 npm run typecheck   # 型チェック
 npm test            # テスト
 npm run build:site  # web/・site/・src/ を変えたら実行し、docs/ の差分もコミットする
+npm run test:browser  # 公開ページを Chrome で操作するテスト（下を参照）
 ```
+
+`npm run test:browser` は、ヘッドレスの Chrome でトップと説明ページを開き、キーボードとマウスで入力して、画面の金額を同じ入力の CLI の結果と突き合わせます。空入力・誤入力の表示、所得区分の切り替え、スマホ幅（375px）でのはみ出し、コンソールのエラー、ページの外への通信がないことも見ます。Node.js 22 以上と Chrome / Chromium が必要です（場所は環境変数 `CHROME_BIN` でも指定できます）。依存パッケージは使いません。`npm test` には含めず、CI では別のジョブで実行しています。ページの欄や見出しを変えたら、[`test/browser/e2e.mjs`](test/browser/e2e.mjs) も合わせて直してください。
 
 - 計算コアは実行時依存ゼロの純粋関数です。実行時の依存パッケージは増やしません。
 - 金額は円の整数、割合は整数（パーセントなど）で扱い、浮動小数の誤差が出ないようにします。
