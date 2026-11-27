@@ -244,6 +244,10 @@ describe("Skill と README の取得手順", () => {
     assert.match(skill, /取得の前に、[^\n]*了承を得る/);
     assert.match(skill, /すでに使える CLI がないか確かめる/);
     assert.match(skill, /権限の確認で止まった・拒否されたとき/);
+    // 取得はネットワークの一時的な失敗で止まることがある（名前解決の失敗を実際に観測した）。
+    // clone に失敗したまま npm ci に進まないことと、やり直しは 1 回だけであることを書いておく
+    assert.match(skill, /`git clone` がネットワークのエラーで失敗したとき[^\n]*`npm ci` には進まず[^\n]*もう一度だけ実行する[^\n]*2 回続けて失敗したら/);
+    assert.match(read("README.md"), /Could not resolve host: github\.com[^\n]*同じ `git clone` をもう一度実行/);
     const blocks = [...skill.matchAll(/```sh\n([\s\S]*?)```/g)].map((m) => (m[1] ?? "").trim());
     const setup = blocks.filter((b) => /git clone|npm ci/.test(b));
     assert.equal(setup.length, 2);
