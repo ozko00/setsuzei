@@ -1,0 +1,72 @@
+# タグ（v1.2.3 の形）を push したら、その版を npm に公開する。
+#
+# 認証は npm の Trusted Publishing（GitHub Actions の OIDC）。トークンは使わない（リポジトリの secrets にも置かない）。
+# https://docs.npmjs.com/trusted-publishers
+#
+# npmjs.com 側の登録（パッケージの Settings → Trusted publishing → GitHub Actions）が必要:
+#   Organization or user: ozko00 / Repository: setsuzei / Workflow filename: publish.yml / Environment name: 空欄
+#   Allowed actions: npm publish を許可する
+# 登録は、最初の公開が 2 日以内に成功しないと失効する。タグを打つ直前に登録すること。
+#
+# 登録が済むまでは、公開に失敗しても警告を出すだけで成功として終わる（CI を赤くしない）。
+# 登録が済んだら、リポジトリの変数 NPM_TRUSTED_PUBLISHING を true にする。以後、公開の失敗はそのまま失敗になる。
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  # 登録の前に打ったタグを、あとから公開するとき用（公開したいタグを選んで実行する）
+  workflow_dispatch:
+
+permissions:
+  id-token: write # OIDC に必要
+  contents: read
+
+jobs:
+  publish:
+    # タグからの実行だけ（手動で実行するときも、ブランチではなくタグを選ぶ）
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          # Trusted Publishing には Node.js 22.14 以上と npm 11.5.1 以上が必要
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+      - name: タグと package.json の版が同じことを確かめる
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::タグ $GITHUB_REF_NAME と package.json の版 $version が違います"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: すでに公開済みなら何もしない
+        id: published
+        run: |
+          if npm view "setsuzei@$VERSION" version >/dev/null 2>&1; then
+            echo "setsuzei@$VERSION は公開済みです"
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: npm に公開する
+        if: steps.published.outputs.done == 'false'
+        env:
+          TRUSTED: ${{ vars.NPM_TRUSTED_PUBLISHING }}
+        run: |
+          npm --version
+          if npm publish; then
+            echo "setsuzei@$VERSION を公開しました"
+          elif [ "$TRUSTED" = "true" ]; then
+            echo "::error::npm への公開に失敗しました"
+            exit 1
+          else
+            echo "::warning::npm に公開できませんでした。npmjs.com で Trusted Publishing の登録が済んでいない可能性があります（登録後、リポジトリの変数 NPM_TRUSTED_PUBLISHING を true にしてください）。この版は手作業で公開するか、登録後にこの workflow をタグを選んで実行してください。"
+          fi

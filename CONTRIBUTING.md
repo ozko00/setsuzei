@@ -57,15 +57,17 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 [`skills/setsuzei/SKILL.md`](skills/setsuzei/SKILL.md) を変えたら、実際にエージェントで通ることを確かめてください。テスト（`npm test`）が見るのは文面の決まりごとだけで、エージェントの振る舞いは見ません。
 
 1. **聞き取り → CLI 実行 → 説明**: `npm ci` のあと `scripts/skill-e2e.sh` を実行します。Skill を入れた Claude Code に 2 回話しかけ、回答の金額を CLI の出力と突き合わせて PASS / FAIL を出します。Claude Code（ログイン済み）が必要で、利用枠を消費します。CI では実行していません。
-2. **取得の手順**: SKILL.md の「CLI を用意する」にある 2 つのコマンドを、まっさらな環境でそのまま実行して確かめます。タグが公開済みなら、次のように Docker で試せます。
+2. **取得の手順**: SKILL.md の「CLI を用意する」にあるコマンドを、まっさらな環境でそのまま実行して確かめます。npm に公開済みの版なら、次のように Docker で試せます。
 
    ```sh
-   docker run --rm node:22 sh -c 'git clone --depth 1 --branch v0.3.0 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei && npm ci --prefix ~/.cache/setsuzei && node ~/.cache/setsuzei/dist/cli.js --version'
+   docker run --rm node:22 npx --yes setsuzei@0.3.0 --version
    ```
 
-   取得がときどき失敗しないかを見るときは、`scripts/verify-install.sh` で同じ手順をくり返し実行できます（Node 20 / 22 / 24 / 26 で 10 回ずつ。出力はすべてログに残ります）。取得はネットワークに依存するので、失敗したらログのエラーの文面（`Could not resolve host` など）を先に確かめてください。
+   補足の手順（GitHub のタグから取得してビルド）は、`scripts/verify-install.sh` でくり返し実行できます（Node 20 / 22 / 24 / 26 で 10 回ずつ。出力はすべてログに残ります）。取得はネットワークに依存するので、失敗したらログのエラーの文面（`Could not resolve host` など）を先に確かめてください。
 
 版を上げるときは、`package.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.3.0` のような表記）をそろえます。そろっていないとテストが落ちます。マージ後に、その版のタグと GitHub Release を作ります。
+
+タグ（`v0.3.0` の形）を push すると、[`.github/workflows/publish.yml`](.github/workflows/publish.yml) が npm に公開します。トークンは使わず、npm の Trusted Publishing（GitHub Actions の OIDC）で認証します。npmjs.com 側の登録（パッケージの Settings → Trusted publishing）が必要で、登録する値は、リポジトリ `ozko00/setsuzei`、workflow のファイル名 `publish.yml`、environment は空欄です。登録が済んだら、リポジトリの変数 `NPM_TRUSTED_PUBLISHING` を `true` にします（それまでは、公開に失敗しても警告だけで終わります）。
 
 ## プルリクエスト
 

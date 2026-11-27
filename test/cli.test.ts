@@ -207,17 +207,18 @@ describe("CLI", () => {
 });
 
 describe("実行手順の記載", () => {
-  // npm 12.0.0 から allow-git の既定値が none になり、git からの取得は --allow-git=all がないと EALLOWGIT で失敗する
-  // https://docs.npmjs.com/cli/v12/using-npm/config#allow-git
-  it("GitHub から npx / npm install する記載には、必ず --allow-git=all を付ける", () => {
+  const read = (file: string): string => readFileSync(new URL(file, root), "utf8");
+
+  it("CLI の入口は npm の setsuzei（npx）。GitHub から直接 npx / npm install する記載は残さない", () => {
     for (const file of ["README.md", "skills/setsuzei/SKILL.md", "CONTRIBUTING.md", "docs/index.html"]) {
-      const text = readFileSync(new URL(file, root), "utf8");
-      for (const line of text.split("\n")) {
-        if (/\b(npx|npm install)\b.*github:ozko00\/setsuzei/.test(line)) {
-          assert.match(line, /--allow-git=all/, `${file}: ${line.trim()}`);
-        }
-      }
+      const text = read(file);
+      assert.doesNotMatch(text, /github:ozko00\/setsuzei/, file);
+      assert.doesNotMatch(text, /allow-git/, file);
+      assert.doesNotMatch(text, /npm には未公開/, file);
     }
+    assert.match(read("README.md"), /```sh\nnpx setsuzei {2,}# 対話形式で入力\nnpx setsuzei --revenue/);
+    assert.match(read("README.md"), /`npm install setsuzei` で入ります/);
+    assert.match(read("docs/index.html"), /<code>npx setsuzei<\/code>/);
   });
 });
 
@@ -225,35 +226,81 @@ describe("Skill と README の取得手順", () => {
   const read = (file: string): string => readFileSync(new URL(file, root), "utf8");
   const tag = `v${VERSION}`;
 
-  it("取得するタグは、いまの版（package.json の version）と同じ", () => {
-    for (const file of ["README.md", "skills/setsuzei/SKILL.md"]) {
+  it("版を付ける記載（npx setsuzei@… と、補足の git clone のタグ）は、いまの版（package.json の version）と同じ", () => {
+    for (const file of ["README.md", "skills/setsuzei/SKILL.md", "CONTRIBUTING.md"]) {
       const text = read(file);
-      const tags = [...text.matchAll(/(?:--branch |setsuzei#)(v\d+\.\d+\.\d+)/g)].map((m) => m[1]);
+      const pinned = [...text.matchAll(/setsuzei@(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
+      assert.ok(pinned.length >= 1, `${file}: 版を付けた npx の記載がない`);
+      for (const found of pinned) assert.equal(found, VERSION, file);
+      if (file === "CONTRIBUTING.md") continue; // 開発用の clone はタグなし
+      const tags = [...text.matchAll(/--branch (v\d+\.\d+\.\d+)/g)].map((m) => m[1]);
       assert.ok(tags.length >= 1, `${file}: タグの指定がない`);
       for (const found of tags) assert.equal(found, tag, file);
-      // タグなしで GitHub から取得する記載を残さない（開発用の CONTRIBUTING.md は対象外）
       for (const line of text.split("\n")) {
         if (/git clone .*ozko00\/setsuzei/.test(line)) assert.match(line, new RegExp(`--branch ${tag.replace(/\./g, "\\.")}\\b`), `${file}: ${line.trim()}`);
-        if (/github:ozko00\/setsuzei/.test(line)) assert.ok(line.includes(`github:ozko00/setsuzei#${tag}`), `${file}: ${line.trim()}`);
       }
     }
   });
 
-  it("Skill: 取得の前に利用者の了承を得る。取得のコマンドは 1 つずつで、つながない", () => {
+  it("Skill: 取得の前に利用者の了承を得る。npx は版を固定し、勝手に切り替えない", () => {
     const skill = read("skills/setsuzei/SKILL.md");
     assert.match(skill, /取得の前に、[^\n]*了承を得る/);
     assert.match(skill, /すでに使える CLI がないか確かめる/);
     assert.match(skill, /権限の確認で止まった・拒否されたとき/);
+    assert.match(skill, /版は固定する。`@latest` や版なしの `npx setsuzei` に勝手に切り替えない/);
+    const blocks = [...skill.matchAll(/```sh\n([\s\S]*?)```/g)].map((m) => (m[1] ?? "").trim());
+    // 版なしの npx を、実行するコマンドとして書かない
+    for (const block of blocks) {
+      for (const use of block.matchAll(/npx [^\n|]*setsuzei\S*/g)) assert.match(use[0], new RegExp(`^npx --yes setsuzei@${VERSION.replace(/\./g, "\\.")}$`), block);
+    }
+    assert.ok(blocks.includes(`npx --yes setsuzei@${VERSION} --version`));
+    // 取得の前に伝えること: npm から取得すること、ほかのパッケージが入らないこと、金額を送信しないこと
+    assert.match(skill, /npm から `setsuzei` の [\d.]+ を取得して実行すること/);
+    assert.match(skill, /入力した金額はどこにも送信しないこと/);
+  });
+
+  it("Skill: npm から取得できないときの補足（git clone）も、了承を得てから。コマンドは 1 つずつで、つながない", () => {
+    const skill = read("skills/setsuzei/SKILL.md");
+    const extra = skill.slice(skill.indexOf("#### npm から取得できないとき（補足）"), skill.indexOf("### 3. 計算"));
+    assert.ok(extra.length > 0 && skill.indexOf("npx --yes setsuzei@") < skill.indexOf("git clone"), "git clone は npx の後ろ（補足）に置く");
+    assert.match(extra, /これも、取得の前に利用者に伝えて了承を得る/);
     // 取得はネットワークの一時的な失敗で止まることがある（名前解決の失敗を実際に観測した）。
     // clone に失敗したまま npm ci に進まないことと、やり直しは 1 回だけであることを書いておく
-    assert.match(skill, /`git clone` がネットワークのエラーで失敗したとき[^\n]*`npm ci` には進まず[^\n]*もう一度だけ実行する[^\n]*2 回続けて失敗したら/);
+    assert.match(extra, /`git clone` がネットワークのエラーで失敗したとき[^\n]*`npm ci` には進まず[^\n]*もう一度だけ実行する[^\n]*2 回続けて失敗したら/);
+    assert.match(skill, /npm がネットワークのエラーで失敗したとき[^\n]*もう一度だけ実行する[^\n]*2 回続けて失敗したら/);
     assert.match(read("README.md"), /Could not resolve host: github\.com[^\n]*同じ `git clone` をもう一度実行/);
-    const blocks = [...skill.matchAll(/```sh\n([\s\S]*?)```/g)].map((m) => (m[1] ?? "").trim());
-    const setup = blocks.filter((b) => /git clone|npm ci/.test(b));
-    assert.equal(setup.length, 2);
-    for (const block of setup) {
+    const blocks = [...extra.matchAll(/```sh\n([\s\S]*?)```/g)].map((m) => (m[1] ?? "").trim());
+    assert.equal(blocks.length, 2);
+    for (const block of blocks) {
       assert.equal(block.split("\n").length, 1, block);
       assert.doesNotMatch(block, /&&|;|\|/, block);
     }
+  });
+});
+
+describe("npm への公開（.github/workflows/publish.yml）", () => {
+  const workflow = readFileSync(new URL(".github/workflows/publish.yml", root), "utf8");
+  const pkg = JSON.parse(readFileSync(new URL("package.json", root), "utf8")) as { name: string; files: string[]; bin: Record<string, string> };
+
+  it("タグの push で動き、OIDC（Trusted Publishing）で認証する。トークンは使わない", () => {
+    assert.match(workflow, /on:\n {2}push:\n {4}tags:\n {6}- "v\*\.\*\.\*"/);
+    assert.match(workflow, /permissions:\n {2}id-token: write/);
+    assert.doesNotMatch(workflow, /secrets\.|NODE_AUTH_TOKEN|NPM_TOKEN/);
+    assert.match(workflow, /npm publish/);
+  });
+
+  it("登録が済むまでは、公開に失敗しても警告で終わる。済んだあと（変数が true）は失敗にする", () => {
+    assert.match(workflow, /vars\.NPM_TRUSTED_PUBLISHING/);
+    assert.match(workflow, /elif \[ "\$TRUSTED" = "true" \]; then\n\s+echo "::error::/);
+    assert.match(workflow, /else\n\s+echo "::warning::/);
+    // タグと版が違えば公開しない。公開済みの版は何もしない
+    assert.match(workflow, /"v\$version" != "\$GITHUB_REF_NAME"/);
+    assert.match(workflow, /npm view "setsuzei@\$VERSION" version/);
+  });
+
+  it("公開する中身は、ビルド結果・Skill・例だけ", () => {
+    assert.equal(pkg.name, "setsuzei");
+    assert.deepEqual(pkg.files, ["dist", "skills", "examples"]);
+    assert.equal(pkg.bin["setsuzei"], "dist/cli.js");
   });
 });
