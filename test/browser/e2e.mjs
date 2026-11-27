@@ -606,6 +606,12 @@ browserTest("トップ: 年内に出せるお金を入れると、その範囲�
   await page.evaluate("document.activeElement.blur()");
   assertTopMatches(await page.evaluate(READ), topCli(member).result);
 
+  // いま入っていない人が額を入れても、スライダーの右端は加入した場合の上限のまま（下げたあと、また上げられる）
+  await fillTop(page, { "kyosai-paid": "" , "kyosai-add": "30万" });
+  assert.equal(await page.evaluate('document.querySelector("#kyosai-range").max'), "840000");
+  assert.doesNotMatch((await page.evaluate(READ)).plan.kyosai.hint, /300,000 円を超えて払っても/);
+  await fillTop(page, { "kyosai-paid": "36万", "kyosai-add": "" });
+
   // 各項目でいつも見えているのは 3 行。締切・注意・加入の手順は、開くと読める
   const info = 'Array.from(document.querySelectorAll("#act-kyosai .info dt")).filter((el) => el.checkVisibility()).map((el) => el.textContent)';
   assert.deepEqual(await page.evaluate(info), []);

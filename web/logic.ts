@@ -266,9 +266,11 @@ export function computeTop(values: FormValues): TopOutcome {
     // 小規模企業共済にいま加入していない人には、額を自分で入れるまで合計に入れない
     // （年内に新しく加入して払うのは、手続きも金額も重いので、「さらに減らしたい場合」として別に示す）
     const joining = first.measures.kyosai.applicable && first.input.kyosaiPaid === 0;
+    // 加入した場合の上限は、いま入れてある払う額に関係なく出す（スライダーの右端と説明に使うので、入れた額で縮まないように）
+    const upToLimit = joining && kyosaiCustom ? calculate(flagsToInput(valuesToFlags({ ...v, "kyosai-add": "" })) as TaxInput) : first;
     const ifJoined: PlanAction | null =
-      joining && first.measures.kyosai.additional > 0
-        ? { amount: first.measures.kyosai.additional, saving: first.measures.kyosai.saving }
+      joining && upToLimit.measures.kyosai.additional > 0
+        ? { amount: upToLimit.measures.kyosai.additional, saving: upToLimit.measures.kyosai.saving }
         : null;
     if (joining && !kyosaiCustom) v["kyosai-add"] = "0";
 

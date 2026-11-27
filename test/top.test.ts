@@ -126,9 +126,10 @@ describe("トップページ: 小規模企業共済と、年内に出せるお�
     const byDefault = runCli(flags)["measures"].kyosai;
     assert.deepEqual(top.plan.kyosai?.ifJoined, { amount: byDefault.additional, saving: byDefault.saving });
     assert.ok((top.plan.kyosai?.ifJoined?.amount ?? 0) > 0);
-    // 額を入れると合計に入る
+    // 額を入れると合計に入る。加入した場合の上限（スライダーの右端）は、入れた額で縮まない
     const joined = done({ ...QUICK, "kyosai-add": "12万" });
     assert.equal(joined.plan.kyosai?.amount, 120_000);
+    assert.deepEqual(joined.plan.kyosai?.ifJoined, top.plan.kyosai?.ifJoined);
     assert.equal(joined.plan.totalPayment, 120_000 + joined.plan.furusato.amount);
   });
 
