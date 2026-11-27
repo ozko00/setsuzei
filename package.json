@@ -53,7 +53,7 @@
     "serve:site": "python3 -m http.server 8080 --bind 127.0.0.1 --directory docs"
   },
   "devDependencies": {
-    "@types/node": "^22.20.5",
+    "@types/node": "^26.6.6",
     "typescript": "^5.9.0"
   }
 }
