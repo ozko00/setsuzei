@@ -369,13 +369,13 @@ function start(): void {
             ? `あと ${yen(f.amount)}寄附する（寄附済みの ${yen(f.paid)}と合わせて、ことしの合計 ${yen(f.paid + f.amount)}）`
             : `${yen(f.amount)}寄附する`,
       );
-      const hint = [`上限の目安は年間 ${yen(f.limit)}です（これを超えた分は、税金が減らず自己負担になります）。`];
+      const hint = [`上限の目安は年間 ${yen(f.limit)}です（これを超えると、超えた分のほとんどが自己負担になります）。`];
       if (f.paid >= 2_000 && f.amount > 0) hint.push("自己負担の 2,000 円は寄附済みの分で負担しているので、追加の分はほぼ全額が税金から引かれます。");
       if (f.limit < m.furusato.limit) hint.push(`掛金を払う分、上限の目安は ${yen(m.furusato.limit)}から下がっています。`);
       text("furusato-hint", hint.join(""));
       $("furusato-saving").replaceChildren(
         split(f.saving),
-        ...(f.over > 0 ? [h("span", { class: "warn" }, `上限の目安を ${yen(f.over)}超えています。超えた分は税金が減りません。`)] : []),
+        ...(f.over > 0 ? [h("span", { class: "warn" }, `上限の目安を ${yen(f.over)}超えています。超えた分は、ほとんどが自己負担になります。`)] : []),
       );
       setPlanField("furusato", f.amount, f.recommended);
       $("furusato-notes").replaceChildren(...m.furusato.notes.map((n) => h("li", {}, browserNote(n))));
@@ -523,7 +523,10 @@ function start(): void {
     const top = computeTop(values);
     if (!top.ok) {
       // 払う額の欄を直せるよう、出ていた結果は薄くして残す（数字は古いままなので、読み上げからは外す）
-      planBox.hidden = current === null && planBox.hidden;
+      // 保存してあった値を読み込んだ直後など、まだ結果を出していないときでも、
+      // 払う額・出せるお金の欄に値があれば、その欄を直せるように出す
+      const planHasInput = [...PLAN_FIELDS.map((name) => planInput(name)), $<HTMLInputElement>("budget")].some((el) => el.value.trim() !== "");
+      if (planHasInput) planBox.hidden = false;
       planBox.classList.add("stale");
       planBox.setAttribute("aria-busy", "true");
       current = null;

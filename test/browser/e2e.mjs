@@ -724,6 +724,15 @@ browserTest("トップ: 入力の保存は、自分で選んだときだけ。�
   assert.deepEqual(await page.evaluate(HIDDEN_VALUES), []);
   assert.match(await page.evaluate('document.querySelector("#save-status").textContent'), /読み込みました/);
 
+  // 読めない値を保存したまま開き直しても、その欄を直せる（結果の枠ごと隠れない）
+  await fillTop(page, { "kyosai-add": "たくさん" }, false);
+  await page.goto(server.base);
+  const broken = await page.evaluate(READ);
+  assert.equal(broken.alert.length, 1);
+  assert.equal(await page.evaluate('document.querySelector("#kyosai-add").checkVisibility()'), true);
+  await fillTop(page, { "kyosai-add": "12万" }, false);
+  assert.equal((await page.evaluate(READ)).alert, null);
+
   // チェックを外すと、すぐに消える
   await page.click("#save");
   assert.equal(await page.evaluate(stored), "{}");
