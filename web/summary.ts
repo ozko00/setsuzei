@@ -81,6 +81,12 @@ export function summaryText(top: Done, date: string): string {
       out.push("※ ふるさと納税の分は寄附と引き換えで、手元のお金は増えません（得になるのは返礼品の分）。掛金は自分の積立として残ります。");
     }
   }
+  if (plan.furusato.skipped) {
+    const k = plan.furusato.skipped;
+    out.push(
+      `※ ふるさと納税は、やることに入れていません。上限の目安まで ${yen(k.amount)}寄附しても、減る税額は ${yen(k.saving.total)}で、自己負担（${yen(k.amount - k.saving.total)}）のほうが大きいためです。`,
+    );
+  }
   if (plan.budget) out.push(`※ 年内に出せるお金を ${yen(plan.budget.amount)}として配分しています。${plan.budget.reason}`);
   if (plan.kyosai?.ifJoined && !plan.kyosai.custom) {
     out.push(

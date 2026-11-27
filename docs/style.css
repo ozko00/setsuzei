@@ -207,6 +207,9 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .budget p { margin: 6px 0 0; }
 .budget p:empty { display: none; }
 .optional-mark { margin-left: 8px; padding: 0 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 0.75rem; font-weight: 400; }
+.howto { margin: 2px 0 6px; padding-left: 1.3em; }
+.howto li + li { margin-top: 4px; }
+.worth { color: var(--text); }
 .info { margin: 4px 0 0; font-size: 0.9rem; }
 .info > div { padding: 6px 0; }
 .info dt { color: var(--muted); font-size: 0.8rem; font-weight: 700; }

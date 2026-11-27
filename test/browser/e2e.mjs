@@ -56,6 +56,8 @@ const READ = `(() => {
       optional: li.classList.contains("optional"),
       amount: document.querySelector("#" + name + "-add").value,
       saving: text(document.querySelector("#" + name + "-saving")),
+      todo: text(document.querySelector("#" + name + "-do")),
+      worth: text(document.querySelector("#" + name + "-worth")),
       hint: text(document.querySelector("#" + name + "-hint")),
     };
   };
@@ -244,7 +246,18 @@ function assertTopMatches(view, r, { customFurusato = false } = {}) {
   const m = r.measures;
   const c = m.combined;
   assert.equal(view.alert, null, "入力エラーが出ています");
-  if (!customFurusato) {
+  // 上限の目安まで寄附しても、減る税額が自己負担より小さいときは、画面は寄附を「やること」に入れない
+  const skipped = !customFurusato && c.furusatoAdditional > 0 && c.savingFromFurusato.total < c.furusatoAdditional - c.savingFromFurusato.total;
+  if (skipped) {
+    assert.deepEqual(view.figures, {
+      減る税額の合計: yen(c.savingFromContributions.total),
+      そのために年内に払う額: yen(c.totalPayment - c.furusatoAdditional),
+      "いまの税額の見込み → 実行後": `${yen(b.totalTax)} → ${yen(b.totalTax - c.savingFromContributions.total)}`,
+    });
+    assert.equal(view.plan.furusato.amount, "");
+    assert.match(view.plan.furusato.todo, new RegExp(`^やることに入れていません。上限の目安まで ${yen(c.furusatoAdditional)}寄附しても、減る税額は ${yen(c.savingFromFurusato.total)}で`));
+  }
+  if (!customFurusato && !skipped) {
     assert.deepEqual(view.figures, {
       減る税額の合計: yen(c.saving.total),
       そのために年内に払う額: yen(c.totalPayment),
@@ -273,7 +286,7 @@ function assertTopMatches(view, r, { customFurusato = false } = {}) {
       assert.ok(view.plan.kyosai.saving.startsWith(yen(c.savingFromContributions.total)), view.plan.kyosai.saving);
     }
     if (!m.kyosai.applicable && c.includesIdeco) assert.ok(view.plan.ideco.saving.startsWith(yen(c.savingFromContributions.total)));
-    if (!c.includesIdeco) assert.equal(view.plan.ideco.saving, "合計に入れていません");
+    if (!c.includesIdeco) assert.equal(view.plan.ideco.saving, "やることに入れていません（払う額を入れると入ります）");
   }
 
   const now = card(view, `現状の見込み（${r.label}）`);
@@ -341,7 +354,7 @@ function assertTopMatches(view, r, { customFurusato = false } = {}) {
   assert.deepEqual(card(view, "注意")?.notes ?? [], r.warnings.map(shown));
   // 画面のどこにも、CLI・JSON の指定方法を出さない
   assert.doesNotMatch(view.text, /CLI|JSON|--[a-z]/);
-  assert.ok(view.jump.text.includes(c.totalPayment > 0 && !customFurusato ? yen(c.saving.total) : "結果を見る"), view.jump.text);
+  assert.ok(view.jump.text.includes(c.totalPayment > 0 && !customFurusato && !skipped ? yen(c.saving.total) : "結果を見る"), view.jump.text);
   assert.equal(view.jump.error, false);
 }
 
@@ -415,6 +428,7 @@ browserTest("トップ: 3 つ答えるだけで結果が出て、仮に置いた
   assert.equal(view.plan.lead, `年内に ${yen(quick.measures.furusato.remaining)}払うと、税金が ${yen(quick.measures.furusato.saving.total)}減る見込みです。`);
   assert.equal(view.plan.kyosai.optional, true);
   assert.match(view.plan.kyosai.hint, /840,000 円を払った場合は、それだけで税金が [\d,]+ 円減ります（合計には入れていません）/);
+  assert.match(view.plan.furusato.worth, /^手元に残るもの: 返礼品。払う 54,000 円のうち 52,000 円が税金から引かれ、差の 2,000 円が自己負担です。/);
   assert.equal(view.plan.assumed.length, 4);
   assert.ok(view.plan.assumed[0].startsWith("社会保険料: 目安の 573,000 円"));
   assert.ok(view.plan.assumed[1].startsWith("青色申告特別控除: なし"));
@@ -430,6 +444,9 @@ browserTest("トップ: 3 つ答えるだけで結果が出て、仮に置いた
   await page.select('select[name="blue"]', "65");
   await page.type('input[name="furusato-paid"]', "1万");
   await page.click('input[name="has-spouse"]');
+  // チェックしただけでは、配偶者なしのまま（所得 0 円の配偶者として計算しない）
+  assert.ok((await page.evaluate(READ)).plan.assumed.some((line) => line.startsWith("配偶者: 所得（または給料の年収）を入れるまでは")));
+  await page.type('input[name="spouse-salary"]', "0");
   const exact = { revenue: "380万", expenses: "55万", blue: "65", "social-insurance": "50.4万", "furusato-paid": "1万", "spouse-income": "0" };
   const after = await page.evaluate(READ);
   assertTopMatches(after, topCli(exact).result);
@@ -632,8 +649,26 @@ browserTest("トップ: 年内に出せるお金を入れると、その範囲�
     ["やること", "払う額", "減る税額"],
   );
   await page.click("#act-kyosai details.more-info > summary");
-  assert.deepEqual(await page.evaluate(info), ["締切", "加入の手順", "注意"]);
-  assert.match(await page.evaluate('document.querySelector("#act-kyosai .info").textContent'), /窓口で、掛金をその場で現金で払う方法/);
+  assert.deepEqual(await page.evaluate(info), ["やり方", "締切", "注意"]);
+  assert.match(await page.evaluate('document.querySelector("#act-kyosai .info").textContent'), /窓口で、掛金をその場で現金で払う方法[\s\S]*掛金月額変更（増額・減額）申込書/);
+});
+
+browserTest("トップ: 割に合わない寄附は、やることに入れず理由を出す。自分で額を入れれば計算に入る", async (page) => {
+  await page.goto(server.base);
+  const low = { revenue: "105万", expenses: "45万", "social-insurance": "6万" };
+  await fillTop(page, low);
+  const view = await page.evaluate(READ);
+  const r = topCli(low).result;
+  assert.equal(r.measures.combined.furusatoAdditional, 3000);
+  assertTopMatches(view, r);
+  assert.equal(view.plan.lead, "いまの見込みでは、年内に追加で払って税金が減るものはありません。");
+  assert.match(view.plan.furusato.todo, /自己負担（2,000 円）のほうが大きく、割に合いにくいためです/);
+  await fillTop(page, { "furusato-add": "3000" });
+  const chosen = await page.evaluate(READ);
+  assert.equal(chosen.figures["減る税額の合計"], "1,000 円");
+  assert.match(chosen.plan.furusato.worth, /差の 2,000 円が自己負担です。.*割に合いにくい額です。$/);
+  // ことばの説明が、内訳の中にある
+  assert.ok(card(chosen, "ことばの説明").notes.some((n) => n.startsWith("課税所得: ")));
 });
 
 browserTest("トップ: 家族と控除の欄をすべて使った結果が CLI と一致する", async (page) => {

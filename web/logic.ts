@@ -113,7 +113,7 @@ export function isBlank(values: FormValues): boolean {
  * - furusato-add: ふるさと納税で追加して寄附する額（空なら上限の目安まで）
  * - budget: 年内に出せるお金（任意。入れたら、その範囲で減る税額が大きくなる配分にする）
  */
-export const TOP_ONLY_NAMES = ["work", "si-mode", "misc-assumed", "furusato-add", "budget"] as const;
+export const TOP_ONLY_NAMES = ["work", "si-mode", "misc-assumed", "furusato-add", "budget", "spouse-salary"] as const;
 
 /** 結果に添える「仮に置いた値」 */
 export interface Assumption {
@@ -140,6 +140,11 @@ export interface Plan {
     readonly custom: boolean;
     /** 指定した額が、上限の目安を超えている分 */
     readonly over: number;
+    /**
+     * 上限の目安まで寄附しても、減る税額が自己負担（寄附した額 − 減る税額）より小さいため、
+     * 「やること」に入れなかった場合の、その額と減る税額。入れている・対象外なら null。
+     */
+    readonly skipped: PlanAction | null;
   };
   /** 小規模企業共済。対象外なら null。 */
   readonly kyosai:
@@ -234,6 +239,28 @@ export function computeTop(values: FormValues): TopOutcome {
   const v = normalizeTop(values);
   const issues: string[] = [];
   try {
+    // 配偶者: 所得が空で、給料の年収が入っていれば、年収から給与所得を計算して使う（計算コアの給与所得と同じ）
+    if (v["has-spouse"] === true && !filled(v["spouse-income"]) && filled(v["spouse-salary"])) {
+      const text = String(v["spouse-salary"]);
+      const salary = parseAmount(text);
+      if (salary === null) {
+        issues.push(
+          /^\s*[-−ー－]/.test(text)
+            ? `--spouse-salary: 0 以上の金額で指定してください（受け取った値: ${JSON.stringify(text)}）`
+            : `--spouse-salary: 金額として読めません（${JSON.stringify(text)}）`,
+        );
+      } else {
+        try {
+          v["spouse-income"] = String(calculate({ salaryRevenue: salary }).baseline.salaryIncome);
+        } catch (error) {
+          if (!(error instanceof InputError)) throw error;
+          issues.push(...error.issues.map((issue) => `--spouse-salary: ${issue.replace(/^[A-Za-z.]+: /, "")}`));
+        }
+      }
+    }
+    // 「配偶者がいる」にチェックしただけで、所得も年収も入っていない間は、配偶者なしで計算する
+    // （所得 0 円の配偶者として計算すると、共働きの人の税額が実際より低く出るため）
+    if (v["has-spouse"] === true && !filled(v["spouse-income"])) v["has-spouse"] = false;
     let insurance: InsuranceEstimate | null = null;
     if (usesEstimate(values)) {
       // 所得は社会保険料に関係なく決まるので、先に社会保険料なしで計算して、目安の計算に使う
@@ -297,8 +324,14 @@ export function computeTop(values: FormValues): TopOutcome {
       const tryAt = (k: number): { k: number; f: number; saved: number; paid: number } => {
         const kk = fixedKyosai + k;
         const contributions = kk + fixedIdeco > 0 ? at(kk, fixedIdeco, 0) : first;
-        const f = furusatoCustom ?? Math.min(room - k, Math.max(0, contributions.measures.furusato.limit - n.furusatoPaid));
-        const after = f > 0 ? at(kk, fixedIdeco, f) : contributions;
+        let f = furusatoCustom ?? Math.min(room - k, Math.max(0, contributions.measures.furusato.limit - n.furusatoPaid));
+        let after = f > 0 ? at(kk, fixedIdeco, f) : contributions;
+        // 割に合わない寄附（減る税額が自己負担より小さい）は、配分の候補でも入れない
+        const byDonation = contributions.baseline.totalTax - after.baseline.totalTax;
+        if (furusatoCustom === null && f > 0 && byDonation < f - byDonation) {
+          f = 0;
+          after = contributions;
+        }
         return { k, f, saved: first.baseline.totalTax - after.baseline.totalTax, paid: k + f };
       };
       const better = (a: ReturnType<typeof tryAt>, b: ReturnType<typeof tryAt>): boolean =>
@@ -349,8 +382,25 @@ export function computeTop(values: FormValues): TopOutcome {
     const afterContributions = i > 0 ? at(k, i, 0) : afterKyosai;
     const limit = afterContributions.measures.furusato.limit;
     const recommended = Math.max(0, limit - n.furusatoPaid);
-    const f = furusatoPlanned ?? recommended;
-    const afterAll = f > 0 ? at(k, i, f) : afterContributions;
+    let f = furusatoPlanned ?? recommended;
+    let afterAll = f > 0 ? at(k, i, f) : afterContributions;
+    // 自分で額を決めていない寄附は、減る税額が自己負担より小さいなら、やることに入れない（割に合わないため）
+    let skipped: PlanAction | null = null;
+    if (furusatoCustom === null && f > 0) {
+      const s = savingBetween(afterContributions.baseline, afterAll.baseline);
+      if (s.total < f - s.total) {
+        skipped = { amount: f, saving: s };
+        f = 0;
+        afterAll = afterContributions;
+      }
+    }
+    // 出せるお金に合わせて掛金を減らすと、ふるさと納税の上限の目安は上がる。配分の理由として添える
+    if (budget && limit > first.measures.furusato.limitAfterOtherMeasures) {
+      budget = {
+        ...budget,
+        reason: `${budget.reason}掛金を上限まで払う場合より掛金が少ないぶん、住民税が多く残るので、ふるさと納税の上限の目安は ${yen(first.measures.furusato.limitAfterOtherMeasures)}から ${yen(limit)}に上がっています。`,
+      };
+    }
     const plan: Plan = {
       furusato: {
         amount: f,
@@ -360,6 +410,7 @@ export function computeTop(values: FormValues): TopOutcome {
         recommended,
         custom: furusatoCustom !== null,
         over: Math.max(0, f - recommended),
+        skipped,
       },
       kyosai: m.kyosai.applicable
         ? {
@@ -400,7 +451,9 @@ export function computeTop(values: FormValues): TopOutcome {
       assumptions.push({ key: "incomeType", text: "副業の所得の種類: 雑所得（開業届を出して帳簿をつけている事業なら「事業所得」）" });
     }
     const dependents = ["dependents", "dependents-specific", "dependents-elderly", "dependents-elderly-cohabiting", "dependents-under16"];
-    if (values["has-spouse"] !== true && !dependents.some((name) => filled(values[name]))) {
+    if (values["has-spouse"] === true && v["has-spouse"] === false) {
+      assumptions.push({ key: "family", text: "配偶者: 所得（または給料の年収）を入れるまでは、配偶者なしで計算しています" });
+    } else if (values["has-spouse"] !== true && !dependents.some((name) => filled(values[name]))) {
       assumptions.push({ key: "family", text: "配偶者・扶養している家族: なし" });
     }
     if (!["ideco-paid", "kyosai-paid", "furusato-paid", "other-deductions"].some((name) => filled(values[name]))) {

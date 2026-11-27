@@ -39,7 +39,7 @@ const CASES: readonly FormValues[] = [
   QUICK,
   { work: "employee", salary: "620万", revenue: "90万", expenses: "12万", "si-mode": "estimate", blue: "unknown", misc: true, "misc-assumed": true },
   { work: "employee", salary: "620万", revenue: "90万", expenses: "12万", "si-mode": "enter", "social-insurance": "91.2万", misc: true, "ideco-paid": "14.4万", "furusato-paid": "3万" },
-  { work: "freelance", revenue: "950万", expenses: "430万", blue: "65", "si-mode": "enter", "social-insurance": "120.8万", "kyosai-paid": "36万", "has-spouse": true, "dependents-under16": "1", dependents: "1", "other-deductions": "8万" },
+  { work: "freelance", revenue: "950万", expenses: "430万", blue: "65", "si-mode": "enter", "social-insurance": "120.8万", "kyosai-paid": "36万", "has-spouse": true, "spouse-income": "0", "dependents-under16": "1", dependents: "1", "other-deductions": "8万" },
   { work: "freelance", revenue: "105万", expenses: "45万", "si-mode": "enter", "social-insurance": "6万", blue: "none" },
   { work: "freelance", revenue: "800万", expenses: "150万", blue: "65", "si-mode": "enter", "social-insurance": "90万", "ideco-paid": "27.6万", "ideco-add": "10万", "kyosai-add": "30万" },
   { work: "freelance", revenue: "480万", expenses: "75万", blue: "65", "si-mode": "enter", "social-insurance": "59万", "furusato-paid": "1万", "furusato-add": "2万", "kyosai-add": "12万" },
@@ -84,6 +84,7 @@ describe("トップページ: 計算に使った値を CLI に渡すと、同じ
     for (const values of CASES) {
       if (typeof values["furusato-add"] === "string" || typeof values["budget"] === "string") continue;
       const { plan, result } = done(values);
+      if (plan.furusato.skipped) continue; // 割に合わない寄附は、やることに入れない（下のテスト）
       const c = result.measures.combined;
       assert.equal(plan.furusato.amount, c.furusatoAdditional);
       assert.equal(plan.kyosai?.amount ?? 0, c.kyosaiAdditional);
@@ -172,6 +173,55 @@ describe("トップページ: 小規模企業共済と、年内に出せるお�
   });
 });
 
+describe("トップページ: 割に合わないものは、やることに入れない", () => {
+  it("上限の目安まで寄附しても、減る税額が自己負担より小さいなら、ふるさと納税を合計に入れず、額と減る税額を別に示す", () => {
+    // 所得 60 万円・社会保険料 6 万円: 上限の目安 3,000 円、減る税額 1,000 円、自己負担 2,000 円
+    const top = done({ work: "freelance", revenue: "105万", expenses: "45万", "si-mode": "enter", "social-insurance": "6万", blue: "none" });
+    assert.equal(top.plan.furusato.limit, 3_000);
+    assert.equal(top.plan.furusato.amount, 0);
+    assert.deepEqual(top.plan.furusato.skipped, { amount: 3_000, saving: { incomeTax: 0, residentTax: 1_000, total: 1_000 } });
+    assert.equal(top.plan.totalPayment, 0);
+    assert.equal(top.plan.taxAfter, top.plan.taxBefore);
+    assert.match(summaryText(top, "2026-11-27"), /ふるさと納税は、やることに入れていません/);
+    // 自分で額を入れれば、計算に入る
+    const chosen = done({ work: "freelance", revenue: "105万", expenses: "45万", "si-mode": "enter", "social-insurance": "6万", blue: "none", "furusato-add": "3000" });
+    assert.equal(chosen.plan.furusato.amount, 3_000);
+    assert.equal(chosen.plan.furusato.skipped, null);
+  });
+
+  it("減る税額が自己負担以上なら、今までどおり入れる", () => {
+    const top = done(QUICK);
+    assert.equal(top.plan.furusato.skipped, null);
+    assert.ok(top.plan.furusato.amount > 0);
+  });
+
+  it("出せるお金が小さくて寄附が割に合わないときは、その分を掛金に回す", () => {
+    // 3,000 円を寄附しても 1,000 円しか減らない。小規模企業共済に回せば、その分だけ税金が減る
+    const top = done({ work: "freelance", revenue: "800万", expenses: "150万", blue: "none", "si-mode": "enter", "social-insurance": "90万", "kyosai-paid": "12万", budget: "3000" });
+    assert.equal(top.plan.furusato.amount, 0);
+    assert.equal(top.plan.kyosai?.amount, 3_000);
+    assert.ok(top.plan.saving.total > 0);
+    assert.doesNotMatch(top.plan.budget?.reason ?? "", /ふるさと納税は払った額とほぼ同じだけ/);
+  });
+
+  it("配偶者の給料の年収が読めない・大きすぎるときは、欄の名前つきの入力エラーにする", () => {
+    const base: FormValues = { work: "employee", salary: "620万", "si-mode": "enter", "social-insurance": "91.2万", "has-spouse": true };
+    for (const text of ["abc", "-1", "1000000000001"]) {
+      const top = computeTop({ ...base, "spouse-salary": text });
+      assert.equal(top.ok, false, text);
+      assert.match(top.ok ? "" : (top.issues[0] ?? ""), /^--spouse-salary: /, text);
+    }
+    assert.equal(isBlankTop({ ...base, "spouse-salary": "1000000000001" }), false);
+  });
+
+  it("出せるお金に合わせて掛金を減らしたとき、ふるさと納税の上限の目安が上がる理由を添える", () => {
+    const top = done({ work: "freelance", revenue: "950万", expenses: "430万", blue: "65", "si-mode": "enter", "social-insurance": "120.8万", "kyosai-paid": "36万", "has-spouse": true, "spouse-income": "0", "dependents-under16": "1", dependents: "1", "other-deductions": "8万", budget: "20万" });
+    assert.equal(top.plan.furusato.amount, 39_000);
+    assert.equal(top.plan.kyosai?.amount, 161_000);
+    assert.match(top.plan.budget?.reason ?? "", /ふるさと納税の上限の目安は 31,000 円から 39,000 円に上がっています。$/);
+  });
+});
+
 describe("トップページ: 仮に置いた値を結果に示す", () => {
   it("はじめの 3 つだけなら、社会保険料の目安・青色申告なし・家族なし・掛金なしを示す", () => {
     const top = done(QUICK);
@@ -189,8 +239,28 @@ describe("トップページ: 仮に置いた値を結果に示す", () => {
     assert.equal(done({ ...QUICK, "si-mode": "enter", "social-insurance": "0" }).result.input.socialInsurance, 0);
   });
 
+  it("「配偶者がいる」にチェックしただけでは、所得 0 円の配偶者として計算しない。給料の年収を入れると、給与所得を計算して使う", () => {
+    const base: FormValues = { work: "employee", salary: "620万", "si-mode": "enter", "social-insurance": "91.2万" };
+    const single = done(base);
+    const checked = done({ ...base, "has-spouse": true });
+    assert.equal(checked.result.input.spouse, null);
+    assert.equal(checked.result.baseline.totalTax, single.result.baseline.totalTax);
+    assert.match(checked.assumptions.find((a) => a.key === "family")?.text ?? "", /入れるまでは、配偶者なしで計算しています/);
+    // 年収 400 万円の配偶者: 給与所得は 276 万円（133 万円を超えるので控除なし。税額は配偶者なしと同じ）
+    const working = done({ ...base, "has-spouse": true, "spouse-salary": "400万" });
+    assert.equal(working.result.input.spouse?.income, 2_760_000);
+    assert.equal(working.result.baseline.totalTax, single.result.baseline.totalTax);
+    assert.equal((working.effective as Record<string, string>)["spouse-income"], "2760000");
+    // 収入のない配偶者は 0 と入れる。配偶者控除が入って税額が下がる
+    const none = done({ ...base, "has-spouse": true, "spouse-salary": "0" });
+    assert.equal(none.result.input.spouse?.income, 0);
+    assert.ok(none.result.baseline.totalTax < single.result.baseline.totalTax);
+    // 合計所得金額を入れたときは、そちらを使う
+    assert.equal(done({ ...base, "has-spouse": true, "spouse-salary": "400万", "spouse-income": "50万" }).result.input.spouse?.income, 500_000);
+  });
+
   it("入力した項目は、仮に置いた値から消える", () => {
-    const top = done({ ...QUICK, "si-mode": "enter", "social-insurance": "50万", blue: "65", "has-spouse": true, "ideco-paid": "0" });
+    const top = done({ ...QUICK, "si-mode": "enter", "social-insurance": "50万", blue: "65", "has-spouse": true, "spouse-income": "0", "ideco-paid": "0" });
     assert.deepEqual(top.assumptions, []);
     assert.equal(top.insurance, null);
     assert.equal(top.result.input.socialInsurance, 500_000);
@@ -294,12 +364,17 @@ describe("トップページの HTML と見た目", () => {
     assert.ok(html.indexOf('id="results"') < plan && plan < html.indexOf('id="result"') && html.indexOf('id="result"') < disclaimer);
     const inPlan = html.slice(plan, html.indexOf('id="result"'));
     assert.match(inPlan, /<strong>概算です。<\/strong>/);
-    for (const word of ["やること", "払う額", "減る税額", "締切", "注意", "加入の手順"]) assert.ok(inPlan.includes(`>${word}<`), word);
+    for (const word of ["やること", "払う額", "減る税額", "締切", "注意", "やり方"]) assert.ok(inPlan.includes(`>${word}<`), word);
     // 各項目で、いつも見えているのは「やること・払う額・減る税額」の 3 行。締切・注意・加入の手順は、開いて読む
     for (const steps of inPlan.matchAll(/<dl class="steps">([\s\S]*?)<\/dl>/g)) {
       assert.deepEqual([...(steps[1] ?? "").matchAll(/<dt>(?:<label[^>]*>)?([^<]+)/g)].map((m) => m[1]), ["やること", "払う額", "減る税額"]);
     }
-    assert.equal([...inPlan.matchAll(/<details class="help more-info">/g)].length, 3);
+    assert.equal([...inPlan.matchAll(/<details class="help more-info">/g)].length, 4);
+    // やり方には、公的機関の公式ページへのリンクを付ける。特定の寄附サイトや金融機関は勧めない
+    const links = [...inPlan.matchAll(/<a href="(https:[^"]+)"/g)].map((m) => m[1] ?? "");
+    assert.ok(links.length >= 7);
+    for (const url of links) assert.match(url, /^https:\/\/(www\.soumu\.go\.jp|www\.nta\.go\.jp|www\.smrj\.go\.jp|kyosai-web\.smrj\.go\.jp|www\.ideco-koushiki\.jp)\//, url);
+    for (const word of ["受領書", "ワンストップ特例を使えません", "掛金月額変更（増額・減額）申込書", "運営管理機関", "青色申告承認申請書"]) assert.ok(inPlan.includes(word), word);
     assert.match(html.slice(disclaimer), /計算していないもの/);
   });
 

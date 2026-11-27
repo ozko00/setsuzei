@@ -4,6 +4,7 @@
  */
 import { parseAmount } from "../src/cli/amount.js";
 import { sourcesInsuranceGuide } from "../src/data/2026-insurance-guide.js";
+import { GLOSSARY } from "../src/cli/format.js";
 import { getSources } from "../src/data/index.js";
 import { VERSION } from "../src/version.js";
 import { browserNote, computeTop, isBlankTop, queryToValues, splitIssue } from "./logic.js";
@@ -133,6 +134,7 @@ function renderBreakdown(top) {
         ]), notes(nhi.notes)));
     }
     out.push(card("計算に使った値", rows(usedInputs(top))));
+    out.push(card("ことばの説明", h("ul", { class: "notes" }, ...GLOSSARY.map(([term, text]) => h("li", {}, h("strong", {}, term), `: ${text}`)))));
     return out;
 }
 function fillForm(form, values) {
@@ -309,23 +311,30 @@ function start() {
         // 上限の目安が 0 円でも、自分で入れた寄附額が残っている間は、その欄を出しておく（直せるように）
         const furusatoOff = f.limit === 0 && f.amount === 0 && !custom.furusato;
         $("act-furusato").classList.toggle("off", furusatoOff);
+        $("act-furusato").classList.toggle("optional", f.skipped !== null);
         text("furusato-off", f.limit === 0 ? `今回は対象になりません。${browserNote(m.furusato.notes[0] ?? "")}` : "");
         if (!furusatoOff) {
-            text("furusato-do", f.amount === 0
-                ? f.paid >= f.limit
-                    ? `これ以上の寄附はしない（寄附済みの ${yen(f.paid)}が、上限の目安の ${yen(f.limit)}に達しています）`
-                    : "寄附しない（0 円にしています）"
-                : f.paid > 0
-                    ? `あと ${yen(f.amount)}寄附する（寄附済みの ${yen(f.paid)}と合わせて、ことしの合計 ${yen(f.paid + f.amount)}）`
-                    : `${yen(f.amount)}寄附する`);
+            text("furusato-do", f.skipped
+                ? `やることに入れていません。上限の目安まで ${yen(f.skipped.amount)}寄附しても、減る税額は ${yen(f.skipped.saving.total)}で、自己負担（${yen(f.skipped.amount - f.skipped.saving.total)}）のほうが大きく、割に合いにくいためです。返礼品が目的で寄附するなら、「払う額」に額を入れると計算に入ります`
+                : f.amount === 0
+                    ? f.paid >= f.limit
+                        ? `これ以上の寄附はしない（寄附済みの ${yen(f.paid)}が、上限の目安の ${yen(f.limit)}に達しています）`
+                        : "寄附しない（0 円にしています）"
+                    : f.paid > 0
+                        ? `あと ${yen(f.amount)}寄附する（寄附済みの ${yen(f.paid)}と合わせて、ことしの合計 ${yen(f.paid + f.amount)}）`
+                        : `${yen(f.amount)}寄附する`);
             const hint = [`上限の目安は年間 ${yen(f.limit)}です（これを超えると、超えた分のほとんどが自己負担になります）。`];
-            if (f.paid >= 2_000 && f.amount > 0)
-                hint.push("自己負担の 2,000 円は寄附済みの分で負担しているので、追加の分はほぼ全額が税金から引かれます。");
             if (f.limit < m.furusato.limit)
                 hint.push(`掛金を払う分、上限の目安は ${yen(m.furusato.limit)}から下がっています。`);
             text("furusato-hint", hint.join(""));
             $("furusato-saving").replaceChildren(split(f.saving), ...(f.over > 0 ? [h("span", { class: "warn" }, `上限の目安を ${yen(f.over)}超えています。超えた分は、ほとんどが自己負担になります。`)] : []));
-            setPlanField("furusato", f.amount, f.recommended);
+            const self = f.amount - f.saving.total;
+            text("furusato-worth", f.amount === 0
+                ? ""
+                : self <= 0
+                    ? "手元に残るもの: 返礼品。払った額と同じだけ税金が減ります（自己負担の 2,000 円は、寄附済みの分で負担しています）。寄附と引き換えなので、手元のお金は増えません。"
+                    : `手元に残るもの: 返礼品。払う ${yen(f.amount)}のうち ${yen(f.saving.total)}が税金から引かれ、差の ${yen(self)}が自己負担です。手元のお金は増えないので、得になるのは返礼品の分です。${f.saving.total < self ? "減る税額より自己負担のほうが大きく、割に合いにくい額です。" : ""}`);
+            setPlanField("furusato", f.amount, f.skipped ? f.skipped.amount : f.recommended, f.skipped !== null);
             $("furusato-notes").replaceChildren(...m.furusato.notes.map((n) => h("li", {}, browserNote(n))));
         }
         // 小規模企業共済
@@ -358,7 +367,10 @@ function start() {
             if (k.custom && typed !== null && typed > k.amount)
                 hint.push(`入れた額のうち、税額が減る ${yen(k.amount)}までで計算しています。`);
             text("kyosai-hint", hint.join(""));
-            text("kyosai-saving", optional ? "合計に入れていません" : split(k.saving));
+            text("kyosai-saving", optional ? "やることに入れていません（払う額を入れると入ります）" : split(k.saving));
+            text("kyosai-worth", !optional && k.amount > 0
+                ? `手元に残るもの: 払った ${yen(k.amount)}は、将来受け取る自分の積立です。得になるのは、いま税金が減る ${yen(k.saving.total)}です（受け取るときに税金がかかります）。`
+                : "");
             setPlanField("kyosai", k.amount, limitOfEffect ?? k.max, optional);
             $("kyosai-notes").replaceChildren(...m.kyosai.notes.map((n) => h("li", {}, browserNote(n))));
         }
@@ -374,7 +386,10 @@ function start() {
             idecoHint.push(`${yen(m.ideco.additional)}を年内に払えた場合は、それだけで税金が ${yen(m.ideco.saving.total)}減ります（合計には入れていません）。`);
         }
         text("ideco-hint", idecoHint.join(""));
-        text("ideco-saving", i.included ? split(i.saving) : "合計に入れていません");
+        text("ideco-saving", i.included ? split(i.saving) : "やることに入れていません（払う額を入れると入ります）");
+        text("ideco-worth", i.included && i.amount > 0
+            ? `手元に残るもの: 払った ${yen(i.amount)}は、60 歳以降に受け取る自分の年金の積立です。得になるのは、いま税金が減る ${yen(i.saving.total)}です（受け取るときに税金がかかります）。`
+            : "");
         setPlanField("ideco", i.amount, i.max);
         $("ideco-notes").replaceChildren(...m.ideco.notes.map((n) => h("li", {}, browserNote(n))));
         $("act-ideco").classList.toggle("optional", !i.included);
@@ -382,7 +397,7 @@ function start() {
         text("total-saving", yen(plan.saving.total));
         text("total-payment", yen(plan.totalPayment));
         text("total-tax", `${yen(plan.taxBefore)} → ${yen(plan.taxAfter)}`);
-        const totalNotes = [];
+        const totalNotes = [`税額は、所得税と住民税（${r.residentTaxLabel}）の合計です。`];
         if ([f.amount, k?.amount ?? 0, i.amount].filter((n) => n > 0).length > 1) {
             totalNotes.push("合計は、まとめて計算し直した額です。それぞれの「減る税額」は、小規模企業共済・iDeCo・ふるさと納税の順に実行したときの額です。");
         }
@@ -396,13 +411,15 @@ function start() {
         // 確定申告のときに（青色申告）
         const blue = m.blueReturn;
         const best = blue.options.find((o) => o.level === "65");
-        const showLater = blue.applicable && best !== undefined && !best.current && best.savingVsCurrent.total > 0;
+        const showLater = blue.applicable && best !== undefined && !best.current && (best.savingVsCurrent.total > 0 || blue.current === "none");
         $("later").hidden = !showLater;
         if (showLater && best) {
             const unknown = blue.current === "none";
-            text("later-text", `青色申告特別控除が 65 万円なら、税額はいまの計算より ${yen(best.savingVsCurrent.total)}少なくなります。` +
+            text("later-text", (best.savingVsCurrent.total > 0
+                ? `青色申告特別控除が 65 万円なら、税額はいまの計算より ${yen(best.savingVsCurrent.total)}少なくなります。`
+                : "いまの所得では、青色申告特別控除で税額は変わりません。") +
                 (unknown
-                    ? "ただし、使えるのは「青色申告承認申請書」を期限までに税務署に出している方だけです。出していて、複式簿記の帳簿と e-Tax での申告ができる方は、「もっと正確にする」の青色申告特別控除で 65 万円を選んでください。上の金額も変わります。"
+                    ? "ただし、ことしの分に使えるのは「青色申告承認申請書」を期限までに税務署に出している方だけです（これから出す場合は、来年分からです）。出していて、複式簿記の帳簿と e-Tax での申告ができる方は、「もっと正確にする」の青色申告特別控除で 65 万円を選んでください。上の金額も変わります。"
                     : "65 万円にするには、複式簿記の帳簿と、e-Tax での期限内の申告が必要です。"));
         }
     };
@@ -543,7 +560,7 @@ function start() {
         if (!current)
             return 0;
         if (name === "furusato")
-            return current.plan.furusato.recommended;
+            return current.plan.furusato.skipped?.amount ?? current.plan.furusato.recommended;
         if (name === "ideco")
             return current.plan.ideco.max;
         return current.plan.kyosai?.ifJoined?.amount ?? current.result.measures.kyosai.noEffectBeyond ?? current.plan.kyosai?.max ?? 0;

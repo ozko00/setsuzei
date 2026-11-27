@@ -60,14 +60,14 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 2. **取得の手順**: SKILL.md の「CLI を用意する」にあるコマンドを、まっさらな環境でそのまま実行して確かめます。npm に公開済みの版なら、次のように Docker で試せます。
 
    ```sh
-   docker run --rm node:22 npx --yes setsuzei@0.3.0 --version
+   docker run --rm node:22 npx --yes setsuzei@0.2.4 --version
    ```
 
    補足の手順（GitHub のタグから取得してビルド）は、`scripts/verify-install.sh` でくり返し実行できます（Node 20 / 22 / 24 / 26 で 10 回ずつ。出力はすべてログに残ります）。取得はネットワークに依存するので、失敗したらログのエラーの文面（`Could not resolve host` など）を先に確かめてください。
 
-版を上げるときは、`package.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.3.0` のような表記）をそろえます。そろっていないとテストが落ちます。マージ後に、その版のタグと GitHub Release を作ります。
+版を上げるときは、`package.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.3.1` のような表記）をそろえます。そろっていないとテストが落ちます。`npx setsuzei@…` で案内する版は、npm に実際にある版（`package.json` の `config.npmPinned`）に合わせます。新しい版が npm に出たら、この値と README・SKILL.md の表記を上げてください（npm にあることは CI で確かめています）。マージ後に、その版のタグと GitHub Release を作ります。
 
-タグ（`v0.3.0` の形）を push すると、[`.github/workflows/publish.yml`](.github/workflows/publish.yml) が npm に公開します。トークンは使わず、npm の Trusted Publishing（GitHub Actions の OIDC）で認証します。npmjs.com 側の登録（パッケージの Settings → Trusted publishing）が必要で、登録する値は、リポジトリ `ozko00/setsuzei`、workflow のファイル名 `publish.yml`、environment は空欄です。登録が済んだら、リポジトリの変数 `NPM_TRUSTED_PUBLISHING` を `true` にします（それまでは、公開に失敗しても警告だけで終わります）。
+タグ（`v0.3.1` の形）を push すると、[`.github/workflows/publish.yml`](.github/workflows/publish.yml) が npm に公開します。トークンは使わず、npm の Trusted Publishing（GitHub Actions の OIDC）で認証します。npmjs.com 側の登録（パッケージの Settings → Trusted publishing）が必要で、登録する値は、リポジトリ `ozko00/setsuzei`、workflow のファイル名 `publish.yml`、environment は空欄です。登録が済んだら、リポジトリの変数 `NPM_TRUSTED_PUBLISHING` を `true` にします（それまでは、公開に失敗しても警告だけで終わります）。
 
 ## プルリクエスト
 

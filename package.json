@@ -1,6 +1,6 @@
 {
   "name": "setsuzei",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "年末までに、あと何をすればいくら税金が減るかを概算する CLI / ライブラリ / Agent Skill（フリーランス・副業向け、令和8年分）",
   "license": "MIT",
   "author": "Kosuke Ozawa",
@@ -23,6 +23,9 @@
   "type": "module",
   "engines": {
     "node": ">=20"
+  },
+  "config": {
+    "npmPinned": "0.2.4"
   },
   "bin": {
     "setsuzei": "dist/cli.js"

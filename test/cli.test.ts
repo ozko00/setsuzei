@@ -175,7 +175,7 @@ describe("CLI", () => {
     const r = run([...args, "--dependents-under16", "3"]);
     assert.equal(r.code, 0, r.stderr);
     assert.match(r.stdout, /住民税（令和9年度・均等割と森林環境税を含む）\s+5,000 円/);
-    assert.match(r.stdout, /非課税限度額（2,170,000 円/);
+    assert.match(r.stdout, /非課税限度額。2,170,000 円/);
     assert.doesNotMatch(r.stdout, /控除上限額の目安/);
     assert.match(run(["--help"]).stdout, /--dependents-under16/);
   });
@@ -225,13 +225,20 @@ describe("実行手順の記載", () => {
 describe("Skill と README の取得手順", () => {
   const read = (file: string): string => readFileSync(new URL(file, root), "utf8");
   const tag = `v${VERSION}`;
+  const NPM_PINNED = (JSON.parse(read("package.json")) as { config: { npmPinned: string } }).config.npmPinned;
 
-  it("版を付ける記載（npx setsuzei@… と、補足の git clone のタグ）は、いまの版（package.json の version）と同じ", () => {
+  it("npx で固定する版は npm にある版（config.npmPinned）、補足の git clone のタグはいまの版と同じ", () => {
+    assert.match(NPM_PINNED, /^\d+\.\d+\.\d+$/);
+    // 固定する版は、いまの版より新しくない
+    const num = (v: string): number => v.split(".").reduce((n, part) => n * 1000 + Number(part), 0);
+    assert.ok(num(NPM_PINNED) <= num(VERSION));
     for (const file of ["README.md", "skills/setsuzei/SKILL.md", "CONTRIBUTING.md"]) {
       const text = read(file);
+      // npx で固定する版は、npm に実際にある版（package.json の config.npmPinned）。
+      // npm に出す前の版を案内しないよう、いまの版とは別に持つ。npm にあることは CI で確かめる（npm view）
       const pinned = [...text.matchAll(/setsuzei@(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
       assert.ok(pinned.length >= 1, `${file}: 版を付けた npx の記載がない`);
-      for (const found of pinned) assert.equal(found, VERSION, file);
+      for (const found of pinned) assert.equal(found, NPM_PINNED, file);
       if (file === "CONTRIBUTING.md") continue; // 開発用の clone はタグなし
       const tags = [...text.matchAll(/--branch (v\d+\.\d+\.\d+)/g)].map((m) => m[1]);
       assert.ok(tags.length >= 1, `${file}: タグの指定がない`);
@@ -251,9 +258,9 @@ describe("Skill と README の取得手順", () => {
     const blocks = [...skill.matchAll(/```sh\n([\s\S]*?)```/g)].map((m) => (m[1] ?? "").trim());
     // 版なしの npx を、実行するコマンドとして書かない
     for (const block of blocks) {
-      for (const use of block.matchAll(/npx [^\n|]*setsuzei\S*/g)) assert.match(use[0], new RegExp(`^npx --yes setsuzei@${VERSION.replace(/\./g, "\\.")}$`), block);
+      for (const use of block.matchAll(/npx [^\n|]*setsuzei\S*/g)) assert.match(use[0], new RegExp(`^npx --yes setsuzei@${NPM_PINNED.replace(/\./g, "\\.")}$`), block);
     }
-    assert.ok(blocks.includes(`npx --yes setsuzei@${VERSION} --version`));
+    assert.ok(blocks.includes(`npx --yes setsuzei@${NPM_PINNED} --version`));
     // 取得の前に伝えること: npm から取得すること、ほかのパッケージが入らないこと、金額を送信しないこと
     assert.match(skill, /npm から `setsuzei` の [\d.]+ を取得して実行すること/);
     assert.match(skill, /入力した金額はどこにも送信しないこと/);
