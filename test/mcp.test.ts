@@ -335,8 +335,11 @@ describe("MCP の登録用のファイルと、README の案内", () => {
     assert.match(ja.split("\n").slice(0, 10).join("\n"), /\*\*LLM に日本の税額を暗算させないための、出典つき・テスト済みの計算エンジンです。\*\*/);
     assert.match(en.split("\n").slice(0, 10).join("\n"), /\*\*A cited, tested calculation engine so that LLMs don't have to do Japanese tax arithmetic in their heads\.\*\*/);
     for (const text of [ja, en]) {
-      assert.ok(text.includes('"args": ["-y", "setsuzei", "mcp"]'));
-      assert.ok(text.includes("claude mcp add setsuzei -- npx -y setsuzei mcp"));
+      // 設定例は、npm に公開済みの版を固定する（版を付けないと、npx が手元に残った古い版を使うことがある）
+      const pinned = (JSON.parse(read("package.json")) as Json)["config"].npmPinned as string;
+      assert.ok(text.includes(`"args": ["-y", "setsuzei@${pinned}", "mcp"]`));
+      assert.ok(text.includes(`claude mcp add setsuzei -- npx -y setsuzei@${pinned} mcp`));
+      assert.doesNotMatch(text, /npx -y setsuzei mcp|"setsuzei", "mcp"/);
       for (const tool of TOOLS) assert.ok(text.includes(`\`${tool.name}\``), tool.name);
       // 測った結果には、限界（問いの数・モデルの数）と記録への案内を添える
       assert.ok(text.includes("evaluation/model-vs-tool.md"));

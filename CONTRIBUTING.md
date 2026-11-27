@@ -60,7 +60,7 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 2. **取得の手順**: SKILL.md の「CLI を用意する」にあるコマンドを、まっさらな環境でそのまま実行して確かめます。npm に公開済みの版なら、次のように Docker で試せます。
 
    ```sh
-   docker run --rm node:22 npx --yes setsuzei@0.3.2 --version
+   docker run --rm node:22 npx --yes setsuzei@0.4.0 --version
    ```
 
    補足の手順（GitHub のタグから取得してビルド）は、`scripts/verify-install.sh` でくり返し実行できます（Node 20 / 22 / 24 / 26 で 10 回ずつ。出力はすべてログに残ります）。取得はネットワークに依存するので、失敗したらログのエラーの文面（`Could not resolve host` など）を先に確かめてください。

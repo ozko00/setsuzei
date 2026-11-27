@@ -73,8 +73,9 @@ jobs:
       - name: 公開された版が npm にあることを確かめる
         if: steps.published.outputs.done == 'false' && vars.NPM_TRUSTED_PUBLISHING == 'true'
         run: |
-          # 公開の直後は、レジストリに出るまで少し時間がかかることがある
-          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+          # 公開の直後は、レジストリに出るまで数分かかることがある（v0.4.0 では約 3 分半かかり、2 分で打ち切って失敗した）。
+          # 最大 10 分待つ
+          for i in $(seq 1 60); do
             found="$(npm view "setsuzei@$VERSION" version 2>/dev/null || true)"
             if [ "$found" = "$VERSION" ]; then
               echo "setsuzei@$VERSION が npm にあります"
