@@ -21,7 +21,7 @@
 
 ```console
 $ setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万 --ideco-paid 27.6万 --furusato-paid 3万
-setsuzei 0.2.3 ｜ 令和8年分（2026年分）の概算
+setsuzei 0.2.4 ｜ 令和8年分（2026年分）の概算
 
 ■ 現状の見込み
   事業所得（青色申告特別控除 650,000 円を控除後）  5,850,000 円
@@ -89,7 +89,7 @@ URL に CLI と同じ名前のパラメータを付けると、入力済みの�
 npm には未公開なので、ソースを取得してビルドします。Node.js 20 以上と git が必要です。
 
 ```sh
-git clone --depth 1 --branch v0.2.3 https://github.com/ozko00/setsuzei.git
+git clone --depth 1 --branch v0.2.4 https://github.com/ozko00/setsuzei.git
 cd setsuzei
 npm ci
 npm run build
@@ -97,7 +97,9 @@ node dist/cli.js          # 対話形式で入力
 node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
-`v0.2.3` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
+`v0.2.4` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
+
+`git clone` が `Could not resolve host: github.com` などで止まったときは、ネットワークの一時的な失敗のことがあります。`npm ci` に進む前に、同じ `git clone` をもう一度実行してください（clone に失敗したまま `npm ci` を実行すると、「`package-lock.json` がない」という別のエラーになります）。`npm ci` が `ENOTFOUND` や `ETIMEDOUT` で止まったときも、同じコマンドをもう一度実行すれば続きから入ります。
 
 以下の例は `setsuzei` と書いています。`node dist/cli.js` に読み替えてください。
 
@@ -105,12 +107,12 @@ node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance
 <summary>clone せずに 1 行で実行する（npx）</summary>
 
 ```sh
-npx --allow-git=all github:ozko00/setsuzei#v0.2.3 --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
+npx --allow-git=all github:ozko00/setsuzei#v0.2.4 --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
 - `--allow-git=all` は npm 12 以降で必要です。npm 12.0.0 から、git リポジトリからのパッケージ取得が既定で無効（`allow-git` の既定値が `none`）になり、付けないと `EALLOWGIT` のエラーで止まります（[npm のドキュメント](https://docs.npmjs.com/cli/v12/using-npm/config#allow-git)）。
 - npm 11 以前は付けなくても動きます。付けたままでも動きます（npm 10.8 / 11.19 / 11.20 / 12.2 で確認）。
-- npm 12 では `npm warn install-scripts ... setsuzei@0.2.3 (prepare: npm run build)` のような警告が出ることがあります。npm 12 が、依存パッケージのインストール時スクリプトを既定で実行しなくなったことの通知です。setsuzei のビルドは取得の時点で済んでいるので、そのまま使えます。`npm install-scripts approve` を実行する必要はありません。
+- npm 12 では `npm warn install-scripts ... setsuzei@0.2.4 (prepare: npm run build)` のような警告が出ることがあります。npm 12 が、依存パッケージのインストール時スクリプトを既定で実行しなくなったことの通知です。setsuzei のビルドは取得の時点で済んでいるので、そのまま使えます。`npm install-scripts approve` を実行する必要はありません。
 - このオプションは、その 1 回のコマンドに限って git からの取得を許可するものです。気になる場合は上の clone の手順を使ってください。
 
 </details>
@@ -162,7 +164,7 @@ echo '{"businessRevenue":8000000,"businessExpenses":1500000,"blueReturn":"65","s
 
 ### ライブラリとして使う
 
-計算コアは実行時依存ゼロの純粋関数です。`npm install --allow-git=all github:ozko00/setsuzei#v0.2.3` で入ります（`--allow-git=all` は npm 12 以降で必要。npm 12 で出る `install-scripts` の警告は、上の npx の説明と同じ理由で、そのままで動きます）。
+計算コアは実行時依存ゼロの純粋関数です。`npm install --allow-git=all github:ozko00/setsuzei#v0.2.4` で入ります（`--allow-git=all` は npm 12 以降で必要。npm 12 で出る `install-scripts` の警告は、上の npx の説明と同じ理由で、そのままで動きます）。
 
 ```ts
 import { calculate } from "setsuzei";
@@ -205,7 +207,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 
 そのうえで「今年あといくら節税できる？」のように聞くと、エージェントが必要な項目を質問し、CLI の結果をもとに答えます。
 
-- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、固定したタグ（`v0.2.3`）を `~/.cache/setsuzei` に取得してビルドします。
+- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、固定したタグ（`v0.2.4`）を `~/.cache/setsuzei` に取得してビルドします。
 - エージェントの権限設定で取得のコマンドが止まった場合は、Skill に書いてある 2 つのコマンドを自分で実行するか、エージェントに実行を許可してください。
 - Skill が聞き取りから結果の説明まで通ることは、[`scripts/skill-e2e.sh`](scripts/skill-e2e.sh) で確かめられます（Claude Code が必要）。
 

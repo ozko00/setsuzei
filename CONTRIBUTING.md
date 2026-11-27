@@ -56,10 +56,12 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 2. **取得の手順**: SKILL.md の「CLI を用意する」にある 2 つのコマンドを、まっさらな環境でそのまま実行して確かめます。タグが公開済みなら、次のように Docker で試せます。
 
    ```sh
-   docker run --rm node:22 sh -c 'git clone --depth 1 --branch v0.2.3 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei && npm ci --prefix ~/.cache/setsuzei && node ~/.cache/setsuzei/dist/cli.js --version'
+   docker run --rm node:22 sh -c 'git clone --depth 1 --branch v0.2.4 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei && npm ci --prefix ~/.cache/setsuzei && node ~/.cache/setsuzei/dist/cli.js --version'
    ```
 
-版を上げるときは、`package.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.2.3` のような表記）をそろえます。そろっていないとテストが落ちます。マージ後に、その版のタグと GitHub Release を作ります。
+   取得がときどき失敗しないかを見るときは、`scripts/verify-install.sh` で同じ手順をくり返し実行できます（Node 20 / 22 / 24 / 26 で 10 回ずつ。出力はすべてログに残ります）。取得はネットワークに依存するので、失敗したらログのエラーの文面（`Could not resolve host` など）を先に確かめてください。
+
+版を上げるときは、`package.json`・`src/version.ts` と、README・SKILL.md のタグ（`v0.2.4` のような表記）をそろえます。そろっていないとテストが落ちます。マージ後に、その版のタグと GitHub Release を作ります。
 
 ## プルリクエスト
 
