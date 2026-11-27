@@ -296,6 +296,17 @@ describe("npm への公開（.github/workflows/publish.yml）", () => {
     assert.match(workflow, /npm publish/);
   });
 
+  it("公開したあと、その版が npm にあることを確かめる", () => {
+    assert.match(workflow, /name: 公開された版が npm にあることを確かめる[\s\S]*npm view "setsuzei@\$VERSION" version[\s\S]*exit 1/);
+  });
+
+  it("リリースの手順（固定版は npm に公開済みの版にする）を CONTRIBUTING に書いている", () => {
+    const text = readFileSync(new URL("CONTRIBUTING.md", root), "utf8");
+    assert.match(text, /### リリースの手順/);
+    assert.match(text, /その時点で npm に公開済みの最新の版/);
+    assert.match(text, /タグは付け直せない/);
+  });
+
   it("登録が済むまでは、公開に失敗しても警告で終わる。済んだあと（変数が true）は失敗にする", () => {
     assert.match(workflow, /vars\.NPM_TRUSTED_PUBLISHING/);
     assert.match(workflow, /elif \[ "\$TRUSTED" = "true" \]; then\n\s+echo "::error::/);

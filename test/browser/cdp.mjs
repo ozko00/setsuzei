@@ -89,7 +89,12 @@ export async function launch(chrome) {
       `--user-data-dir=${profile}`,
       "about:blank",
     ],
-    { stdio: ["ignore", "ignore", "pipe"] },
+    {
+      stdio: ["ignore", "ignore", "pipe"],
+      // ヘッドレスの Chrome は、デスクトップのサービス（D-Bus）を使わない。セッションの D-Bus が応答しない環境で、
+      // ページを開くたびに応答待ち（25 秒）で止まることがあったので、つながない
+      env: { ...process.env, DBUS_SESSION_BUS_ADDRESS: "/dev/null" },
+    },
   );
   const wsUrl = await new Promise((resolve, reject) => {
     let buffer = "";

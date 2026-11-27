@@ -427,7 +427,7 @@ browserTest("トップ: 3 つ答えるだけで結果が出て、仮に置いた
   // 見出しの金額は、ふるさと納税だけ。小規模企業共済は「さらに減らしたい場合」として別に出る
   assert.equal(view.plan.lead, `年内に ${yen(quick.measures.furusato.remaining)}払うと、税金が ${yen(quick.measures.furusato.saving.total)}減る見込みです。`);
   assert.equal(view.plan.kyosai.optional, true);
-  assert.match(view.plan.kyosai.hint, /840,000 円を払った場合は、それだけで税金が [\d,]+ 円減ります（合計には入れていません）/);
+  assert.match(view.plan.kyosai.hint, /840,000 円を払った場合は、それだけで税金が [\d,]+ 円減ります（いまは「やること」に入れていません。払う額を入れると入ります）/);
   assert.match(view.plan.furusato.worth, /^手元に残るもの: 返礼品。払う 54,000 円のうち 52,000 円が税金から引かれ、差の 2,000 円が自己負担です。/);
   assert.equal(view.plan.assumed.length, 4);
   assert.ok(view.plan.assumed[0].startsWith("社会保険料: 目安の 573,000 円"));

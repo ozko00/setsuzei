@@ -10,3 +10,12 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # 型は、対応する Node.js の下限（20）に近い版に合わせておく。新しい Node.js の型に上げると、
+      # 下限の版にない API を使っても型チェックで気づけなくなる
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # TypeScript のメジャー更新は、ビルド結果と、取得時に入るパッケージが変わらないかを確かめてから手で上げる
+      # （7.0 は、出力する JS は同じだが、環境ごとの実行ファイルのパッケージが増える）
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
