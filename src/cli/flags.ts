@@ -18,6 +18,14 @@ const AMOUNT_FLAGS = {
   "kyosai-paid": "kyosaiPaid",
   "kyosai-add": "kyosaiAdditional",
   "furusato-paid": "furusatoPaid",
+  medical: "medicalExpenses",
+  "medical-reimbursed": "medicalReimbursed",
+  "self-medication": "selfMedicationExpenses",
+  "life-new": "lifeInsuranceNew",
+  "life-old": "lifeInsuranceOld",
+  "care-medical": "medicalCareInsurance",
+  "pension-new": "pensionInsuranceNew",
+  "pension-old": "pensionInsuranceOld",
   "other-deductions": "otherDeductions",
   "other-deductions-resident": "otherDeductionsResident",
 } as const;
@@ -41,7 +49,7 @@ export const INPUT_STRING_FLAGS = [
 ] as const;
 
 /** 真偽値の入力フラグの名前 */
-export const INPUT_BOOLEAN_FLAGS = ["misc", "spouse-70", "income-adjustment"] as const;
+export const INPUT_BOOLEAN_FLAGS = ["misc", "spouse-70", "income-adjustment", "dependent-under23"] as const;
 
 export type InputFlags = Partial<Record<(typeof INPUT_STRING_FLAGS)[number], string>> &
   Partial<Record<(typeof INPUT_BOOLEAN_FLAGS)[number], boolean>>;
@@ -59,6 +67,7 @@ const KEY_TO_FLAG: Readonly<Record<string, string>> = {
   businessIncomeType: "misc",
   nhiIncomeRatePercent: "nhi-rate",
   incomeAdjustment: "income-adjustment",
+  dependentUnder23: "dependent-under23",
   year: "year",
 };
 
@@ -124,6 +133,7 @@ export function flagsToInput(flags: InputFlags): Record<string, unknown> {
     else issues.push(m().flagNhiRate(flags["nhi-rate"]));
   }
   if (flags["income-adjustment"]) input["incomeAdjustment"] = true;
+  if (flags["dependent-under23"]) input["dependentUnder23"] = true;
   if (flags.misc) input["businessIncomeType"] = "misc";
   if (flags.blue !== undefined) input["blueReturn"] = flags.blue;
   if (flags.year !== undefined) input["year"] = /^\d+$/.test(flags.year) ? Number(flags.year) : flags.year;

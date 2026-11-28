@@ -22,6 +22,14 @@ const AMOUNT_KEYS = [
     "otherDeductionsResident",
     "idecoAdditional",
     "kyosaiAdditional",
+    "medicalExpenses",
+    "medicalReimbursed",
+    "selfMedicationExpenses",
+    "lifeInsuranceNew",
+    "lifeInsuranceOld",
+    "medicalCareInsurance",
+    "pensionInsuranceNew",
+    "pensionInsuranceOld",
 ];
 const DEPENDENT_KEYS = ["general", "specific", "elderly", "elderlyCohabiting", "under16"];
 const BLUE_VALUES = ["none", "10", "55", "65"];
@@ -34,6 +42,7 @@ const KNOWN_KEYS = new Set([
     "dependents",
     "nhiIncomeRatePercent",
     "incomeAdjustment",
+    "dependentUnder23",
 ]);
 /** 金額として扱える上限（1 兆円）。桁の打ち間違いを弾く。 */
 const MAX_AMOUNT = 1_000_000_000_000;
@@ -101,6 +110,13 @@ export function validateInput(raw) {
             out.incomeAdjustment = adjustment;
         else
             issues.push(m().incomeAdjustmentBool);
+    }
+    const under23 = raw["dependentUnder23"];
+    if (under23 !== undefined && under23 !== null) {
+        if (typeof under23 === "boolean")
+            out.dependentUnder23 = under23;
+        else
+            issues.push(m().dependentUnder23Bool);
     }
     const type = raw["businessIncomeType"];
     if (type !== undefined && type !== null) {

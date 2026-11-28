@@ -294,6 +294,85 @@ export const taxYear2026: TaxYearData = {
     // https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1135.htm
     monthlyLimit: 70_000,
   },
+
+  medical: {
+    // 医療費控除 =（支払った医療費 − 保険金などで補てんされる金額）− 10 万円（総所得金額等が 200 万円未満なら
+    // 総所得金額等の 5%）。最高 200 万円。住民税も同じ式（前年の総所得金額等の 5% と 10 万円の小さいほう）。
+    // 出典: 国税庁 No.1120 医療費を支払ったとき（医療費控除）[令和8年4月1日現在法令等]
+    // https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1120.htm
+    // 出典: 地方税法 第314条の2第1項第2号（2027-01-01 時点の条文で確認）
+    // https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002
+    floorMax: 10 * MAN,
+    floorIncomePercent: 5,
+    cap: 200 * MAN,
+    selfMedication: {
+      // セルフメディケーション税制: 特定一般用医薬品等購入費のうち 12,000 円を超える部分（最高 88,000 円）。
+      // 一定の取組（健康診断・予防接種など）をしている人だけ。通常の医療費控除との選択で、併用はできない。
+      // 出典: 国税庁 No.1129 [令和8年4月1日現在法令等]
+      // https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1129.htm
+      // 住民税: 地方税法 附則第4条の5（2027-01-01 時点の条文は「平成三十年度以後の各年度分」で、令和 9 年度分も対象）
+      floor: 12_000,
+      cap: 88_000,
+    },
+  },
+
+  lifeInsurance: {
+    // 所得税の生命保険料控除。新契約・旧契約の表、新旧両方を申告する区分の上限 4 万円、合計 12 万円。
+    // 23 歳未満の扶養親族がいる場合、令和 8 年分と令和 9 年分は新生命保険料の上限が 6 万円（新旧合計も 6 万円）。
+    // 端数: 計算した金額の 1 円未満は切り上げる（令和8年分 給与所得者の保険料控除申告書の注記。
+    //       確定申告の手引きでは「切り上げて差し支えありません」）。
+    // 出典: 国税庁 No.1140 生命保険料控除 [令和8年4月1日現在法令等]
+    // https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1140.htm
+    // 出典: 国税庁 令和8年分 給与所得者の保険料控除申告書
+    // https://www.nta.go.jp/taxes/tetsuzuki/shinsei/annai/gensen/pdf/2026bun_04.pdf
+    // 出典: 国税庁 確定申告の手引き（令和7年分）生命保険料控除
+    // https://www.nta.go.jp/taxes/shiraberu/shinkoku/tebiki/2025/03/order3/3-3_12.htm
+    incomeTax: {
+      newContract: [
+        { upTo: 20_000, divisor: 1, add: 0 },
+        { upTo: 40_000, divisor: 2, add: 10_000 },
+        { upTo: 80_000, divisor: 4, add: 20_000 },
+        { upTo: null, divisor: 1, add: 40_000 },
+      ],
+      oldContract: [
+        { upTo: 25_000, divisor: 1, add: 0 },
+        { upTo: 50_000, divisor: 2, add: 12_500 },
+        { upTo: 100_000, divisor: 4, add: 25_000 },
+        { upTo: null, divisor: 1, add: 50_000 },
+      ],
+      combinedCap: 40_000,
+      totalCap: 120_000,
+      under23: {
+        newLife: [
+          { upTo: 30_000, divisor: 1, add: 0 },
+          { upTo: 60_000, divisor: 2, add: 15_000 },
+          { upTo: 120_000, divisor: 4, add: 30_000 },
+          { upTo: null, divisor: 1, add: 60_000 },
+        ],
+        combinedLifeCap: 60_000,
+      },
+    },
+    // 住民税の生命保険料控除。新契約 最高 28,000 円、旧契約 最高 35,000 円、新旧両方で 28,000 円、合計 70,000 円。
+    // 23 歳未満の扶養親族の特例は住民税にはない（2027-01-01 時点の条文で確認）。
+    // 出典: 地方税法 第314条の2第1項第5号
+    // https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002
+    residentTax: {
+      newContract: [
+        { upTo: 12_000, divisor: 1, add: 0 },
+        { upTo: 32_000, divisor: 2, add: 6_000 },
+        { upTo: 56_000, divisor: 4, add: 14_000 },
+        { upTo: null, divisor: 1, add: 28_000 },
+      ],
+      oldContract: [
+        { upTo: 15_000, divisor: 1, add: 0 },
+        { upTo: 40_000, divisor: 2, add: 7_500 },
+        { upTo: 70_000, divisor: 4, add: 17_500 },
+        { upTo: null, divisor: 1, add: 35_000 },
+      ],
+      combinedCap: 28_000,
+      totalCap: 70_000,
+    },
+  },
 };
 
 /** README と `setsuzei --sources` に出す出典一覧 */
@@ -430,5 +509,33 @@ export const sources2026: readonly Source[] = [
   {
     title: "中小機構 小規模企業共済の加入資格",
     url: "https://kyosai-web.smrj.go.jp/skyosai/entry/index_02.html",
+  },
+  {
+    title: "国税庁 No.1120 医療費を支払ったとき（医療費控除）",
+    url: "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1120.htm",
+  },
+  {
+    title: "国税庁 No.1129 特定一般用医薬品等購入費を支払ったとき（医療費控除の特例）【セルフメディケーション税制】",
+    url: "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1129.htm",
+  },
+  {
+    title: "国税庁 No.1140 生命保険料控除（23歳未満の扶養親族がいる場合の令和8年分・9年分の特例を含む）",
+    url: "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1140.htm",
+  },
+  {
+    title: "国税庁 令和8年分 給与所得者の保険料控除申告書（控除額の 1 円未満の端数は切り上げ）",
+    url: "https://www.nta.go.jp/taxes/tetsuzuki/shinsei/annai/gensen/pdf/2026bun_04.pdf",
+  },
+  {
+    title: "国税庁 確定申告の手引き（令和7年分）医療費控除（セルフメディケーション税制を選ぶときは「区分」に 1）",
+    url: "https://www.nta.go.jp/taxes/shiraberu/shinkoku/tebiki/2025/03/order3/3-3_24.htm",
+  },
+  {
+    title: "国税庁 確定申告の手引き（令和7年分）生命保険料控除（新旧両方の契約がある場合の計算、1 円未満の端数）",
+    url: "https://www.nta.go.jp/taxes/shiraberu/shinkoku/tebiki/2025/03/order3/3-3_12.htm",
+  },
+  {
+    title: "国税庁 令和８年分の所得税等の確定申告書（案）（第一表・第二表の欄の番号）",
+    url: "https://www.nta.go.jp/taxes/shiraberu/shinkoku/pdf/0026006-063.pdf",
   },
 ];

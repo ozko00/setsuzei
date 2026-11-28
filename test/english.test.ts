@@ -43,6 +43,19 @@ function texts(value: unknown, out: string[] = []): string[] {
   return out;
 }
 
+/**
+ * 値の中の文字列を、確定申告書の対応表（filing）を除いて集める。
+ * 対応表は、紙の申告書で欄を探せるように、欄・書類の名前を日本語のまま添えている（説明は英語）。
+ */
+function textsOutsideFiling(value: unknown, out: string[] = []): string[] {
+  if (typeof value === "string") out.push(value);
+  else if (Array.isArray(value)) for (const v of value) textsOutsideFiling(v, out);
+  else if (value !== null && typeof value === "object") {
+    for (const [k, v] of Object.entries(value)) if (k !== "filing") textsOutsideFiling(v, out);
+  }
+  return out;
+}
+
 /** 計算コアに通す入力の組（注記・注意の分岐をひととおり踏むように選ぶ） */
 const INPUTS: readonly TaxInput[] = [
   { businessRevenue: 8_000_000, businessExpenses: 1_500_000, blueReturn: "65", socialInsurance: 900_000 },
@@ -71,6 +84,14 @@ const INPUTS: readonly TaxInput[] = [
   { businessRevenue: 1_850_000, spouse: { income: 0 }, dependents: { under16: 2 } },
   // 掛金を追加すると、ふるさと納税の上限の目安が 0 円になる
   { businessRevenue: 1_500_000, socialInsurance: 200_000 },
+  // 医療費控除（通常のほうが有利）と、生命保険料（旧契約だけを申告するほうが有利）
+  { businessRevenue: 8_000_000, businessExpenses: 1_500_000, blueReturn: "65", socialInsurance: 900_000, medicalExpenses: 150_000, selfMedicationExpenses: 30_000, lifeInsuranceNew: 80_000, lifeInsuranceOld: 70_000, pensionInsuranceNew: 90_000, pensionInsuranceOld: 80_000, medicalCareInsurance: 40_000, furusatoPaid: 50_000 },
+  // セルフメディケーション税制のほうが有利・23 歳未満の扶養親族の特例・その他の所得控除との重なり
+  { salaryRevenue: 9_500_000, businessRevenue: 600_000, businessExpenses: 100_000, businessIncomeType: "misc", socialInsurance: 1_400_000, selfMedicationExpenses: 50_000, medicalExpenses: 60_000, lifeInsuranceNew: 100_000, dependents: { under16: 1 }, otherDeductions: 50_000, idecoPaid: 276_000, kyosaiPaid: 0 },
+  // 所得が少なく、医療費の足切りが総所得金額等の 5%
+  { businessRevenue: 1_800_000, businessExpenses: 400_000, medicalExpenses: 90_000, medicalReimbursed: 10_000 },
+  // 医療費が足切りに届かない
+  { businessRevenue: 5_000_000, medicalExpenses: 50_000 },
 ];
 
 describe("英語版: 計算コアは、言語を変えても数字が変わらない", () => {
@@ -82,9 +103,15 @@ describe("英語版: 計算コアは、言語を変えても数字が変わら�
       assert.deepEqual(withoutText(en), withoutText(ja), JSON.stringify(input));
       // 文面の数（注記・注意の件数）も同じ
       assert.equal(texts(en).length, texts(ja).length, JSON.stringify(input));
-      for (const text of texts(en)) {
+      // 確定申告書の対応表は、紙の申告書で欄を探せるように、欄の名前（label）と様式の名前に日本語を残す。
+      // 説明（note・notes）は英語で書き、日本語は欄や書類の名前を添えるときだけ使う
+      const { filing, ...rest } = en;
+      for (const text of texts(rest)) {
         assert.doesNotMatch(text, JAPANESE, `${JSON.stringify(input)}: ${text}`);
         englishNotes++;
+      }
+      for (const text of [...filing.entries.map((e) => e.note), ...filing.notes, filing.form]) {
+        assert.match(text, /[A-Za-z]{4,}.*[A-Za-z]{4,}/, `${JSON.stringify(input)}: 英語の説明がない: ${text}`);
       }
       assert.equal(en.label, "tax year 2026 (Reiwa 8)");
       assert.equal(en.residentTaxLabel, "fiscal 2027");
@@ -99,7 +126,7 @@ describe("英語版: 計算コアは、言語を変えても数字が変わら�
     const seen = new Set<string>();
     for (const input of INPUTS) for (const text of texts(calculate(input, { locale: "en" }))) seen.add(text);
     const en = CORE_MESSAGES.en;
-    const fixed = Object.entries(en).filter(([key, value]) => typeof value === "string" && !/^(flag|cmp|input|not|spouse|dependents|blueLevels|blueForMisc|incomeType|incomeAdjustmentBool|unknown)/.test(key));
+    const fixed = Object.entries(en).filter(([key, value]) => typeof value === "string" && !/^(flag|cmp|input|not|spouse|dependents|blueLevels|blueForMisc|incomeType|incomeAdjustmentBool|dependentUnder23Bool|lifeLabel|pensionLabel|unknown)/.test(key));
     const missed = fixed.filter(([, value]) => !seen.has(value as string)).map(([key]) => key);
     assert.deepEqual(missed, [], "英語の文面のうち、テストの入力で一度も出ていないもの");
   });
@@ -183,7 +210,7 @@ describe("英語版: ブラウザ版の計算（トップと説明ページ）�
       assert.ok(ja.ok && en.ok, JSON.stringify(values));
       assert.deepEqual(withoutText(en), withoutText(ja), JSON.stringify(values));
       assert.deepEqual(en.effective, ja.effective);
-      for (const text of texts({ ...en, effective: null })) {
+      for (const text of textsOutsideFiling({ ...en, effective: null })) {
         // 源泉徴収票の欄の名前だけは、探せるように日本語のまま添えている
         assert.doesNotMatch(text.replace("社会保険料等の金額", ""), JAPANESE, text);
       }
@@ -253,8 +280,13 @@ describe("英語版: ブラウザ版の計算（トップと説明ページ）�
     assert.deepEqual(Object.keys(CORE_MESSAGES.en).sort(), Object.keys(CORE_MESSAGES.ja).sort());
     // 英語の文面（引数のないもの）に、日本語は入っていない
     for (const [key, value] of [...Object.entries(en), ...Object.entries(CORE_MESSAGES.en)]) {
+      // 確定申告書の対応表の見出し（第一表など）は、紙の申告書と照らし合わせられるよう日本語の名前を添える
+      if (key === "filing" || key === "filingSheet") continue;
       for (const text of texts(value)) assert.doesNotMatch(text.replace("社会保険料等の金額", ""), JAPANESE, key);
     }
+    // 確定申告書の対応表の文面は、日本語の欄名を添えてもよいが、説明は英語で書く
+    for (const text of texts(CORE_MESSAGES.en.filing)) assert.match(text, /[A-Za-z]{4,}.*[A-Za-z]{4,}/, text);
+    for (const text of texts(webMessages("en").filingSheet)) assert.match(text, /^[A-Z][a-z]{3,}/, text);
   });
 });
 
@@ -278,7 +310,7 @@ describe("英語版: 公開するページ（docs/en/）", () => {
   const ids = (html: string): string[] => [...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1] ?? "").sort();
 
   it("docs/en/ のファイルは、いまの計算コアから生成した結果と一致する（npm run build:site の実行漏れを検出）", () => {
-    assert.equal(siteEn.size, 5);
+    assert.equal(siteEn.size, 7);
     for (const [path, content] of siteEn) assert.equal(read(path), content, path);
   });
 
@@ -304,12 +336,12 @@ describe("英語版: 公開するページ（docs/en/）", () => {
     }
   });
 
-  it("sitemap.xml に、日本語版 6 枚と英語版 6 枚がある", () => {
+  it("sitemap.xml に、日本語版 8 枚と英語版 8 枚がある", () => {
     const locs = [...(site.get("sitemap.xml") ?? "").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     assert.deepEqual(locs, siteUrls());
-    assert.equal(locs.length, 12);
+    assert.equal(locs.length, 16);
     for (const { jaUrl, enUrl } of pairs) assert.ok(locs.includes(jaUrl) && locs.includes(enUrl));
-    assert.equal(new Set(locs).size, 12);
+    assert.equal(new Set(locs).size, 16);
   });
 
   it("入力欄と画面の部品（name・id）は日本語版と同じ。CSP も同じで、読み込むのは同じサイトのファイルだけ", () => {
@@ -342,11 +374,15 @@ describe("英語版: 公開するページ（docs/en/）", () => {
 
   it("英語版に残す日本語は、書類や窓口で必要になる語だけ", () => {
     const allowed = [
+      // 確定申告書の欄・書類の名前（紙の申告書で探せるように添えている。長い語から消す）
+      "給与、公的年金等以外の所得に係る住民税の徴収方法", "都道府県、市区町村への寄附（特例控除対象）", "セルフメディケーション税制の明細書", "小規模企業共済等掛金払込証明書",
+      "確定申告書等作成コーナー", "セルフメディケーション税制", "医療費控除の明細書", "個人型確定拠出年金", "確定申告書", "自分で納付", "予定納税", "第一表", "第二表", "医療費", "区分",
       "掛金月額変更（増額・減額）申込書", "青色申告承認申請書", "青色申告特別控除額", "青色申告特別控除", "社会保険料等の金額", "社会保険料控除",
-      "小規模企業共済", "ふるさと納税", "源泉徴収票", "控除証明書", "納付通知書", "支払金額", "青色申告", "現金あり", "受領書", "住民税", "日本語版", "日本語", "480万", "600万", "税",
+      "小規模企業共済", "ふるさと納税", "源泉徴収票", "生命保険料控除証明書", "控除証明書", "納付通知書", "支払金額", "青色申告", "現金あり", "受領書", "住民税", "日本語版", "日本語", "480万", "600万", "税",
     ];
     for (const { kind, en } of pairs) {
-      let rest = en;
+      // 確定申告書の欄の対応表は、1 列目が申告書に印刷されている欄の名前（日本語）。2・3 列目の金額と説明は英語
+      let rest = kind === "filing" ? en.replace(/<th scope="row">[^<]*<\/th>/g, "") : en;
       for (const word of allowed) rest = rest.split(word).join("");
       const left = rest.split("\n").filter((line) => JAPANESE.test(line));
       assert.deepEqual(left, [], kind);
@@ -379,7 +415,7 @@ describe("英語版: 公開するページ（docs/en/）", () => {
     }
   });
 
-  it("英語のトップは、英語の説明ページ 5 枚すべてへ張っている。各ページは英語のトップとほかの 4 枚へ", () => {
+  it("英語のトップは、英語の説明ページ 7 枚すべてへ張っている。各ページは英語のトップとほかの 6 枚へ", () => {
     for (const { slug, label } of pageLinksEn()) {
       assert.ok(topEn.includes(`<a href="${slug}/">${label}</a>`), slug);
       assert.ok(existsSync(join(docs, "en", slug, "index.html")));

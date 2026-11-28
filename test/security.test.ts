@@ -71,8 +71,8 @@ describe("公開ページ（docs/）", () => {
   const pages = list("docs").filter((f) => f.endsWith("index.html"));
 
   it("どのページも、同じ Content-Security-Policy を持つ（弱めていない）", () => {
-    // 日本語版 6 枚 + 英語版 6 枚
-    assert.equal(pages.length, 12);
+    // 日本語版 8 枚 + 英語版 8 枚
+    assert.equal(pages.length, 16);
     for (const file of pages) {
       const html = read(file);
       const found = [...html.matchAll(/<meta http-equiv="Content-Security-Policy" content="([^"]*)">/g)].map((m) => m[1]);

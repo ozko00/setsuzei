@@ -61,6 +61,12 @@ export const furusatoComparison2025: TaxYearData = {
       { upTo: null, value: 0 },
     ],
   },
+
+  // 生命保険料控除の 23 歳未満の扶養親族の特例は令和 8 年分から（国税庁 No.1140）。令和 7 年分にはない
+  lifeInsurance: {
+    ...taxYear2026.lifeInsurance,
+    incomeTax: { ...taxYear2026.lifeInsurance.incomeTax, under23: null },
+  },
 };
 
 /** 令和 7 年分との比較で根拠にした資料（令和 8 年分の出典一覧に加えて使うもの） */

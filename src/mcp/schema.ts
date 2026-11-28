@@ -70,7 +70,24 @@ export const taxInputSchema: JsonSchema = {
       description:
         "Eligible for the income adjustment deduction (所得金額調整控除): salary over 8,500,000 yen and a dependent under 23 or a person with a special disability. Set automatically when under16 or specific dependents are given.",
     },
-    otherDeductions: yen("Total of other income deductions for income tax (medical expenses, life insurance premiums, etc.)"),
+    medicalExpenses: yen(
+      "Medical expenses paid this year for the user and family members in the same household (医療費). Used for the medical expense deduction; the engine compares it with the self-medication system and uses whichever leaves less tax",
+    ),
+    medicalReimbursed: yen("Part of medicalExpenses reimbursed by insurance, high-cost medical care benefit, childbirth lump-sum, etc. (補てんされる金額)"),
+    selfMedicationExpenses: yen(
+      "Spending on over-the-counter medicines eligible for the self-medication tax system (セルフメディケーション税制; marked on the receipt), net of reimbursements. Only for users who had a health check, vaccination or similar that year",
+    ),
+    lifeInsuranceNew: yen("General life insurance premiums under contracts from 2012 on (新生命保険料), from the insurer's certificate"),
+    lifeInsuranceOld: yen("General life insurance premiums under contracts up to 2011 (旧生命保険料, including old medical policies)"),
+    medicalCareInsurance: yen("Medical and long-term care insurance premiums (介護医療保険料)"),
+    pensionInsuranceNew: yen("Individual pension insurance premiums under contracts from 2012 on (新個人年金保険料)"),
+    pensionInsuranceOld: yen("Individual pension insurance premiums under contracts up to 2011 (旧個人年金保険料)"),
+    dependentUnder23: {
+      type: "boolean",
+      description:
+        "Has a dependent under 23 (including children under 16). For tax year 2026 this raises the income-tax deduction for new-contract life insurance to up to 60,000 yen. Set automatically when under16 or specific dependents are given.",
+    },
+    otherDeductions: yen("Total of other income deductions for income tax (earthquake insurance, disability, etc.). Do not include medical expenses or life insurance premiums: use their own fields"),
     otherDeductionsResident: yen("The same total for resident tax. Defaults to otherDeductions"),
     nhiIncomeRatePercent: {
       type: "number",
@@ -96,6 +113,8 @@ const deductions = obj({
   socialInsurance: amount(),
   smallBusinessMutualAid: amount("iDeCo + Small Business Mutual Aid"),
   donation: amount(),
+  medical: amount("Medical expense deduction (or the self-medication deduction, whichever was chosen)"),
+  lifeInsurance: amount("Life insurance premium deduction"),
   other: amount(),
   total: amount(),
 });
@@ -202,6 +221,15 @@ const normalizedFields: Record<string, JsonSchema> = {
   spouse: nullable(obj({ income: amount(), age70OrOlder: { type: "boolean" } }, ["age70OrOlder"])),
   dependents: obj({ general: amount(), specific: amount(), elderly: amount(), elderlyCohabiting: amount(), under16: amount() }),
   incomeAdjustment: { type: "boolean" },
+  medicalExpenses: amount(),
+  medicalReimbursed: amount(),
+  selfMedicationExpenses: amount(),
+  lifeInsuranceNew: amount(),
+  lifeInsuranceOld: amount(),
+  medicalCareInsurance: amount(),
+  pensionInsuranceNew: amount(),
+  pensionInsuranceOld: amount(),
+  dependentUnder23: { type: "boolean" },
   otherDeductions: amount(),
   otherDeductionsResident: amount(),
 };
@@ -210,6 +238,58 @@ const normalizedInput = obj(normalizedFields);
 const validatedInput = obj(
   { ...normalizedFields, spouse: obj({ income: amount(), age70OrOlder: { type: "boolean" } }, ["age70OrOlder"]), idecoAnnualLimit: amount(), idecoAdditional: amount(), kyosaiAdditional: amount(), nhiIncomeRatePercent: { type: "number" } },
   ["spouse", "idecoAnnualLimit", "idecoAdditional", "kyosaiAdditional", "nhiIncomeRatePercent"],
+);
+
+const METHOD = { type: "string", enum: ["normal", "selfMedication", "none"] } as const;
+
+const medicalDetail = obj(
+  {
+    applicable: { type: "boolean" },
+    method: { ...METHOD, description: "The method used: whichever leaves less tax (they cannot be combined). none = no deduction" },
+    normal: obj({ netExpenses: amount(), floor: amount("100,000 yen, or 5% of total income if lower"), deduction: amount(), totalTax: amount() }),
+    selfMedication: obj({ expenses: amount(), deduction: amount(), totalTax: amount() }),
+    saving: { ...saving, description: "Tax reduction from the chosen method compared with no medical deduction" },
+    advantage: amount("How much less tax the chosen method leaves than the other"),
+    notes,
+  },
+  [],
+  "Medical expense deduction vs the self-medication tax system.",
+);
+
+const lifeAmounts = obj({ life: amount(), medicalCare: amount(), pension: amount(), total: amount() });
+const lifeDetail = obj(
+  {
+    applicable: { type: "boolean" },
+    under23Rule: { type: "boolean", description: "The 2026 rule for a dependent under 23 was applied (income tax only)" },
+    lifeOldOnly: { type: "boolean", description: "Claiming only old-contract general life insurance gives more; new-contract premiums are left off the return" },
+    pensionOldOnly: { type: "boolean" },
+    incomeTax: lifeAmounts,
+    residentTax: lifeAmounts,
+    saving,
+    notes,
+  },
+  [],
+  "Life insurance premium deduction by category.",
+);
+
+const filingGuideSchema = obj(
+  {
+    form: text("Name of the return form the boxes come from"),
+    draft: { type: "boolean", description: "true while the form is the National Tax Agency's published draft" },
+    sourceUrl: text(),
+    entries: list(
+      obj({
+        sheet: { type: "string", enum: ["first", "second", "blue", "resident"], description: "first = 第一表, second = 第二表, resident = 第二表 住民税・事業税に関する事項, blue = 青色申告決算書" },
+        field: nullable(text("Box number as printed, e.g. ㉘")),
+        label: text("Box name as printed on the form (Japanese)"),
+        amount: nullable(amount("Amount to write. null when the box is not an amount (a choice or details)")),
+        note: text(),
+      }),
+    ),
+    notes,
+  },
+  [],
+  "Where the current figures go on the final tax return (確定申告書) pages 1 and 2 and the resident-tax section. Withheld tax and tax credits are not included.",
 );
 
 /** calculate() の結果（SetsuzeiResult）と同じ形 */
@@ -228,6 +308,8 @@ export const resultSchema: JsonSchema = obj({
     combinedWithIdeco: nullable(combinedMeasure),
     nationalHealthInsurance: nullable(nhiMeasure),
   }),
+  deductionDetails: obj({ medical: medicalDetail, lifeInsurance: lifeDetail }),
+  filing: filingGuideSchema,
   warnings: list(text(), "Warnings that depend on the input, in Japanese"),
   disclaimer: text(),
 });

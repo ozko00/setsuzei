@@ -10,8 +10,13 @@
 import { compareFurusatoLimit } from "../src/core/calculate.js";
 import type { FurusatoComparison } from "../src/core/types.js";
 import { getTaxYear } from "../src/data/index.js";
+import { calculate } from "../src/core/calculate.js";
 import {
   alternateLinks,
+  FILING_EXAMPLE,
+  MEDICAL_EXAMPLE,
+  MEDICAL_SELF_EXAMPLE,
+  medicalExampleRows,
   blueRows,
   contributionRows,
   CROSS_CHECKS,
@@ -92,6 +97,12 @@ const SRC_EN: Record<keyof typeof SRC, string> = {
   incomeTaxLaw: "e-Gov: Income Tax Act",
   nerima: "Nerima City: tax credit for donations (how furusato nozei works)",
   ikoma: "Ikoma City: furusato nozei and the tax credit",
+  medical: "NTA Tax Answer No. 1120: deduction for medical expenses",
+  selfMedication: "NTA Tax Answer No. 1129: the self-medication tax system",
+  life: "NTA Tax Answer No. 1140: deduction for life insurance premiums",
+  form2026: "NTA: draft final income tax return form for tax year 2026",
+  tebikiMedical: "NTA filing guide (tax year 2025): deduction for medical expenses",
+  tebikiLife: "NTA filing guide (tax year 2025): deduction for life insurance premiums",
 };
 
 /** 出典へのリンク。日本語のページなので「(Japanese only)」と添える */
@@ -426,10 +437,148 @@ function buildPagesEn(): PageEn[] {
       official: ["ntaGuide"],
     },
     furusatoYearPageEn(),
+    medicalPageEn(),
+    filingPageEn(),
   ];
 }
 
 const pct = (per100k: number): string => `${per100k / 1_000}%`;
+
+function medicalPageEn(): PageEn {
+  const rows = medicalExampleRows();
+  const low = rows[0];
+  const r500 = rows.find((r) => r.income === 5_000_000);
+  if (!low || !r500) throw new Error("medical example rows are missing");
+  const selfDeduction = MEDICAL_SELF_EXAMPLE - data.medical.selfMedication.floor;
+  return {
+    kind: "medical",
+    title: "Medical expense deduction or self-medication: which saves more tax in Japan? (2026) | setsuzei",
+    h1: "Medical expense deduction or the self-medication tax system: which saves you more tax?",
+    short: "Medical expenses vs self-medication",
+    description:
+      "Compare Japan's deduction for medical expenses (the part above ¥100,000) with the self-medication tax system (eligible over-the-counter medicines above ¥12,000) on your own income, for tax year 2026. Shows the tax under each, the lower threshold for incomes under ¥2 million, and where it goes on the tax return. Nothing you enter is sent anywhere.",
+    lead: "Japan has two ways to deduct health spending from income, and you can use only one of them. The regular deduction for medical expenses covers what you paid above ¥100,000 (less if your income is low); the self-medication tax system covers eligible over-the-counter medicines above ¥12,000, if you had a health check or similar during the year. Enter both amounts to see the deduction and the tax under each.",
+    form: businessForm(
+      "medical",
+      "Medical expenses and eligible medicines",
+      [
+        field("medical", "Medical expenses paid this year", "For you and family members in the same household", "e.g. 150,000", "110,000"),
+        field("medical-reimbursed", "Part of it reimbursed", "Hospitalization benefits, the high-cost medical care benefit and similar"),
+        field("self-medication", "Spending on medicines eligible for self-medication", "Over-the-counter medicines marked as eligible on the receipt. Only if you had a health check or similar", "e.g. 30,000", "30,000"),
+      ].join("\n    "),
+    ),
+    formula: `<p>Both deductions are worked out, income tax and resident tax are calculated under each, and the one with less tax is shown.</p>
+  <p class="formula">Medical expense deduction = (medical expenses − reimbursements) − ¥100,000 (or 5% of total income if your total income is under ¥2 million), up to ¥2,000,000</p>
+  <p class="formula">Self-medication deduction = eligible medicines − ¥12,000, up to ¥88,000</p>
+  <ul>
+    <li>The deduction for medical expenses covers what you paid during the year for yourself and for a spouse or relatives in the same household. Amounts covered by insurance, the high-cost medical care benefit, the childbirth lump-sum and the like are subtracted (${src("medical")}).</li>
+    <li>The self-medication tax system (セルフメディケーション税制) is only for people who themselves had a health check, vaccination or similar preventive check-up during the year. It covers “switch OTC” medicines and similar; eligible items are marked on the receipt (${src("selfMedication")}).</li>
+    <li>You choose one. You cannot combine them, and you cannot switch after filing, not even by amending the return (${src("selfMedication")}).</li>
+    <li>Resident tax uses the same formula (${src("localTax2027", "Local Tax Act, Art. 314-2 para. 1 item 2 and Supplementary Provisions Art. 4-5")}). The tax saved is roughly the deduction × (income tax rate × 1.021 + 10% resident tax).</li>
+    <li>On the final return, the deduction goes in box ㉘ (医療費) on page 1. If you choose self-medication, write 1 in the “区分” box next to it and attach the self-medication statement (${src("tebikiMedical")}; ${src("form2026")}). The ${official("ntaGuide", "NTA's English income tax guide")} describes the deduction for medical expenses in English.</li>
+  </ul>`,
+    examplesTitle: "Examples",
+    examples:
+      table(
+        `Threshold by income, and where the regular deduction beats self-medication (eligible medicines ${yenEn(MEDICAL_SELF_EXAMPLE)} → ${yenEn(selfDeduction)} deduction), tax year 2026`,
+        ["Income (revenue − expenses)", "Total income (after the ¥650,000 blue-return deduction)", "Medical threshold", "Regular deduction wins above", `Tax saved by ${yenEn(MEDICAL_EXAMPLE)} of medical expenses`],
+        rows.map((r) => [yenEn(r.income), yenEn(r.totalIncome), yenEn(r.floor), yenEn(r.breakEven), yenEn(r.saving)]),
+      ) +
+      `\n  <p class="note">${esc(EXAMPLE_NOTE)} “Regular deduction wins above” is the medical spending (after reimbursements) at which the regular deduction exceeds the ${yenEn(selfDeduction)} self-medication deduction. Equal deductions give equal tax.</p>`,
+    faqs: [
+      {
+        q: "Can I use both?",
+        a: `No. You choose one, and you cannot change the choice after filing (${src("selfMedication")}). The calculator shows the tax under both and points to the lower one.`,
+      },
+      {
+        q: "My medical bills are under ¥100,000. Is there no deduction?",
+        a: `If your total income is under ¥2 million, the threshold is 5% of total income instead of ¥100,000 (${src("medical")}). With the table's assumptions and an income of ${yenEn(low.income)}, total income is ${yenEn(low.totalIncome)} and the threshold is ${yenEn(low.floor)}. For freelancers, total income is after the blue-return deduction, so the threshold can be lower than revenue suggests.`,
+      },
+      {
+        q: "Which do freelancers usually pick?",
+        a: `In a year without serious illness or injury, medical spending often stays near the threshold and self-medication gives the bigger deduction. With the table's assumptions and an income of ${yenEn(r500.income)}, the regular deduction wins once medical spending (after reimbursements) exceeds ${yenEn(r500.breakEven)}, if you spent ${yenEn(MEDICAL_SELF_EXAMPLE)} on eligible medicines. Self-medication needs a health check or similar during the year.`,
+      },
+      {
+        q: "How much do I get back?",
+        a: `The deduction times your tax rates. With the table's assumptions, a freelancer with an income of ${yenEn(r500.income)} who paid ${yenEn(MEDICAL_EXAMPLE)} in medical expenses pays ${yenEn(r500.saving)} less income tax and resident tax in total. Freelancers usually have no tax withheld, so nothing is “refunded”; the tax due on the return goes down.`,
+      },
+      {
+        q: "Where does it go on the tax return?",
+        a: `Box ㉘ (医療費) on page 1 of the final return. For self-medication, also write 1 in the “区分” box. Attach the statement for the one you choose (${src("tebikiMedical")}). The box numbers were checked against the draft form for tax year 2026 (${src("form2026")}). <a href="../${EN_SLUG.filing}/">The tax return boxes page</a> shows the other boxes too.`,
+      },
+    ],
+    sources: ["medical", "selfMedication", "tebikiMedical", "form2026", "localTax2027", "rate", "resident"],
+    official: ["ntaGuide"],
+  };
+}
+
+function filingPageEn(): PageEn {
+  const r = calculate(FILING_EXAMPLE, { locale: "en" });
+  const rowsOf = (sheet: string): string[][] =>
+    r.filing.entries.filter((e) => e.sheet === sheet).map((e) => [`${e.field ?? ""} ${e.label}`.trim(), e.amount === null ? (e.field === "㊾" ? "(not calculated)" : "(not an amount)") : yenEn(e.amount), e.note]);
+  return {
+    kind: "filing",
+    title: "Where to write each amount on Japan's tax return (確定申告書), tax year 2026 | setsuzei",
+    h1: "Which box on the Japanese tax return? Your amounts on pages 1 and 2 of the 2026 final return",
+    short: "Tax return boxes (pages 1 and 2)",
+    description:
+      "Enter your revenue, expenses, social insurance, furusato nozei, medical expenses and life insurance premiums to see which box of Japan's final income tax return (確定申告書, pages 1 and 2, draft form for tax year 2026) each amount goes in, with the box number as printed. Nothing you enter is sent anywhere.",
+    lead: "The final tax return (確定申告書, kakutei shinkokusho) is printed in Japanese, and its boxes are identified by circled numbers such as ① and ㉘. Enter your figures to get, for each box number on the draft form for tax year 2026 published by the National Tax Agency, the amount to write and what it means in English. Use it when filling in a paper return or checking one made with e-Tax.",
+    form: businessForm(
+      "filing",
+      "Deductions (only those you enter appear)",
+      [
+        field("furusato-paid", "Furusato nozei donated", "Total for this year", "e.g. 50,000"),
+        field("ideco-paid", "iDeCo contributions", "Total for this year"),
+        field("kyosai-paid", "Small Business Mutual Aid contributions", "Total for this year"),
+        field("medical", "Medical expenses", "Paid this year, before reimbursements"),
+        field("self-medication", "Medicines eligible for self-medication", "Compared with the medical deduction; the better one is used"),
+        field("life-new", "Life insurance premiums (new contracts)", "From the insurer's certificate"),
+        field("life-old", "Life insurance premiums (old contracts)", "Contracts up to 2011"),
+        field("care-medical", "Medical and long-term care insurance premiums", "From the insurer's certificate"),
+      ].join("\n    "),
+    ),
+    formula: `<p>The calculation is the same as on the other pages; the results are laid out by box on the return.</p>
+  <ul>
+    <li>Box numbers and names were checked against the draft final return for tax year 2026 published by the National Tax Agency, pages 1 and 2 (${src("form2026")}). It is a draft: when the final form is published, the numbers will be checked and replaced.</li>
+    <li>On page 1 of the 2026 form, revenue is in boxes ㋐ onward, income in ① to ⑫, deductions from income in ⑬ to ㉚, and the tax calculation from ㉛ (the tax due is ㊿).</li>
+    <li>Tax withheld (㊾), prepaid tax and tax credits such as the housing loan credit are not calculated. Subtract them to get the tax to pay or the refund.</li>
+    <li>If you file a final return, you do not need a separate resident tax return: the resident tax section on page 2 goes to your municipality. If you do not file one, file a resident tax return with your municipality instead; its form differs by municipality.</li>
+    <li>The deductions for medical expenses (${src("medical")}), self-medication (${src("selfMedication")}) and life insurance premiums (${src("life")}) follow their own formulas, including the 2026 rule that raises the life insurance deduction for people with a dependent under 23. The ${official("ntaGuide", "NTA's English income tax guide")} explains each deduction in English.</li>
+  </ul>`,
+    examplesTitle: "Example: a freelancer with an income of ¥5 million",
+    examples:
+      `<p>Assumptions: revenue ¥5,000,000, no expenses, the ¥650,000 blue-return deduction, social insurance ¥750,000, iDeCo ${yenEn(276_000)}, furusato nozei ¥50,000, medical expenses ¥150,000, life insurance (new contract) ¥80,000, no dependents.</p>\n  ` +
+      table("Page 1 (第一表), tax year 2026 draft", ["Box (as printed)", "Amount", "What it is"], rowsOf("first")) +
+      "\n  " +
+      table("Page 2 (第二表), tax year 2026 draft", ["Box (as printed)", "Amount", "What it is"], [...rowsOf("second"), ...rowsOf("resident")]) +
+      `\n  <p class="note">㊿ assumes no tax was withheld (㊾). The blue-return deduction (${yenEn(r.baseline.blueDeductionApplied)}) goes on the profit and loss statement of the blue-return financial statement, and ① is after it.</p>`,
+    faqs: [
+      {
+        q: "Do I file both page 1 and page 2?",
+        a: `Yes. Page 1 (第一表) has revenue, income, deductions and tax; page 2 (第二表) has the details: insurance by type, who you donated to, your family, and the resident tax section. From tax year 2026 the carbon copy is no longer included (${src("form2026")}).`,
+      },
+      {
+        q: "Where does furusato nozei go?",
+        a: `The deduction for donations (total donated − ¥2,000) goes in box ㉙ on page 1, and the municipalities and amounts in the donations section on page 2. Also write the total in “都道府県、市区町村への寄附（特例控除対象）” in the resident tax section on page 2; without it, the special portion of the resident tax credit is not applied (${src("furusatoNta")}; ${src("furusatoMic")}).`,
+      },
+      {
+        q: "How do I keep resident tax on side income off my salary?",
+        a: `In the resident tax section on page 2, choose 自分で納付 (pay it yourself) under “給与、公的年金等以外の所得に係る住民税の徴収方法”. Some municipalities may not allow it. Resident tax on your salary is still deducted from your pay.`,
+      },
+      {
+        q: "Is there an English version of the return?",
+        a: `The return itself is only in Japanese. The ${official("ntaGuide", "NTA's English income tax guide")} explains the system and the deductions in English, and the online return preparation on e-Tax fills in the boxes for you. This page maps your amounts to the Japanese boxes.`,
+      },
+      {
+        q: "If I use e-Tax, do I need this page?",
+        a: `e-Tax's online return preparation (確定申告書等作成コーナー) fills in the boxes as you enter amounts. Use this page to estimate the amounts beforehand, or to check the figures on the finished return.`,
+      },
+    ],
+    sources: ["form2026", "tebikiMedical", "tebikiLife", "medical", "selfMedication", "life", "furusatoNta", "furusatoMic", "rate", "basic"],
+    official: ["ntaGuide"],
+  };
+}
 
 function furusatoYearPageEn(): PageEn {
   const input500 = yearSalaryInput(5_000_000);

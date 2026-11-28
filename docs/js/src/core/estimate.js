@@ -1,3 +1,67 @@
+/** 医療費控除の足切り額（10 万円か、総所得金額等の 5% の小さいほう。1 円未満切捨て） */
+export function medicalFloor(data, totalIncome) {
+    const rule = data.medical;
+    return Math.min(rule.floorMax, Math.floor((Math.max(0, totalIncome) * rule.floorIncomePercent) / 100));
+}
+/** 医療費控除の額（所得税・住民税で同じ式）。method が none なら 0 */
+export function medicalDeduction(data, m, totalIncome, method = m.method) {
+    const rule = data.medical;
+    if (method === "normal")
+        return Math.min(rule.cap, Math.max(0, m.netExpenses - medicalFloor(data, totalIncome)));
+    if (method === "selfMedication")
+        return Math.min(rule.selfMedication.cap, Math.max(0, m.selfMedication - rule.selfMedication.floor));
+    return 0;
+}
+/** 生命保険料控除の表を引く（1 円未満切上げ） */
+export function lifeTier(tiers, paid) {
+    if (paid <= 0)
+        return 0;
+    for (const tier of tiers) {
+        if (tier.upTo === null)
+            return tier.add;
+        if (paid <= tier.upTo)
+            return Math.ceil(paid / tier.divisor) + tier.add;
+    }
+    return 0;
+}
+/**
+ * 生命保険料控除の額（所得税・住民税）。
+ * 新契約と旧契約の両方がある区分は、「両方を申告する（区分の上限あり）」と「旧契約だけを申告する」のうち、
+ * 所得税の控除が大きいほうを選ぶ（同じなら住民税の控除が大きいほう）。申告した保険料は住民税にもそのまま使われるので、
+ * 住民税も同じ選び方で計算する（国税庁 No.1140 の「新契約と旧契約の双方に加入している場合」の表）。
+ */
+export function lifeInsuranceDeduction(data, paid, under23) {
+    const it = data.lifeInsurance.incomeTax;
+    const rt = data.lifeInsurance.residentTax;
+    const special = under23 && it.under23 !== null && paid.lifeNew > 0 ? it.under23 : null;
+    const category = (newPaid, oldPaid, itNew, itCombinedCap) => {
+        const both = {
+            it: newPaid > 0 && oldPaid > 0 ? Math.min(itCombinedCap, lifeTier(itNew, newPaid) + lifeTier(it.oldContract, oldPaid)) : lifeTier(itNew, newPaid) + lifeTier(it.oldContract, oldPaid),
+            rt: newPaid > 0 && oldPaid > 0 ? Math.min(rt.combinedCap, lifeTier(rt.newContract, newPaid) + lifeTier(rt.oldContract, oldPaid)) : lifeTier(rt.newContract, newPaid) + lifeTier(rt.oldContract, oldPaid),
+        };
+        if (newPaid === 0 || oldPaid === 0)
+            return { ...both, oldOnly: false };
+        const oldOnly = { it: lifeTier(it.oldContract, oldPaid), rt: lifeTier(rt.oldContract, oldPaid) };
+        const pickOld = oldOnly.it > both.it || (oldOnly.it === both.it && oldOnly.rt > both.rt);
+        return pickOld ? { ...oldOnly, oldOnly: true } : { ...both, oldOnly: false };
+    };
+    const life = category(paid.lifeNew, paid.lifeOld, special ? special.newLife : it.newContract, special ? special.combinedLifeCap : it.combinedCap);
+    const pension = category(paid.pensionNew, paid.pensionOld, it.newContract, it.combinedCap);
+    const care = { it: lifeTier(it.newContract, paid.medicalCare), rt: lifeTier(rt.newContract, paid.medicalCare) };
+    const sum = (l, c, p, cap) => ({
+        life: l,
+        medicalCare: c,
+        pension: p,
+        total: Math.min(cap, l + c + p),
+    });
+    return {
+        incomeTax: sum(life.it, care.it, pension.it, it.totalCap),
+        residentTax: sum(life.rt, care.rt, pension.rt, rt.totalCap),
+        under23Rule: special !== null && !life.oldOnly,
+        lifeOldOnly: life.oldOnly,
+        pensionOldOnly: pension.oldOnly,
+    };
+}
 export function floorTo(amount, unit) {
     return Math.floor(amount / unit) * unit;
 }
@@ -146,6 +210,8 @@ function sumDeductions(parts) {
         parts.socialInsurance +
         parts.smallBusinessMutualAid +
         parts.donation +
+        parts.medical +
+        parts.lifeInsurance +
         parts.other;
     return { ...parts, total };
 }
@@ -180,6 +246,8 @@ export function estimate(data, s) {
     }
     const totalIncome = Math.max(0, salary + businessIncome);
     const spouse = spouseAmounts(data, totalIncome, s.spouse);
+    // 医療費控除は所得税・住民税で同じ式（足切り額が総所得金額等で決まる）
+    const medical = medicalDeduction(data, s.medical, totalIncome);
     // --- 所得税 ---
     const itRule = data.incomeTax;
     const donationCap = Math.floor((totalIncome * itRule.donation.incomeCapPercent) / 100);
@@ -192,6 +260,8 @@ export function estimate(data, s) {
         socialInsurance: s.socialInsurance,
         smallBusinessMutualAid: s.mutualAid,
         donation: itDonation,
+        medical,
+        lifeInsurance: s.lifeInsurance.incomeTax,
         other: s.otherDeductions,
     });
     const incomeTax = {
@@ -207,6 +277,8 @@ export function estimate(data, s) {
         socialInsurance: s.socialInsurance,
         smallBusinessMutualAid: s.mutualAid,
         donation: 0,
+        medical,
+        lifeInsurance: s.lifeInsurance.residentTax,
         other: s.otherDeductionsResident,
     });
     const rtTaxable = floorTo(Math.max(0, totalIncome - rtDeductions.total), 1_000);

@@ -1,7 +1,17 @@
 import { furusatoComparison2025 } from "../data/2025-furusato.js";
 import { DEFAULT_YEAR, getTaxYear } from "../data/index.js";
 import type { TaxYearData } from "../data/types.js";
-import { estimate, furusatoLimit, furusatoLimitDetail, perCapitaExemptLimitMax, type Scenario } from "./estimate.js";
+import {
+  estimate,
+  furusatoLimit,
+  furusatoLimitDetail,
+  lifeInsuranceDeduction,
+  medicalDeduction,
+  medicalFloor,
+  perCapitaExemptLimitMax,
+  type Scenario,
+} from "./estimate.js";
+import { filingGuide } from "./filing.js";
 import type {
   BlueReturn,
   BlueReturnMeasure,
@@ -11,6 +21,9 @@ import type {
   FurusatoComparison,
   FurusatoMeasure,
   FurusatoYearLimit,
+  LifeInsuranceResult,
+  MedicalDeductionResult,
+  MedicalMethod,
   NationalHealthInsuranceMeasure,
   Saving,
   SetsuzeiResult,
@@ -141,9 +154,23 @@ function prepare(rawInput: TaxInput): {
       input.incomeAdjustment === true ||
       (input.dependents?.specific ?? 0) > 0 ||
       (input.dependents?.under16 ?? 0) > 0,
+    medicalExpenses: input.medicalExpenses ?? 0,
+    medicalReimbursed: input.medicalReimbursed ?? 0,
+    selfMedicationExpenses: input.selfMedicationExpenses ?? 0,
+    lifeInsuranceNew: input.lifeInsuranceNew ?? 0,
+    lifeInsuranceOld: input.lifeInsuranceOld ?? 0,
+    medicalCareInsurance: input.medicalCareInsurance ?? 0,
+    pensionInsuranceNew: input.pensionInsuranceNew ?? 0,
+    pensionInsuranceOld: input.pensionInsuranceOld ?? 0,
+    // 特定扶養親族（19〜22 歳）と 16 歳未満の扶養親族は必ず 23 歳未満
+    dependentUnder23:
+      input.dependentUnder23 === true ||
+      (input.dependents?.specific ?? 0) > 0 ||
+      (input.dependents?.under16 ?? 0) > 0,
     otherDeductions: input.otherDeductions ?? 0,
     otherDeductionsResident: input.otherDeductionsResident ?? input.otherDeductions ?? 0,
   };
+  const life = lifeInsuranceDeduction(data, lifePaid(normalized), normalized.dependentUnder23);
 
   const base: Scenario = {
     salaryRevenue: normalized.salaryRevenue,
@@ -159,8 +186,42 @@ function prepare(rawInput: TaxInput): {
     otherDeductions: normalized.otherDeductions,
     otherDeductionsResident: normalized.otherDeductionsResident,
     incomeAdjustmentEligible: normalized.incomeAdjustment,
+    medical: {
+      netExpenses: Math.max(0, normalized.medicalExpenses - normalized.medicalReimbursed),
+      selfMedication: normalized.selfMedicationExpenses,
+      method: "none",
+    },
+    lifeInsurance: { incomeTax: life.incomeTax.total, residentTax: life.residentTax.total },
   };
-  return { input, year, data, normalized, base };
+  // 医療費控除は、通常の控除とセルフメディケーション税制のうち、税額が少なくなるほうを使う（選択適用で、併用はできない）
+  // （税額が同じなら控除額が大きいほう。控除額がどちらも 0 なら控除なし）
+  const totalIncome = estimate(data, base).totalIncome;
+  const normalDeduction = medicalDeduction(data, base.medical, totalIncome, "normal");
+  const selfDeduction = medicalDeduction(data, base.medical, totalIncome, "selfMedication");
+  const taxWith = (method: MedicalMethod): number => estimate(data, withMedical(base, method)).totalTax;
+  const normalTax = taxWith("normal");
+  const selfTax = taxWith("selfMedication");
+  const method: MedicalMethod =
+    normalDeduction === 0 && selfDeduction === 0
+      ? "none"
+      : selfTax < normalTax || (selfTax === normalTax && selfDeduction > normalDeduction)
+        ? "selfMedication"
+        : "normal";
+  return { input, year, data, normalized, base: withMedical(base, method) };
+}
+
+function withMedical(base: Scenario, method: MedicalMethod): Scenario {
+  return { ...base, medical: { ...base.medical, method } };
+}
+
+function lifePaid(n: SetsuzeiResult["input"]): Parameters<typeof lifeInsuranceDeduction>[1] {
+  return {
+    lifeNew: n.lifeInsuranceNew,
+    lifeOld: n.lifeInsuranceOld,
+    medicalCare: n.medicalCareInsurance,
+    pensionNew: n.pensionInsuranceNew,
+    pensionOld: n.pensionInsuranceOld,
+  };
 }
 
 /**
@@ -448,15 +509,82 @@ function calculateIn(rawInput: TaxInput): SetsuzeiResult {
     }
   }
 
-  return {
+  const medical = medicalResult(data, base, baseline);
+  const lifeInsurance = lifeResult(data, base, baseline, normalized);
+  if (normalized.otherDeductions > 0 && (medical.applicable || lifeInsurance.applicable)) {
+    warnings.push(m().warnOtherDeductionsOverlap);
+  }
+
+  const result: Omit<SetsuzeiResult, "filing"> = {
     year,
     label: m().label(year, data.label),
     residentTaxLabel: m().residentTaxLabel(year, data.residentTaxLabel),
     input: normalized,
     baseline,
     measures: { furusato, ideco, kyosai, blueReturn, combined, combinedWithIdeco, nationalHealthInsurance },
+    deductionDetails: { medical, lifeInsurance },
     warnings,
     disclaimer: m().disclaimer,
+  };
+  return { ...result, filing: filingGuide(result) };
+}
+
+/** 医療費控除: 通常の控除とセルフメディケーション税制の比較 */
+function medicalResult(data: TaxYearData, base: Scenario, baseline: TaxEstimate): MedicalDeductionResult {
+  const med = base.medical;
+  const applicable = med.netExpenses > 0 || med.selfMedication > 0;
+  const at = (method: MedicalMethod): TaxEstimate => estimate(data, { ...base, medical: { ...med, method } });
+  const normal = at("normal");
+  const self = at("selfMedication");
+  const none = at("none");
+  const floor = medicalFloor(data, baseline.totalIncome);
+  const normalDeduction = medicalDeduction(data, med, baseline.totalIncome, "normal");
+  const selfDeduction = medicalDeduction(data, med, baseline.totalIncome, "selfMedication");
+  const notes: string[] = [];
+  if (applicable) {
+    if (med.netExpenses > 0) notes.push(m().medNormal(floor, data.medical.floorMax));
+    if (med.selfMedication > 0) notes.push(m().medSelf(data.medical.selfMedication.floor, data.medical.selfMedication.cap));
+    if (med.method === "none") notes.push(m().medNone);
+    else if (med.netExpenses > 0 && med.selfMedication > 0) {
+      const diff = Math.abs(normal.totalTax - self.totalTax);
+      notes.push(med.method === "normal" ? m().medChoseNormal(diff) : m().medChoseSelf(diff));
+    }
+    notes.push(m().medChoice);
+  }
+  return {
+    applicable,
+    method: med.method,
+    normal: { netExpenses: med.netExpenses, floor, deduction: normalDeduction, totalTax: normal.totalTax },
+    selfMedication: { expenses: med.selfMedication, deduction: selfDeduction, totalTax: self.totalTax },
+    saving: saving(none, baseline),
+    advantage:
+      med.method === "normal" ? Math.max(0, self.totalTax - normal.totalTax) : med.method === "selfMedication" ? Math.max(0, normal.totalTax - self.totalTax) : 0,
+    notes,
+  };
+}
+
+/** 生命保険料控除の内訳 */
+function lifeResult(data: TaxYearData, base: Scenario, baseline: TaxEstimate, n: SetsuzeiResult["input"]): LifeInsuranceResult {
+  const life = lifeInsuranceDeduction(data, lifePaid(n), n.dependentUnder23);
+  const paid = lifePaid(n);
+  const applicable = Object.values(paid).some((v) => v > 0);
+  const without = estimate(data, { ...base, lifeInsurance: { incomeTax: 0, residentTax: 0 } });
+  const notes: string[] = [];
+  if (applicable) {
+    if (life.under23Rule) notes.push(m().lifeUnder23);
+    if (life.lifeOldOnly) notes.push(m().lifeOldOnly(m().lifeLabel));
+    if (life.pensionOldOnly) notes.push(m().lifeOldOnly(m().pensionLabel));
+    notes.push(m().lifeCertificate);
+  }
+  return {
+    applicable,
+    under23Rule: life.under23Rule,
+    lifeOldOnly: life.lifeOldOnly,
+    pensionOldOnly: life.pensionOldOnly,
+    incomeTax: life.incomeTax,
+    residentTax: life.residentTax,
+    saving: saving(without, baseline),
+    notes,
   };
 }
 

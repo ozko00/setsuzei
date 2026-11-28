@@ -20,6 +20,13 @@ export function usedInputs(top, locale = "ja") {
     rows.push([t.uIdeco, yen(n.idecoPaid)]);
     rows.push([t.uKyosai, yen(n.kyosaiPaid)]);
     rows.push([t.uFurusato, yen(n.furusatoPaid)]);
+    if (n.medicalExpenses > 0)
+        rows.push([t.uMedical, yen(Math.max(0, n.medicalExpenses - n.medicalReimbursed))]);
+    if (n.selfMedicationExpenses > 0)
+        rows.push([t.uSelfMedication, yen(n.selfMedicationExpenses)]);
+    const lifePaid = n.lifeInsuranceNew + n.lifeInsuranceOld + n.medicalCareInsurance + n.pensionInsuranceNew + n.pensionInsuranceOld;
+    if (lifePaid > 0)
+        rows.push([t.uLifeInsurance, yen(lifePaid)]);
     rows.push([t.uOther, yen(n.otherDeductions)]);
     rows.push([t.uSpouse, n.spouse ? t.spouseYes(n.spouse.income, n.spouse.age70OrOlder === true) : t.none]);
     const d = n.dependents;

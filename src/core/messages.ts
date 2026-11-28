@@ -145,6 +145,7 @@ const ja = {
   nhiRate: (value: unknown): string =>
     `nhiIncomeRatePercent: 0 より大きく 100 以下のパーセント（小数第3位まで。例: 11.5）で指定してください（受け取った値: ${JSON.stringify(value)}）`,
   incomeAdjustmentBool: "incomeAdjustment: true / false で指定してください",
+  dependentUnder23Bool: "dependentUnder23: true / false で指定してください",
   incomeType: `businessIncomeType: "business"（事業所得）か "misc"（雑所得）で指定してください`,
   blueLevels: `blueReturn: "none" / "10" / "55" / "65" のいずれかで指定してください`,
   spouseShape: "spouse: { income, age70OrOlder } の形で指定してください",
@@ -157,6 +158,88 @@ const ja = {
   flagCount: (flag: string, text: string): string => `--${flag}: 人数を整数で指定してください（${JSON.stringify(text)}）`,
   flagSpouse70: "--spouse-70: --spouse-income と一緒に指定してください",
   flagNhiRate: (value: unknown): string => `--nhi-rate: パーセントの数値で指定してください（例: 11.5。受け取った値: ${JSON.stringify(value)}）`,
+
+  // --- 医療費控除・セルフメディケーション税制 ---
+  medNormal: (floor: number, floorMax: number): string =>
+    `医療費控除は「支払った医療費 − 保険金などで補てんされる金額 − ${yenJa(floor)}」（最高 200 万円）です。` +
+    (floor < floorMax ? `引く額は、総所得金額等が 200 万円未満なのでその 5% の ${yenJa(floor)}です。` : `引く額は 10 万円です（総所得金額等が 200 万円未満なら、その 5%）。`),
+  medSelf: (floor: number, cap: number): string =>
+    `セルフメディケーション税制は、対象の医薬品の購入費のうち ${yenJa(floor)}を超える部分（最高 ${yenJa(cap)}）を控除します。` +
+    "健康診断・予防接種・特定健診などの「一定の取組」を、申告する本人がその年にしていることが条件です。",
+  medNone: "いまの入力では、医療費控除もセルフメディケーション税制も控除額が 0 円です（足切り額を超えていないため）。",
+  medChoseNormal: (diff: number): string => `通常の医療費控除のほうが、セルフメディケーション税制より税額が ${yenJa(diff)}少なくなります。`,
+  medChoseSelf: (diff: number): string => `セルフメディケーション税制のほうが、通常の医療費控除より税額が ${yenJa(diff)}少なくなります。`,
+  medChoice:
+    "2 つは選択で、併用はできません。申告したあとに、更正の請求や修正申告で選び直すこともできません。" +
+    "申告書には「医療費控除の明細書」か「セルフメディケーション税制の明細書」を添えます。",
+
+  // --- 生命保険料控除 ---
+  lifeLabel: "一般の生命保険料",
+  pensionLabel: "個人年金保険料",
+  lifeUnder23:
+    "23 歳未満の扶養親族がいるので、令和8年分の特例で、新生命保険料の控除の上限を 6 万円（4 万円ではなく）として計算しました（合計の上限 12 万円は同じ）。住民税にはこの特例はありません。",
+  lifeOldOnly: (label: string): string =>
+    `${label}は、旧契約の分だけを申告するほうが控除が大きくなるので、そのように計算しました（新契約の分は申告書に書きません）。`,
+  lifeCertificate:
+    "保険会社から届く「生命保険料控除証明書」の金額（剰余金・割戻金を引いた額）を、新契約・旧契約、一般・介護医療・個人年金の区分ごとに入れます。証明書は申告書に添付するか、提示します。",
+  warnOtherDeductionsOverlap:
+    "「その他の所得控除」にも金額が入っています。医療費控除・生命保険料控除をそちらにも入れていると、二重に引いてしまいます。",
+
+  // --- 確定申告書のどこに書くか ---
+  filing: {
+    formName: "令和8年分の所得税及び復興特別所得税の確定申告書（案）",
+    revenueBusiness: "事業の売上（収入金額）。青色申告決算書（白色は収支内訳書）から書き写します。",
+    revenueSalary: "源泉徴収票の「支払金額」。",
+    revenueMisc: "副業の売上（業務に係る雑所得の収入金額）。",
+    incomeBusiness: (blue: number): string =>
+      blue > 0 ? `売上 − 経費 − 青色申告特別控除（${yenJa(blue)}）。` : "売上 − 経費。",
+    incomeSalary: (adjustment: number): string =>
+      adjustment > 0 ? `給与所得控除と所得金額調整控除（${yenJa(adjustment)}）を引いた額。` : "給与所得控除を引いた額（源泉徴収票の「給与所得控除後の金額」）。",
+    incomeMisc: "副業の売上 − 経費。",
+    miscTotal: "雑所得の合計。",
+    totalIncome: "所得の合計（合計所得金額）。",
+    socialInsurance: "国民健康保険料・国民年金保険料・給与から引かれた社会保険料などの合計。内訳は第二表に書きます。",
+    mutualAid: "iDeCo と小規模企業共済の掛金の合計。内訳は第二表に書きます。",
+    lifeInsurance: "生命保険料控除の額。支払った保険料は第二表に区分ごとに書きます。",
+    spouse: "配偶者控除か配偶者特別控除の額。配偶者のことは第二表の「配偶者や親族に関する事項」に書きます。",
+    dependents: "扶養控除の額。",
+    basic: "基礎控除の額（合計所得金額で決まります）。",
+    subtotal: "⑬から㉕までの控除の合計。",
+    subtotalWithOther: (other: number): string =>
+      `⑬から㉕までの控除の合計。入力した「その他の所得控除」（${yenJa(other)}）を、⑯（地震保険料）などの該当する欄に書いたものとして含めています。`,
+    medicalNormal: "医療費控除の額。「区分」の欄は空けておきます。「医療費控除の明細書」を添えます。",
+    medicalSelf: "セルフメディケーション税制による控除の額。「区分」の欄に 1 を書きます。「セルフメディケーション税制の明細書」を添えます。",
+    donation: (paid: number): string => `寄附金控除の額（ふるさと納税 ${yenJa(paid)} − 2,000 円）。受領証明書を添えるか、寄附金控除に関する証明書を使います。`,
+    deductionTotal: "所得から差し引かれる金額の合計。",
+    taxable: "課税される所得金額（1,000 円未満切り捨て）。",
+    taxOnTaxable: (rate: number): string => `所得税の速算表で求めた税額（税率 ${rate}%）。`,
+    afterCredits: "住宅ローン控除などの税額控除がない場合。税額控除はこの計算では扱っていません（ある場合は差し引きます）。",
+    baseTax: "災害減免額がない場合の、基準所得税額。",
+    reconstruction: "基準所得税額 × 2.1%（1 円未満切り捨て）。",
+    incomeTaxTotal: "所得税と復興特別所得税の合計。",
+    withholding: "給与や報酬から源泉徴収された税額の合計（源泉徴収票・支払調書で確かめます）。この計算では扱っていません。",
+    payable: "源泉徴収税額（㊾）や外国税額控除がない場合の額（100 円未満切り捨て）。㊾がある場合は ㊻ − ㊾ を 100 円未満切り捨てた額で、マイナスなら還付されます。予定納税をした場合は、さらに㊿から差し引きます（51〜53）。",
+    socialInsuranceDetail: "種類（国民健康保険、国民年金、給与からの社会保険料など）ごとに、支払った額を書きます。",
+    idecoDetail: "種類に「個人型確定拠出年金」と書き、支払った掛金を書きます（年末に届く「小規模企業共済等掛金払込証明書」の額）。",
+    kyosaiDetail: "種類に「小規模企業共済」と書き、支払った掛金を書きます（中小機構の掛金払込証明書の額）。",
+    lifeDetail: "生命保険料控除証明書の額（剰余金・割戻金を引いた額）。",
+    donationDetail: "寄附先の名称（自治体の名前）と、寄附した額を書きます。",
+    family: "配偶者・扶養親族の氏名・個人番号・生年月日などを書きます。",
+    familyUnder16: (count: number): string =>
+      `配偶者・扶養親族の氏名などを書きます。16 歳未満の子（${count} 人）も書き、「住民税」の「同一・16」に○を付けます（住民税の非課税の判定に使われます）。`,
+    residentFurusato: "ふるさと納税の合計額。住民税の寄附金税額控除（特例分）の計算に使われます。",
+    residentCollection:
+      "副業の所得にかかる住民税を、給料から天引きにする（特別徴収）か、自分で納める（自分で納付）かを選びます。勤務先に副業の住民税の通知が行かないようにしたい場合は「自分で納付」を選びます（自治体によっては選べないことがあります）。",
+    blueStatement: "青色申告決算書の損益計算書の「青色申告特別控除額」の欄。所得金額（①）はこの額を引いた後の額です。",
+    noteDraft:
+      "欄の番号と名前は、国税庁が公開している「令和８年分の所得税等の確定申告書（案）」の第一表・第二表で確かめたものです。案なので、確定した様式が公開されたら照らし合わせて差し替えます。",
+    noteBaseline: "金額は、入力どおりの「現状の見込み」です。年内にふるさと納税などを足した場合は、実行したあとの額で計算し直してください。",
+    noteWithholding:
+      "源泉徴収税額・予定納税額・住宅ローン控除などの税額控除は扱っていないので、納める税金・還付される税金は、それらを差し引いて求めます。",
+    noteResidentReturn:
+      "確定申告をすれば、住民税の申告は別にしなくてかまいません（第二表の「住民税・事業税に関する事項」が市区町村に伝わります）。確定申告をしない人（給与だけで、副業の所得が 20 万円以下の会社員など）は、市区町村に住民税の申告をします。その様式は市区町村ごとで、欄の番号は共通ではありません。",
+    noteEtax: "e-Tax の「確定申告書等作成コーナー」で作る場合は、金額を入れると欄に自動で入ります。この表は、入れた額や紙の申告書を確かめるのに使ってください。",
+  },
 };
 
 export type CoreMessages = typeof ja;
@@ -298,6 +381,7 @@ const en: CoreMessages = {
   nhiRate: (value: unknown): string =>
     `nhiIncomeRatePercent: enter a percentage above 0 and up to 100, with at most three decimals, e.g. 11.5 (received: ${JSON.stringify(value)})`,
   incomeAdjustmentBool: "incomeAdjustment: must be true or false",
+  dependentUnder23Bool: "dependentUnder23: must be true or false",
   incomeType: `businessIncomeType: must be "business" (business income) or "misc" (miscellaneous income)`,
   blueLevels: `blueReturn: must be one of "none" / "10" / "55" / "65"`,
   spouseShape: "spouse: must have the form { income, age70OrOlder }",
@@ -310,6 +394,89 @@ const en: CoreMessages = {
   flagCount: (flag: string, text: string): string => `--${flag}: enter a whole number of people (${JSON.stringify(text)})`,
   flagSpouse70: "--spouse-70: use together with --spouse-income",
   flagNhiRate: (value: unknown): string => `--nhi-rate: enter a percentage as a number, e.g. 11.5 (received: ${JSON.stringify(value)})`,
+
+  medNormal: (floor: number, floorMax: number): string =>
+    `The deduction for medical expenses is “medical expenses paid − amounts reimbursed by insurance and similar − ${yenEn(floor)}”, up to ¥2,000,000. ` +
+    (floor < floorMax
+      ? `The amount taken off is 5% of your total income (${yenEn(floor)}), because your total income is below ¥2 million.`
+      : "The amount taken off is ¥100,000 (or 5% of total income, if your total income is below ¥2 million)."),
+  medSelf: (floor: number, cap: number): string =>
+    `The self-medication tax system deducts what you spent on eligible over-the-counter medicines above ${yenEn(floor)}, up to ${yenEn(cap)}. ` +
+    "You qualify only if you yourself had a health check, vaccination or similar preventive check-up during the year.",
+  medNone: "On these figures, neither the deduction for medical expenses nor the self-medication tax system gives a deduction: your spending does not exceed the threshold.",
+  medChoseNormal: (diff: number): string => `The regular deduction for medical expenses leaves you ${yenEn(diff)} less tax than the self-medication tax system.`,
+  medChoseSelf: (diff: number): string => `The self-medication tax system leaves you ${yenEn(diff)} less tax than the regular deduction for medical expenses.`,
+  medChoice:
+    "You choose one of the two; you cannot use both, and you cannot switch after filing (not even by amending the return). " +
+    "Attach the statement for the one you choose: the medical expense statement or the self-medication statement.",
+
+  lifeLabel: "general life insurance",
+  pensionLabel: "individual pension insurance",
+  lifeUnder23:
+    "Because you have a dependent under 23, the 2026 rule applies: the deduction for new-contract life insurance goes up to ¥60,000 instead of ¥40,000 (the overall ¥120,000 limit is unchanged). Resident tax has no such rule.",
+  lifeOldOnly: (label: string): string =>
+    `For ${label}, claiming only the old contracts gives a larger deduction, so that is what was calculated (leave the new contracts off the return).`,
+  lifeCertificate:
+    "Use the amounts on the life insurance premium certificates your insurers send (after dividends and refunds), split into new and old contracts and into general, medical/long-term care and pension. Attach or show the certificates when you file.",
+  warnOtherDeductionsOverlap:
+    "You also entered an amount under “other deductions”. If it includes medical expenses or life insurance premiums, they are being deducted twice.",
+
+  filing: {
+    formName: "Final income tax return for tax year 2026 (確定申告書, draft form)",
+    revenueBusiness: "Business revenue. Copy it from your blue-return financial statement (white return: the income and expense statement).",
+    revenueSalary: "The “支払金額” box on your withholding slip (源泉徴収票).",
+    revenueMisc: "Side-business revenue (miscellaneous income from business activities).",
+    incomeBusiness: (blue: number): string =>
+      blue > 0 ? `Revenue − expenses − the special deduction for blue returns (${yenEn(blue)}).` : "Revenue − expenses.",
+    incomeSalary: (adjustment: number): string =>
+      adjustment > 0
+        ? `Salary after the employment income deduction and the income adjustment deduction (${yenEn(adjustment)}).`
+        : "Salary after the employment income deduction (“給与所得控除後の金額” on the withholding slip).",
+    incomeMisc: "Side-business revenue − expenses.",
+    miscTotal: "Total miscellaneous income.",
+    totalIncome: "Total income.",
+    socialInsurance: "National Health Insurance, National Pension and social insurance taken out of your salary, in total. The breakdown goes on page 2.",
+    mutualAid: "iDeCo and Small Business Mutual Aid contributions, in total. The breakdown goes on page 2.",
+    lifeInsurance: "The deduction for life insurance premiums. The premiums paid go on page 2 by type.",
+    spouse: "The deduction for a spouse (or the special deduction for a spouse). Details of your spouse go in the family section on page 2.",
+    dependents: "The deduction for dependents.",
+    basic: "The basic deduction (set by your total income).",
+    subtotal: "Deductions ⑬ to ㉕ in total.",
+    subtotalWithOther: (other: number): string =>
+      `Deductions ⑬ to ㉕ in total. It includes the “other deductions” you entered (${yenEn(other)}), assuming they go in boxes such as ⑯ (earthquake insurance).`,
+    medicalNormal: "The deduction for medical expenses. Leave the “区分” box empty. Attach the medical expense statement (医療費控除の明細書).",
+    medicalSelf: "The self-medication deduction. Write 1 in the “区分” box. Attach the self-medication statement (セルフメディケーション税制の明細書).",
+    donation: (paid: number): string => `The deduction for donations (furusato nozei ${yenEn(paid)} − ¥2,000). Attach the donation receipts or the certificate of donation deduction.`,
+    deductionTotal: "All deductions from income in total.",
+    taxable: "Taxable income (rounded down to ¥1,000).",
+    taxOnTaxable: (rate: number): string => `Income tax from the rate table (${rate}% bracket).`,
+    afterCredits: "Assuming no tax credits such as the housing loan credit, which this calculator does not handle (subtract them if you have any).",
+    baseTax: "Base income tax, assuming no disaster relief.",
+    reconstruction: "Base income tax × 2.1% (rounded down to ¥1).",
+    incomeTaxTotal: "Income tax plus the special income tax for reconstruction.",
+    withholding: "Tax already withheld from your salary or fees (see your withholding slips and payment records). Not handled by this calculator.",
+    payable: "The amount if nothing was withheld (㊾) and there is no foreign tax credit, rounded down to ¥100. If tax was withheld, it is ㊻ − ㊾ rounded down to ¥100, and a negative figure is refunded. Prepaid tax (予定納税) is then subtracted (boxes 51–53).",
+    socialInsuranceDetail: "By type (National Health Insurance, National Pension, social insurance from salary, etc.), the amount paid.",
+    idecoDetail: "Write “個人型確定拠出年金” as the type and the contributions paid (the certificate 小規模企業共済等掛金払込証明書 that arrives near year-end).",
+    kyosaiDetail: "Write “小規模企業共済” as the type and the contributions paid (from SMRJ's payment certificate).",
+    lifeDetail: "The amount on the life insurance premium certificate (after dividends and refunds).",
+    donationDetail: "The name of the municipality you donated to, and the amount.",
+    family: "Names, My Number and dates of birth of your spouse and dependents.",
+    familyUnder16: (count: number): string =>
+      `Names and other details of your spouse and dependents. Include your children under 16 (${count}) and circle “同一・16” under “住民税”: it is used to decide whether resident tax is waived.`,
+    residentFurusato: "Your furusato nozei donations in total. Used for the special portion of the resident tax credit for donations.",
+    residentCollection:
+      "Choose whether resident tax on your side income is taken from your salary (特別徴収) or paid by you (自分で納付). Choose 自分で納付 if you do not want your employer to receive a resident tax notice for the side income (some municipalities may not allow it).",
+    blueStatement: "The “青色申告特別控除額” box in the profit and loss statement of the blue-return financial statement. Business income (①) is after this deduction.",
+    noteDraft:
+      "Box numbers and names were checked against the draft final return for tax year 2026 (令和８年分の所得税等の確定申告書（案）, pages 1 and 2) published by the National Tax Agency. It is a draft: once the final form is published, they will be checked and replaced.",
+    noteBaseline: "The amounts are your current forecast as entered. If you add furusato nozei or other measures before year-end, recalculate with the amounts after doing so.",
+    noteWithholding:
+      "Withheld tax, prepaid tax and tax credits such as the housing loan credit are not handled, so subtract them to get the tax to pay or the refund.",
+    noteResidentReturn:
+      "If you file a final tax return, you do not need a separate resident tax return: the resident tax section on page 2 is passed on to your municipality. If you do not file one (for example, an employee whose side income is ¥200,000 or less), file a resident tax return with your municipality instead; its form differs by municipality and has no common box numbers.",
+    noteEtax: "If you use e-Tax's online return preparation (確定申告書等作成コーナー), the boxes are filled in as you enter amounts. Use this table to check the amounts or a paper return.",
+  },
 };
 
 export const CORE_MESSAGES: Readonly<Record<Locale, CoreMessages>> = { ja, en };

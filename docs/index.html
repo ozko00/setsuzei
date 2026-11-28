@@ -66,7 +66,7 @@
   </section>
 
   <details class="panel more" id="more">
-    <summary><span class="summary-title">もっと正確にする</span><span class="summary-sub">社会保険料・青色申告・掛金・家族。分かるところだけで構いません</span></summary>
+    <summary><span class="summary-title">もっと正確にする</span><span class="summary-sub">社会保険料・青色申告・掛金・医療費・生命保険料・家族。分かるところだけで構いません</span></summary>
 
     <fieldset>
       <legend>社会保険料</legend>
@@ -127,8 +127,38 @@
         <input name="kyosai-paid" inputmode="numeric" placeholder="例: 36万"></label>
       <label>ふるさと納税の寄附済みの額<span class="sub">ことし、すでに寄附した合計</span>
         <input name="furusato-paid" inputmode="numeric" placeholder="例: 3万"></label>
-      <label>そのほかの控除の合計<span class="sub">医療費控除・生命保険料控除など。去年の申告書や年末調整の額が目安になります</span>
-        <input name="other-deductions" inputmode="numeric" placeholder="例: 8万"></label>
+      <label>そのほかの控除の合計<span class="sub">地震保険料控除など。医療費と生命保険料は下の欄に入れます</span>
+        <input name="other-deductions" inputmode="numeric" placeholder="例: 5万"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>医療費・生命保険料<span class="sub">確定申告で引ける控除です。入れると税額に入り、結果の「確定申告書のどこに書くか」にも出ます</span></legend>
+      <details class="nested" id="medical-box">
+        <summary>医療費（医療費控除・セルフメディケーション税制）</summary>
+        <label>ことし払った医療費<span class="sub">自分と、生計を一にする家族の分の合計。病院・薬局の領収書や、健康保険の医療費通知の額</span>
+          <input name="medical" inputmode="numeric" placeholder="例: 15万"></label>
+        <label>そのうち保険金などで補てんされる額<span class="sub">生命保険の入院給付金、高額療養費、出産育児一時金など</span>
+          <input name="medical-reimbursed" inputmode="numeric"></label>
+        <label>セルフメディケーション税制の対象の薬の購入費<span class="sub">レシートに対象の印がある市販薬（スイッチ OTC など）。健康診断・予防接種などを受けた人だけ使えます。入れると、通常の医療費控除と比べて税額が少ないほうで計算します</span>
+          <input name="self-medication" inputmode="numeric" placeholder="例: 3万"></label>
+      </details>
+      <details class="nested" id="life-box">
+        <summary>生命保険料（生命保険料控除）</summary>
+        <p class="sub">保険会社から届く「生命保険料控除証明書」の額を、区分ごとに入れます。新契約は平成 24 年以後、旧契約は平成 23 年以前の契約です。</p>
+        <div class="grid2">
+          <label>一般の生命保険料（新）
+            <input name="life-new" inputmode="numeric"></label>
+          <label>一般の生命保険料（旧）
+            <input name="life-old" inputmode="numeric"></label>
+          <label>介護医療保険料
+            <input name="care-medical" inputmode="numeric"></label>
+          <label>個人年金保険料（新）
+            <input name="pension-new" inputmode="numeric"></label>
+          <label>個人年金保険料（旧）
+            <input name="pension-old" inputmode="numeric"></label>
+        </div>
+        <label class="inline"><input type="checkbox" name="dependent-under23"> <span>23 歳未満の扶養親族（16〜18 歳の子など）がいる<span class="sub">令和8年分は、新契約の一般の生命保険料の控除が最高 6 万円になります。16 歳未満か 19〜22 歳の人数を入れたときは自動で対象にします</span></span></label>
+      </details>
     </fieldset>
 
     <fieldset>
@@ -157,7 +187,7 @@
       <label class="inline only-employee"><input type="checkbox" name="income-adjustment"> <span>23 歳未満の扶養親族（16〜18 歳の子など）か特別障害者がいる<span class="sub">会社の年収が 850 万円を超える場合だけ関係します（所得金額調整控除）。16 歳未満か 19〜22 歳の人数を入れたときは自動で対象にします</span></span></label>
     </fieldset>
 
-    <details class="nested">
+    <details class="nested" id="fine-box">
       <summary>さらに細かい条件</summary>
       <label>iDeCo の年間の限度額<span class="sub">空欄なら働き方から推定します（給料がなければ月 68,000 円、あれば企業年金のない会社員の月 23,000 円）。企業年金がある方・公務員の方は入力</span>
         <input name="ideco-limit" inputmode="numeric"></label>
@@ -340,6 +370,8 @@
     <li><a href="shokibo-kyosai-setsuzei/">小規模企業共済の節税額をシミュレーションする</a></li>
     <li><a href="aoiro-shinkoku-65-55-10/">青色申告特別控除 65万・55万・10万の違いを税額で計算する</a></li>
     <li><a href="furusato-nozei-jogen-reiwa8/">ふるさと納税の上限は令和8年分で下がる？ 基礎控除の引上げの影響を令和7年分と比べる</a></li>
+    <li><a href="iryohi-kojo-self-medication/">医療費控除とセルフメディケーション税制、どっちが得かを税額で計算する</a></li>
+    <li><a href="kakutei-shinkokusho-kakikata/">確定申告書のどこに書くかを、自分の金額で出す（第一表・第二表・令和8年分）</a></li>
   </ul>
   <p>それぞれ、計算式と根拠、所得別・年収別の表、よくある質問を載せています。</p>
 </section>
@@ -353,6 +385,7 @@
     <li><strong>青色申告特別控除</strong>: 白色申告・10 万円・55 万円・65 万円それぞれの税額と、その差</li>
   </ul>
   <p>「年内にやること」の合計は、足し算ではなく、まとめて計算し直した額です。入れているのは、ふるさと納税と、小規模企業共済にすでに加入している方の掛金の追加です。いま加入していない方の小規模企業共済と、iDeCo の追加は、払う額を自分で入れたときだけ合計に入れます（年内に新しく加入して払うには窓口での手続きが必要で、iDeCo の掛金額の変更は年 1 回で年内に増やせるかどうかが加入先と時期しだいのため）。</p>
+  <p>確定申告のときは、「もっと正確にする」の医療費・生命保険料の欄に入れると、医療費控除（セルフメディケーション税制と比べて、税額が少ないほう）と生命保険料控除も税額に入ります。結果の「確定申告書のどこに書くか」では、計算した金額を、国税庁が公開している令和8年分の確定申告書（案）の第一表・第二表の欄の番号に当てはめて出します（源泉徴収税額・予定納税額・住宅ローン控除などの税額控除は含みません）。</p>
   <p>払う額は自分で動かして、税額がどう変わるかを試せます。「年内に出せるお金」を入れると、その範囲で減る税額がいちばん大きくなる組み合わせを出します。ふるさと納税は払った額とほぼ同じだけ税金が減るので先に入りますが、寄附と引き換えで手元のお金は増えません。</p>
   <h3>前提</h3>
   <ul>

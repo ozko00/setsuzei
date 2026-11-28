@@ -59,6 +59,8 @@ function scenario(salary: number, family: Family, socialInsurance: number, incom
     },
     otherDeductions: 0,
     otherDeductionsResident: 0,
+    medical: { netExpenses: 0, selfMedication: 0, method: "none" },
+    lifeInsurance: { incomeTax: 0, residentTax: 0 },
     // 子（23 歳未満の扶養親族）がいれば所得金額調整控除の対象（給与収入 850 万円超のときだけ効く）
     incomeAdjustmentEligible,
   };

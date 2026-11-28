@@ -3,7 +3,7 @@
  *
  *   npm run test:browser
  *
- * ヘッドレスの Chrome でトップと説明ページ 5 枚を開き、キーボードとマウスで入力して、
+ * ヘッドレスの Chrome でトップと説明ページ 7 枚を開き、キーボードとマウスで入力して、
  * 画面に出た金額を、同じ入力で CLI（dist/cli.js）を実行した結果と突き合わせる。
  * あわせて、空入力・誤入力の表示、所得区分の切り替え、スマホ幅（375px）でのはみ出し、
  * コンソールのエラー、ページの外への通信がないことを確かめる。
@@ -69,6 +69,7 @@ const READ = `(() => {
     figures: Object.fromEntries(
       Array.from(result.querySelectorAll(".headline .figure")).filter((f) => !plan || !plan.contains(f) || shownPlan).map((f) => [text(f.querySelector(".label")), text(f.querySelector("strong"))]),
     ),
+    filing: Array.from(document.querySelectorAll("ul.filing li")).map((li) => [text(li.querySelector(".filing-box")), text(li.querySelector(".filing-amount"))]),
     cards: Array.from(result.querySelectorAll("section.card")).map((c) => ({
       title: text(c.querySelector("h3")),
       rows: Object.fromEntries(Array.from(c.querySelectorAll(".row")).map((r) => [text(r.querySelector("dt")), text(r.querySelector("dd"))])),
@@ -161,8 +162,18 @@ const cardStarting = (view, prefix) => view.cards.find((c) => c.title.startsWith
 
 // ───────────────────────── トップページ ─────────────────────────
 
-/** 「さらに細かい条件」の中にある欄 */
-const TOP_NESTED = new Set(["ideco-limit", "nhi-rate"]);
+/** 閉じた欄（details.nested）の中にある欄 → その details の id */
+const TOP_NESTED = new Map([
+  ...["ideco-limit", "nhi-rate"].map((name) => [name, "fine-box"]),
+  ...["medical", "medical-reimbursed", "self-medication"].map((name) => [name, "medical-box"]),
+  ...["life-new", "life-old", "care-medical", "pension-new", "pension-old", "dependent-under23"].map((name) => [name, "life-box"]),
+]);
+
+/** 欄が閉じた details.nested の中にあれば、その details を開く */
+async function openNested(page, name) {
+  const id = TOP_NESTED.get(name);
+  if (id && !(await page.evaluate(`document.getElementById("${id}").open`))) await page.click(`#${id} > summary`);
+}
 /** 結果の「年内にやること」の中にある、払う額の欄 */
 const TOP_PLAN = new Set(["furusato-add", "kyosai-add", "ideco-add"]);
 /** 計算コアの注意書きから、画面では出さない括弧（CLI・JSON の指定方法）を外す */
@@ -206,13 +217,12 @@ async function fillTop(page, values, exact = true) {
       await page.select('select[name="blue"]', value);
     } else if (value === true) {
       await openMore(page);
+      await openNested(page, name);
       await page.click(`input[name="${name}"]`);
     } else {
       if (!["salary", "revenue", "expenses"].includes(name) && !TOP_PLAN.has(name)) await openMore(page);
       if (name === "spouse-income" && !(await checked(page, 'input[name="has-spouse"]'))) await page.click('input[name="has-spouse"]');
-      if (TOP_NESTED.has(name) && !(await page.evaluate('document.querySelector("#more details.nested").open'))) {
-        await page.click("#more details.nested > summary");
-      }
+      await openNested(page, name);
       await page.type(`input[name="${name}"]`, value);
     }
   }
@@ -973,6 +983,49 @@ const PAGES = [
   },
 ];
 
+/** 確定申告書の欄の一覧（画面）が、計算コアの filing と同じであること */
+function filingMatches(view, r, only = () => true) {
+  const expected = r.filing.entries.filter(only).map((e) => [`${e.field ? `${e.field} ` : ""}${e.label}`, e.amount === null ? (e.field === "㊾" ? "（計算していません）" : "（選ぶ・書く事項）") : yen(e.amount)]);
+  assert.deepEqual(view.filing, expected);
+}
+
+const MED_METHOD = { normal: "通常の医療費控除", selfMedication: "セルフメディケーション税制", none: "どちらも控除なし" };
+
+PAGES.push(
+  {
+    slug: "iryohi-kojo-self-medication",
+    defaults: { medical: "11万", "self-medication": "3万" },
+    change: { revenue: "300万", expenses: "50万", medical: "25万", "medical-reimbursed": "5万", "self-medication": "6万" },
+    matches(view, r) {
+      const med = r.deductionDetails.medical;
+      assert.deepEqual(view.figures, {
+        税額が少ないほう: MED_METHOD[med.method],
+        それで減る税額: yen(med.saving.total),
+        もう一方との税額の差: yen(med.advantage),
+      });
+      const c = card(view, "医療費控除とセルフメディケーション税制");
+      assert.equal(c.rows[`通常の医療費控除: 控除 ${yen(med.normal.deduction)}、税額 ${yen(med.normal.totalTax)}`], med.method === "normal" ? "こちらで計算" : "");
+      assert.equal(c.rows[`セルフメディケーション税制: 控除 ${yen(med.selfMedication.deduction)}、税額 ${yen(med.selfMedication.totalTax)}`], med.method === "selfMedication" ? "こちらで計算" : "");
+      assert.equal(c.rows["医療費控除で減る税額"], yen(med.saving.total));
+      assert.deepEqual(c.notes, med.notes);
+      filingMatches(view, r, (e) => e.field === "㉘");
+    },
+  },
+  {
+    slug: "kakutei-shinkokusho-kakikata",
+    change: { "furusato-paid": "5万", "ideco-paid": "27.6万", medical: "15万", "life-new": "8万", "life-old": "7万", "care-medical": "4万" },
+    matches(view, r) {
+      const payable = r.filing.entries.find((e) => e.field === "㊿").amount;
+      assert.deepEqual(view.figures, {
+        "㉛ 課税される所得金額": yen(r.baseline.incomeTax.taxableIncome),
+        "㊿ 申告納税額（源泉徴収がない場合）": yen(payable),
+      });
+      filingMatches(view, r);
+      assert.ok(view.jump.text.includes(yen(payable)));
+    },
+  },
+);
+
 function contributionMatches(view, title, m) {
   assert.equal(m.applicable, true);
   assert.deepEqual(view.figures, { 追加で支払う掛金: yen(m.additional), 減る税額: yen(m.saving.total) });
@@ -990,17 +1043,18 @@ function contributionMatches(view, title, m) {
 
 for (const spec of PAGES) {
   const url = () => `${server.base}${spec.slug}/`;
+  const defaults = { ...PAGE_DEFAULTS, ...(spec.defaults ?? {}) };
 
   browserTest(`${spec.slug}: 初期値と、打ち込んだ値の結果が CLI と一致する`, async (page) => {
     await page.goto(url());
-    const initial = cli(PAGE_DEFAULTS);
+    const initial = cli(defaults);
     let view = await page.evaluate(READ);
     assert.equal(view.alert, null);
     spec.matches(view, initial.result);
     baselineRows(view, initial.result);
 
     await fillPage(page, spec.change);
-    const values = { ...PAGE_DEFAULTS, ...spec.change };
+    const values = { ...defaults, ...spec.change };
     const changed = cli(values);
     assert.ok(changed.ok);
     view = await page.evaluate(READ);
@@ -1025,7 +1079,7 @@ for (const spec of PAGES) {
 
     for (const wrong of [{ revenue: "abc" }, { revenue: "-100万" }, { revenue: "800万", expenses: "1.5.5", "social-insurance": "-1" }]) {
       await fillPage(page, wrong);
-      const expected = cli({ ...PAGE_DEFAULTS, ...wrong });
+      const expected = cli({ ...defaults, ...wrong });
       assert.equal(expected.ok, false);
       assertIssuesMatch(await page.evaluate(READ), expected.issues);
     }
@@ -1033,7 +1087,7 @@ for (const spec of PAGES) {
     view = await page.evaluate(READ);
     assert.equal(view.alert, null);
     assert.deepEqual(view.invalid, []);
-    spec.matches(view, cli(PAGE_DEFAULTS).result);
+    spec.matches(view, cli(defaults).result);
   });
 
   browserTest(`${spec.slug}: スマホ幅（375px）で、横スクロールもはみ出しもない`, async (page) => {
@@ -1195,10 +1249,16 @@ const PAGE_PAIRS = [
   ["shokibo-kyosai-setsuzei", "small-business-mutual-aid-tax-savings"],
   ["aoiro-shinkoku-65-55-10", "blue-return-deduction"],
   ["furusato-nozei-jogen-reiwa8", "furusato-nozei-limit-2026"],
+  ["iryohi-kojo-self-medication", "medical-expense-deduction-self-medication"],
+  ["kakutei-shinkokusho-kakikata", "tax-return-form-boxes"],
 ];
 
 /** 英語版の画面に、書類や窓口で必要になる日本語として出してよい語 */
 const EN_ALLOWED_JAPANESE = [
+  // 確定申告書の欄・書類の名前（紙の申告書で探せるように添えている。長い語から消す）
+  "給与、公的年金等以外の所得に係る住民税の徴収方法", "都道府県、市区町村への寄附（特例控除対象）", "セルフメディケーション税制の明細書", "小規模企業共済等掛金払込証明書",
+  "令和８年分の所得税等の確定申告書（案）", "確定申告書等作成コーナー", "セルフメディケーション税制", "医療費控除の明細書", "生命保険料控除証明書", "個人型確定拠出年金",
+  "住民税・事業税に関する事項", "青色申告決算書", "確定申告書", "自分で納付", "予定納税", "特別徴収", "第一表", "第二表", "医療費", "区分",
   "掛金月額変更（増額・減額）申込書", "青色申告承認申請書", "青色申告特別控除額", "青色申告特別控除", "社会保険料等の金額", "社会保険料控除",
   "小規模企業共済", "ふるさと納税", "源泉徴収票", "控除証明書", "納付通知書", "支払金額", "青色申告", "現金あり", "受領書", "住民税", "日本語版", "日本語", "480万", "600万", "税",
 ];
@@ -1218,6 +1278,7 @@ const NUMBERS = `(() => {
     totals: ["total-saving", "total-payment", "total-tax", "furusato-saving", "kyosai-saving", "ideco-saving"].map((id) => nums(text(document.getElementById(id)))),
     amounts: ["furusato-add", "kyosai-add", "ideco-add"].map((id) => (document.getElementById(id) ? document.getElementById(id).value : null)),
     figures: Array.from(document.querySelectorAll("#result .headline .figure strong")).map((e) => nums(text(e))),
+    filing: Array.from(document.querySelectorAll("ul.filing .filing-amount")).map((e) => nums(text(e))),
     rows: Array.from(document.querySelectorAll("#result section.card"))
       .filter((c) => !skip.includes(text(c.querySelector("h3"))))
       .flatMap((c) => Array.from(c.querySelectorAll(".row dd")).map((e) => nums(text(e)))),
@@ -1297,7 +1358,7 @@ browserTest("英語版トップ: 誤入力は、欄の英語の名前と英語�
   assert.equal(view.effective.revenue, "¥5,000,000");
 });
 
-browserTest("言語の切り替え: トップと説明ページ 5 枚で、日本語版と英語版を行き来できる", async (page) => {
+browserTest("言語の切り替え: トップと説明ページ 7 枚で、日本語版と英語版を行き来できる", async (page) => {
   await page.goto(server.base);
   await page.navigateBy(() => page.click("header a.lang"));
   assert.equal(await page.evaluate("location.pathname"), "/setsuzei/en/");
@@ -1315,11 +1376,12 @@ browserTest("言語の切り替え: トップと説明ページ 5 枚で、日�
   }
 });
 
-browserTest("英語版の説明ページ 5 枚: はじめの例で、日本語版と同じ数字。文面は英語", async (page) => {
+browserTest("英語版の説明ページ 7 枚: はじめの例で、日本語版と同じ数字。文面は英語", async (page) => {
   for (const [ja, en] of PAGE_PAIRS) {
     await page.goto(`${server.base}en/${en}/`);
     const enView = await page.evaluate(NUMBERS);
-    const text = await page.evaluate('document.querySelector("main").innerText');
+    // 確定申告書の欄の名前（.filing-box）は、申告書に印刷されているとおり日本語で出す
+    const text = await page.evaluate('(() => { const main = document.querySelector("main").cloneNode(true); for (const el of main.querySelectorAll(".filing-box")) el.remove(); document.body.append(main); const t = main.innerText; main.remove(); return t; })()');
     assert.equal(enView.lang, "en");
     assert.ok(enView.rows.length >= 4, `${en}: 結果が出ていません`);
     assert.deepEqual(japaneseLeft(text), [], `${en}: 日本語の文が残っています`);
@@ -1352,6 +1414,50 @@ browserTest("英語版: スマホ幅（375px）で、トップも説明ページ
     await page.goto(`${server.base}en/${en}/`);
     assert.deepEqual(await page.evaluate(OVERFLOW), [], `${en}: 初期値のとき`);
   }
+});
+
+browserTest("トップ: 医療費・生命保険料を入れると、税額と「確定申告書のどこに書くか」が CLI と同じ（日本語版・英語版）", async (page) => {
+  const values = {
+    revenue: "800万", expenses: "150万", blue: "65", "social-insurance": "90万", "furusato-paid": "5万",
+    medical: "10.5万", "self-medication": "3万", "life-new": "12万", "life-old": "7万", "care-medical": "4万", "dependent-under23": true,
+  };
+  const expected = topCli(values);
+  assert.ok(expected.ok);
+  const r = expected.result;
+  // セルフメディケーション税制のほうが有利で、23 歳未満の扶養親族の特例が効く入力
+  assert.equal(r.deductionDetails.medical.method, "selfMedication");
+  assert.equal(r.deductionDetails.lifeInsurance.under23Rule, true);
+  await page.goto(server.base);
+  await fillTop(page, values);
+  const view = await page.evaluate(READ);
+  assert.equal(view.alert, null);
+  assertTopMatches(view, r);
+  const med = card(view, "医療費控除とセルフメディケーション税制");
+  assert.equal(med.rows["医療費控除で減る税額"], yen(r.deductionDetails.medical.saving.total));
+  assert.deepEqual(med.notes, r.deductionDetails.medical.notes);
+  const life = card(view, "生命保険料控除");
+  const l = r.deductionDetails.lifeInsurance;
+  assert.equal(life.rows[`控除額の合計: 所得税 ${yen(l.incomeTax.total)}・住民税 ${yen(l.residentTax.total)}`], "");
+  assert.equal(life.rows["生命保険料控除で減る税額"], yen(l.saving.total));
+  filingMatches(view, r);
+  assert.ok(view.filing.some(([box]) => box === "㉘ 医療費"));
+  // 対応表は、開くと見える（閉じた欄の中にある）
+  assert.equal(await page.evaluate('document.querySelector("#filing").open'), false);
+  await page.click("#filing > summary");
+  assert.equal(await page.evaluate('document.querySelector("#filing ul.filing").checkVisibility()'), true);
+
+  // 英語版も同じ数字。欄の名前は日本語のまま、説明は英語
+  await page.goto(EN_TOP());
+  await fillTop(page, values);
+  const en = await page.evaluate(READ);
+  assert.deepEqual(en.filing.map(([box, amount]) => [box, amount.replace(/[^\d,]/g, "")]), view.filing.map(([box, amount]) => [box, amount.replace(/[^\d,]/g, "")]));
+  const notes = await page.evaluate('Array.from(document.querySelectorAll("ul.filing li .sub")).map((e) => e.textContent)');
+  assert.ok(notes.length > 10 && notes.every((n) => /[A-Za-z]{4,}/.test(n)));
+
+  // スマホ幅でも、対応表を開いてはみ出さない
+  await page.viewport(375, 720, true);
+  await page.evaluate('document.querySelector("#filing").open = true; document.querySelector("#breakdown").open = true');
+  assert.deepEqual(await page.evaluate(OVERFLOW), []);
 });
 
 browserTest("スマホ幅: 入力欄に打っている間は、画面下の「結果を見る」の帯を出さない（次の欄に重なって、押し間違えないように）", async (page) => {
