@@ -1013,7 +1013,7 @@ PAGES.push(
   },
   {
     slug: "kakutei-shinkokusho-kakikata",
-    change: { "furusato-paid": "5万", "ideco-paid": "27.6万", medical: "15万", "life-new": "8万", "life-old": "7万", "care-medical": "4万" },
+    change: { "furusato-paid": "5万", "ideco-paid": "27.6万", medical: "40万", "medical-reimbursed": "20万", "life-new": "8万", "life-old": "7万", "care-medical": "4万" },
     matches(view, r) {
       const payable = r.filing.entries.find((e) => e.field === "㊿").amount;
       assert.deepEqual(view.figures, {

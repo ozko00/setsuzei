@@ -704,6 +704,7 @@ function filingPage(): PageDef {
       field("ideco-paid", "iDeCo の掛金", "ことしの合計"),
       field("kyosai-paid", "小規模企業共済の掛金", "ことしの合計"),
       field("medical", "医療費", "補てん前の支払額"),
+      field("medical-reimbursed", "そのうち保険金などで補てんされる額", "入院給付金・高額療養費など。給付ごとに、その対象の医療費が上限"),
       field("self-medication", "セルフメディケーション税制の対象の薬の購入費", "医療費控除と比べて有利なほうで計算します"),
       field("life-new", "生命保険料（新契約）", "控除証明書の額"),
       field("life-old", "生命保険料（旧契約）", "控除証明書の額"),

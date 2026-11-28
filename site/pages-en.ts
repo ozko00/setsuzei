@@ -532,6 +532,7 @@ function filingPageEn(): PageEn {
         field("ideco-paid", "iDeCo contributions", "Total for this year"),
         field("kyosai-paid", "Small Business Mutual Aid contributions", "Total for this year"),
         field("medical", "Medical expenses", "Paid this year, before reimbursements"),
+        field("medical-reimbursed", "Part of it reimbursed", "Hospitalization benefits, the high-cost medical care benefit and similar, each up to the expense it covers"),
         field("self-medication", "Medicines eligible for self-medication", "Compared with the medical deduction; the better one is used"),
         field("life-new", "Life insurance premiums (new contracts)", "From the insurer's certificate"),
         field("life-old", "Life insurance premiums (old contracts)", "Contracts up to 2011"),
