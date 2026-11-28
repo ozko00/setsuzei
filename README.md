@@ -16,9 +16,9 @@
 
 ```sh
 # MCP サーバー（例: Claude Code に入れる）/ MCP server
-claude mcp add setsuzei -- npx -y setsuzei@0.6.0 mcp
+claude mcp add setsuzei -- npx -y setsuzei@0.6.1 mcp
 # CLI
-npx setsuzei@0.6.0 --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
+npx setsuzei@0.6.1 --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
 - **数値はすべて一次情報から**: 税率・控除額・上限は、国税庁・総務省・e-Gov の条文などで確かめた数値だけを使い、数値ごとに出典の URL を付けています（[`src/data/2026.ts`](src/data/2026.ts)）。
@@ -53,7 +53,7 @@ MCP サーバー（下の 5 つのツール）と Agent Skill がまとめて入
   "mcpServers": {
     "setsuzei": {
       "command": "npx",
-      "args": ["-y", "setsuzei@0.6.0", "mcp"]
+      "args": ["-y", "setsuzei@0.6.1", "mcp"]
     }
   }
 }
@@ -62,10 +62,10 @@ MCP サーバー（下の 5 つのツール）と Agent Skill がまとめて入
 Claude Code に MCP サーバーだけを入れるなら、次の 1 行です。
 
 ```sh
-claude mcp add setsuzei -- npx -y setsuzei@0.6.0 mcp
+claude mcp add setsuzei -- npx -y setsuzei@0.6.1 mcp
 ```
 
-版（`@0.6.0`）は付けたままにしてください。`mcp` は 0.4.0 からで、版を付けないと、以前に `npx setsuzei` を実行したときの古い版が手元に残っていて、それが使われることがあります（その場合、接続に失敗します）。
+版（`@0.6.1`）は付けたままにしてください。`mcp` は 0.4.0 からで、版を付けないと、以前に `npx setsuzei` を実行したときの古い版が手元に残っていて、それが使われることがあります（その場合、接続に失敗します）。
 
 | ツール | 返すもの |
 | --- | --- |
@@ -196,7 +196,7 @@ npx setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90�
 
 はじめて実行するときに、npm から [setsuzei](https://www.npmjs.com/package/setsuzei) を取得します（1 MB 未満。ほかのパッケージは入りません）。計算は手元だけで行い、入力した金額はどこにも送信しません。
 
-- いつ実行しても同じ版を使いたいときは、`npx setsuzei@0.6.0` のように版を付けます。
+- いつ実行しても同じ版を使いたいときは、`npx setsuzei@0.6.1` のように版を付けます。
 - よく使うなら `npm install -g setsuzei` で入れておくと、`setsuzei` だけで実行できます。
 
 以下の例は `setsuzei` と書いています。入れていない場合は `npx setsuzei` に読み替えてください。
@@ -325,7 +325,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 
 そのうえで「今年あといくら節税できる？」のように聞くと、エージェントが必要な項目を質問し、CLI の結果をもとに答えます。
 
-- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、版を固定した `npx setsuzei@0.6.0` で実行します（npm から取得。ほかのパッケージは入りません）。
+- CLI が手元になければ、エージェントは取得してよいかを先に確認し、了承を得てから、版を固定した `npx setsuzei@0.6.1` で実行します（npm から取得。ほかのパッケージは入りません）。
 - エージェントの権限設定でコマンドが止まった場合は、Skill に書いてあるコマンドを自分で実行するか、エージェントに実行を許可してください。
 - Skill が聞き取りから結果の説明まで通ることは、[`scripts/skill-e2e.sh`](scripts/skill-e2e.sh) で確かめられます（Claude Code が必要）。
 

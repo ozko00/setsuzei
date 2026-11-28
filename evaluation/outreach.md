@@ -55,21 +55,21 @@ punkpeye/awesome-mcp-servers の CONTRIBUTING の条件は「Glama の掲載ペ�
 
 ### 用意した Dockerfile
 
-公開済みの `setsuzei@0.6.0` の MCP サーバー（stdio）を起動するだけのもの。実行時に npm から取りに行かないよう、ビルドのときに入れる（`npx -y setsuzei@0.6.0 mcp` と同じサーバー）。
+公開済みの `setsuzei@0.6.1` の MCP サーバー（stdio）を起動するだけのもの。実行時に npm から取りに行かないよう、ビルドのときに入れる（`npx -y setsuzei@0.6.1 mcp` と同じサーバー）。
 
 ```dockerfile
 FROM node:22-alpine
-RUN npm install -g setsuzei@0.6.0 && npm cache clean --force
+RUN npm install -g setsuzei@0.6.1 && npm cache clean --force
 USER node
 CMD ["setsuzei", "mcp"]
 ```
 
-Admin → Dockerfile が項目を入れる形式のときは、次の値に当たる: Node.js 22、ビルドの手順 `npm install -g setsuzei@0.6.0`、起動コマンド `setsuzei mcp`（引数なし）、環境変数なし。版を上げたら `0.6.0` の部分も上げる。
+Admin → Dockerfile が項目を入れる形式のときは、次の値に当たる: Node.js 22、ビルドの手順 `npm install -g setsuzei@0.6.1`、起動コマンド `setsuzei mcp`（引数なし）、環境変数なし。版を上げたら `0.6.1` の部分も上げる。
 
-### 手元で確かめたこと（2026-11-28、Docker）
+### 手元で確かめたこと（2026-11-28、Docker。0.6.0 と 0.6.1 の両方で同じ結果）
 
 - 上の Dockerfile でビルドできた（イメージ 170 MB）。
-- `docker run -i --network none`（ネットワークなし）で起動し、標準入力から MCP のメッセージを送った結果: `initialize` はサーバー名 `setsuzei`・版 `0.6.0`・capabilities は `tools` だけ。`tools/list` は 5 つ（`estimate_tax_savings`、`furusato_nozei_limit`、`compare_furusato_limit_with_2025`、`validate_tax_input`、`list_tax_sources`）。`tools/call`（`furusato_nozei_limit`、給与 500 万円・社会保険料 75 万円）は上限 57,000 円を返した。
+- `docker run -i --network none`（ネットワークなし）で起動し、標準入力から MCP のメッセージを送った結果: `initialize` はサーバー名 `setsuzei`・版 `0.6.1`・capabilities は `tools` だけ。`tools/list` は 5 つ（`estimate_tax_savings`、`furusato_nozei_limit`、`compare_furusato_limit_with_2025`、`validate_tax_input`、`list_tax_sources`）。`tools/call`（`furusato_nozei_limit`、給与 500 万円・社会保険料 75 万円）は上限 57,000 円を返した。
 - `resources/list` と `prompts/list` は `-32601 Method not found`。setsuzei はツールだけを公開していて、capabilities に resources・prompts を宣言していないので、MCP の仕様どおりの応答。Glama がこれを失敗と見るかは、Glama でのビルドの結果で確かめる。
 
 ### オーナーの手順（10〜15 分）
@@ -78,7 +78,7 @@ Admin → Dockerfile が項目を入れる形式のときは、次の値に当�
 2. 掲載ページの **Claim** を押して、管理者になる。
 3. 掲載ページのタブ（Overview・Schema・Source・Related Servers・Discussions・**Admin**）の **Admin** → **Dockerfile** を開く。
    - Dockerfile を貼る欄なら、上の 4 行を貼る。
-   - 項目を入れる形式なら、Node.js 22、ビルドの手順 `npm install -g setsuzei@0.6.0`、起動コマンド `setsuzei mcp`、環境変数なしを入れる。
+   - 項目を入れる形式なら、Node.js 22、ビルドの手順 `npm install -g setsuzei@0.6.1`、起動コマンド `setsuzei mcp`、環境変数なしを入れる。
 4. 保存してビルドを始める（ボタンの名前は画面に従う。第三者の記録では **Deploy**）。ビルドのテストが成功し、ツールが 5 つ見つかったことを確かめる。リリースを作るボタン（第三者の記録では **Make Release**）があれば押す。
 5. 掲載ページの「デプロイ可能なリリースがない」の表示が消え、**Schema**（ツールの一覧）に 5 つのツールが出ていることを確かめる。
 6. 終わったら、エージェントに「punkpeye/awesome-mcp-servers へ 1 件だけ PR を出す」と伝える。

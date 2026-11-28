@@ -2,7 +2,7 @@
   "name": "setsuzei",
   "version": "0.6.1",
   "mcpName": "io.github.ozko00/setsuzei",
-  "description": "MCP server & CLI that estimates Japanese income tax and resident tax for freelancers: furusato nozei limit, iDeCo, blue-return and medical deductions, and tax return (kakutei shinkoku) boxes. Cited from primary sources, tested, local-only. 日本の所得税・住民税・ふるさと納税・確定申告の計算",
+  "description": "MCP server & CLI that estimates Japanese income tax and resident tax for freelancers: furusato nozei limit, iDeCo, deductions, and tax return (kakutei shinkoku) boxes. Cited from primary sources, tested, local-only. 所得税・住民税・ふるさと納税・確定申告",
   "license": "MIT",
   "homepage": "https://github.com/ozko00/setsuzei#readme",
   "bugs": {
@@ -43,7 +43,7 @@
     "node": ">=20"
   },
   "config": {
-    "npmPinned": "0.6.0"
+    "npmPinned": "0.6.1"
   },
   "bin": {
     "setsuzei": "dist/cli.js"
