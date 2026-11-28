@@ -12,6 +12,15 @@
 
 > **A cited, tested calculation engine so that LLMs don't have to do Japanese tax arithmetic in their heads** (income tax and resident tax, tax year 2026 / Reiwa 8). MCP server, CLI, Agent Skill and browser version. Local only, zero runtime dependencies. Estimates only; not tax advice. → [README in English](README.en.md)
 
+**すぐ使う / Quick start**（Node.js 20 以上）
+
+```sh
+# MCP サーバー（例: Claude Code に入れる）/ MCP server
+claude mcp add setsuzei -- npx -y setsuzei@0.6.0 mcp
+# CLI
+npx setsuzei@0.6.0 --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
+```
+
 - **数値はすべて一次情報から**: 税率・控除額・上限は、国税庁・総務省・e-Gov の条文などで確かめた数値だけを使い、数値ごとに出典の URL を付けています（[`src/data/2026.ts`](src/data/2026.ts)）。
 - **200 件を超えるテスト**: 国税庁や総務省が公表している計算例との突き合わせ、境界値、条文の式から手計算した期待値（[テストでの突き合わせ](#テストでの突き合わせ)）。
 - **モデルは計算しない**: エージェントは利用者の数字をツールに渡し、返ってきた数字をそのまま伝えます。出力は構造化されていて、概算である旨・前提・出典が必ず付きます。
@@ -118,7 +127,7 @@ English version: **<https://ozko00.github.io/setsuzei/en/>**（日本に住む�
 
 ```console
 $ setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万 --ideco-paid 27.6万 --furusato-paid 3万
-setsuzei 0.6.0 ｜ 令和8年分（2026年分）の概算
+setsuzei 0.6.1 ｜ 令和8年分（2026年分）の概算
 
 ■ 現状の見込み
   事業所得（青色申告特別控除 650,000 円を控除後）  5,850,000 円
@@ -198,14 +207,14 @@ npx setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90�
 git が必要です。
 
 ```sh
-git clone --depth 1 --branch v0.6.0 https://github.com/ozko00/setsuzei.git
+git clone --depth 1 --branch v0.6.1 https://github.com/ozko00/setsuzei.git
 cd setsuzei
 npm ci
 npm run build
 node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
-`v0.6.0` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
+`v0.6.1` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
 
 `git clone` が `Could not resolve host: github.com` などで止まったときは、ネットワークの一時的な失敗のことがあります。`npm ci` に進む前に、同じ `git clone` をもう一度実行してください（clone に失敗したまま `npm ci` を実行すると、「`package-lock.json` がない」という別のエラーになります）。`npm ci` が `ENOTFOUND` や `ETIMEDOUT` で止まったときも、同じコマンドをもう一度実行すれば続きから入ります。
 
