@@ -293,7 +293,7 @@ describe("検索語ごとのページ: リンクと公開まわり", () => {
     const sitemap = site.get("sitemap.xml") ?? "";
     const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     assert.deepEqual(locs, siteUrls());
-    assert.equal(locs.length, 6);
+    assert.equal(locs.length, 12);
     assert.equal(locs[0], SITE_URL);
     assert.match(site.get("robots.txt") ?? "", new RegExp(`^Sitemap: ${SITE_URL}sitemap\\.xml$`, "m"));
     // canonical は sitemap の URL と同じ
@@ -327,7 +327,7 @@ describe("検索語ごとのページ: リンクと公開まわり", () => {
     const known = new Set<string>([...INPUT_STRING_FLAGS, ...INPUT_BOOLEAN_FLAGS]);
     for (const [path, html] of pages) {
       assert.match(html, /Content-Security-Policy[^>]*default-src 'none'[^>]*connect-src 'none'[^>]*form-action 'none'/);
-      const loaded = [...html.matchAll(/<(?:script|link|img)(?![^>]*rel="canonical")[^>]*\b(?:src|href)="([^"]+)"/g)].map((m) => m[1]);
+      const loaded = [...html.matchAll(/<(?:script|link|img)(?![^>]*rel="(?:canonical|alternate)")[^>]*\b(?:src|href)="([^"]+)"/g)].map((m) => m[1]);
       assert.deepEqual(loaded.sort(), ["../img/favicon.svg", "../js/web/page.js", "../style.css"], path);
       for (const m of html.matchAll(/<(?:input|select)[^>]*\bname="([^"]+)"/g)) assert.ok(known.has(m[1] ?? ""), `${path}: ${m[1]}`);
       assert.doesNotMatch(html, /\$\{|undefined|NaN/, path);

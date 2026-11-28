@@ -20,12 +20,12 @@ const MAN = 10_000;
 export const yen = (n: number): string => `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} 円`;
 const man = (n: number): string => `${String(n / MAN).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} 万円`;
 
-function esc(text: string): string {
+export function esc(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 /** 一次情報へのリンク（URL は src/data/2026.ts の出典と同じもの） */
-const SRC = {
+export const SRC = {
   kaisei: ["国税庁 令和8年度税制改正による所得税の基礎控除の引上げ等について", "https://www.nta.go.jp/users/gensen/2026kiso/index.htm"],
   rate: ["国税庁 No.2260 所得税の税率", "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2260.htm"],
   basic: ["国税庁 No.1199 基礎控除", "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1199.htm"],
@@ -112,14 +112,14 @@ export function exampleInput(income: number, overrides: TaxInput = {}): TaxInput
   };
 }
 
-const example = (income: number, overrides: TaxInput = {}): SetsuzeiResult => calculate(exampleInput(income, overrides));
+export const example = (income: number, overrides: TaxInput = {}): SetsuzeiResult => calculate(exampleInput(income, overrides));
 
 const EXAMPLE_NOTE =
   `表の前提: 給与収入のないフリーランス、青色申告特別控除 65 万円、扶養親族なし、` +
   `社会保険料は所得（売上 − 経費）の ${EXAMPLE_SOCIAL_INSURANCE_PERCENT}% と仮定。令和8年分の所得税と、令和9年度の住民税で計算しています。` +
   `社会保険料や家族構成で結果は変わるので、自分の数字は上の計算機に入れてください。`;
 
-function table(caption: string, head: readonly string[], body: readonly (readonly string[])[]): string {
+export function table(caption: string, head: readonly string[], body: readonly (readonly string[])[]): string {
   const th = head.map((c) => `<th scope="col">${esc(c)}</th>`).join("");
   const rows = body
     .map((r) => `<tr>${r.map((c, i) => (i === 0 ? `<th scope="row">${esc(c)}</th>` : `<td>${esc(c)}</td>`)).join("")}</tr>`)
@@ -278,6 +278,35 @@ const scanRangeText = (scan: YearScan): string =>
 // ---------------------------------------------------------------------------
 
 export type PageKind = "furusato" | "ideco" | "kyosai" | "blue" | "furusato-year";
+
+/** 英語版のページの場所（docs/en/<slug>/）。日本語版と 1 対 1 で、互いに hreflang とリンクで結ぶ */
+export const EN_SLUG: Record<PageKind, string> = {
+  furusato: "furusato-nozei-limit-freelance",
+  ideco: "ideco-tax-savings-self-employed",
+  kyosai: "small-business-mutual-aid-tax-savings",
+  blue: "blue-return-deduction",
+  "furusato-year": "furusato-nozei-limit-2026",
+};
+
+/** 日本語版のページの場所（docs/<slug>/） */
+export const JA_SLUG: Record<PageKind, string> = {
+  furusato: "furusato-nozei-freelance",
+  ideco: "ideco-kojin-jigyonushi",
+  kyosai: "shokibo-kyosai-setsuzei",
+  blue: "aoiro-shinkoku-65-55-10",
+  "furusato-year": "furusato-nozei-jogen-reiwa8",
+};
+
+export const PAGE_KINDS: readonly PageKind[] = ["furusato", "ideco", "kyosai", "blue", "furusato-year"];
+
+/** 同じ内容の日本語版と英語版を結ぶ <link rel="alternate">（x-default は日本語版） */
+export function alternateLinks(kind: PageKind | "top"): string {
+  const jaUrl = kind === "top" ? SITE_URL : `${SITE_URL}${JA_SLUG[kind]}/`;
+  const enUrl = kind === "top" ? `${SITE_URL}en/` : `${SITE_URL}en/${EN_SLUG[kind]}/`;
+  return `<link rel="alternate" hreflang="ja" href="${jaUrl}">
+<link rel="alternate" hreflang="en" href="${enUrl}">
+<link rel="alternate" hreflang="x-default" href="${jaUrl}">`;
+}
 
 interface Faq {
   readonly q: string;
@@ -560,6 +589,17 @@ export function yearOutOfPocket(input: TaxInput, donation: number): number {
   return donation - (before - after);
 }
 
+let scanCache: { scans: { key: string; label: string; scan: YearScan }[]; freelanceScan: YearScan } | null = null;
+
+/** 走査の結果（日本語版と英語版の両方で使うので、1 回だけ計算する） */
+export function yearScans(): { scans: { key: string; label: string; scan: YearScan }[]; freelanceScan: YearScan } {
+  scanCache ??= {
+    scans: YEAR_FAMILIES.map((f) => ({ key: f.key, label: f.label, scan: scanYear((amount) => yearSalaryInput(amount, f.input)) })),
+    freelanceScan: scanYear((amount) => exampleInput(amount)),
+  };
+  return scanCache;
+}
+
 function furusatoYearPage(): PageDef {
   const input500 = yearSalaryInput(5_000_000);
   const c500 = compareFurusatoLimit(input500);
@@ -570,8 +610,7 @@ function furusatoYearPage(): PageDef {
   const burdenAtOld = yearOutOfPocket(input500, p.limit);
   const salaryRows = yearSalaryRows();
   const freelanceRows = yearFreelanceRows();
-  const scans = YEAR_FAMILIES.map((f) => ({ label: f.label, scan: scanYear((amount) => yearSalaryInput(amount, f.input)) }));
-  const freelanceScan = scanYear((amount) => exampleInput(amount));
+  const { scans, freelanceScan } = yearScans();
   const single = scans[0]?.scan;
   if (!single) throw new Error("走査の結果がありません");
   if ([...scans.map((x) => x.scan), freelanceScan].some((x) => x.higher > 0)) {
@@ -725,22 +764,22 @@ const KIND_LABEL: Record<PageKind, string> = {
   "furusato-year": "ふるさと納税の上限（令和7年分と令和8年分の比較）",
 };
 
-function jsonLd(value: unknown): string {
+export function jsonLd(value: unknown): string {
   // </script> で途切れないように < をエスケープする
   return `<script type="application/ld+json">${JSON.stringify(value).replace(/</g, "\\u003c")}</script>`;
 }
 
-export function webApplicationLd(url: string, name: string, description: string): Record<string, unknown> {
+export function webApplicationLd(url: string, name: string, description: string, lang: "ja" | "en" = "ja"): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     name,
     url,
     description,
-    inLanguage: "ja",
+    inLanguage: lang,
     applicationCategory: "FinanceApplication",
     operatingSystem: "Any",
-    browserRequirements: "JavaScript が必要です",
+    browserRequirements: lang === "ja" ? "JavaScript が必要です" : "Requires JavaScript",
     isAccessibleForFree: true,
     offers: { "@type": "Offer", price: "0", priceCurrency: "JPY" },
     license: "https://opensource.org/license/mit",
@@ -800,9 +839,11 @@ function renderPage(p: PageDef, all: readonly PageDef[]): string {
 <title>${esc(p.title)}</title>
 <meta name="description" content="${esc(p.description)}">
 <link rel="canonical" href="${url}">
+${alternateLinks(p.kind)}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="setsuzei">
 <meta property="og:locale" content="ja_JP">
+<meta property="og:locale:alternate" content="en_US">
 <meta property="og:url" content="${url}">
 <meta property="og:title" content="${esc(p.title)}">
 <meta property="og:description" content="${esc(p.description)}">
@@ -820,7 +861,7 @@ ${jsonLd(breadcrumbLd)}
 <body class="article">
 <a class="skip" href="#results">結果へ移動</a>
 <header class="site">
-  <p class="brand"><a href="../"><span class="mark" aria-hidden="true">税</span></a><a href="../">setsuzei</a><span class="tag">令和8年分・概算</span></p>
+  <p class="brand"><a href="../"><span class="mark" aria-hidden="true">税</span></a><a href="../">setsuzei</a><span class="tag">令和8年分・概算</span><a class="lang" href="../en/${EN_SLUG[p.kind]}/" lang="en" hreflang="en">English</a></p>
   <p class="crumbs"><a href="../">年内にやることをまとめて計算</a> › ${esc(KIND_LABEL[p.kind])}</p>
   <h1>${esc(p.h1)}</h1>
   <p class="lead">${esc(p.lead)}</p>
@@ -893,8 +934,8 @@ export function pageLinks(): { slug: string; label: string }[] {
   return buildPages().map((p) => ({ slug: p.slug, label: p.h1 }));
 }
 
-function sitemap(pages: readonly PageDef[]): string {
-  const urls = [SITE_URL, ...pages.map((p) => `${SITE_URL}${p.slug}/`)];
+function sitemap(): string {
+  const urls = siteUrls();
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map((u) => `  <url><loc>${u}</loc><lastmod>${LAST_REVIEWED}</lastmod></url>`).join("\n")}
@@ -907,12 +948,17 @@ export function renderSite(): Map<string, string> {
   const pages = buildPages();
   const files = new Map<string, string>();
   for (const p of pages) files.set(`${p.slug}/index.html`, renderPage(p, pages));
-  files.set("sitemap.xml", sitemap(pages));
+  files.set("sitemap.xml", sitemap());
   files.set("robots.txt", `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}sitemap.xml\n`);
   return files;
 }
 
 /** 公開している URL の一覧（IndexNow の送信に使う） */
 export function siteUrls(): string[] {
-  return [SITE_URL, ...buildPages().map((p) => `${SITE_URL}${p.slug}/`)];
+  return [
+    SITE_URL,
+    ...PAGE_KINDS.map((kind) => `${SITE_URL}${JA_SLUG[kind]}/`),
+    `${SITE_URL}en/`,
+    ...PAGE_KINDS.map((kind) => `${SITE_URL}en/${EN_SLUG[kind]}/`),
+  ];
 }

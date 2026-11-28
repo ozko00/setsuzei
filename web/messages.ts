@@ -1,0 +1,600 @@
+/**
+ * ブラウザ版の画面に出す文面（日本語と英語）。
+ *
+ * - 数字はここでは決めない。計算は言語に関係なく同じ計算コアを通し、変わるのは文面だけ（テストで確かめる）。
+ * - 英語は、日本語の逐語訳ではなく、日本の税の制度を知らない人が読んで分かるように書く。
+ *   用語は国税庁の英語の手引きの言い方（blue return、final tax return など）と、英語圏の利用者が
+ *   ふだん使う言い方（furusato nozei、resident tax、iDeCo）に合わせる。金額は円のまま（¥）。
+ */
+import { GLOSSARY } from "../src/cli/format.js";
+import type { Locale } from "../src/core/messages.js";
+
+export type { Locale };
+
+const yenJa = (n: number): string => `${n.toLocaleString("ja-JP")} 円`;
+const yenEn = (n: number): string => `¥${n.toLocaleString("en-US")}`;
+const people = (n: number): string => (n === 1 ? "1 person" : `${n} people`);
+
+const ja = {
+  locale: "ja" as Locale,
+  yen: yenJa,
+  digits: (n: number): string => n.toLocaleString("ja-JP"),
+  siteUrl: "https://ozko00.github.io/setsuzei/",
+  exampleRevenue: "480万",
+  exampleExpenses: "75万",
+
+  // --- 策の名前 ---
+  furusato: "ふるさと納税",
+  kyosai: "小規模企業共済",
+  ideco: "iDeCo",
+
+  // --- 表の行 ---
+  saving: "減る税額",
+  savingIncomeTax: "　うち所得税",
+  savingResidentTax: "　うち住民税",
+  annualLimit: "年間上限",
+  paid: "支払済み",
+  remaining: "残り枠",
+  additionalTried: "試算した追加額（追加で支払う額）",
+  combinedTitle: (title: string, parts: readonly string[]): string => `${title}（${parts.join(" + ")}）`,
+  furusatoExtra: "ふるさと納税の追加",
+  kyosaiExtra: "小規模企業共済の追加",
+  idecoExtra: "iDeCo の追加",
+  totalExtraPayment: "追加で支払う額の合計",
+  totalSaving: "減る税額の合計",
+  fromContributions: "　うち掛金の追加による分",
+  fromFurusato: "　うちふるさと納税による分（寄附と引き換え）",
+  ofIncomeTax: "　（所得税）",
+  ofResidentTax: "　（住民税）",
+  totalTaxAfter: "税額の合計（実行後）",
+  blueLabel: { none: "白色申告", "10": "青色 10万円", "55": "青色 55万円", "65": "青色 65万円" } as Record<"none" | "10" | "55" | "65", string>,
+  salaryIncome: (adjustment: number): string => `給与所得${adjustment > 0 ? `（所得金額調整控除 ${yenJa(adjustment)}を控除後）` : ""}`,
+  businessIncome: "事業所得",
+  miscIncome: "雑所得",
+  totalIncome: "合計所得金額",
+  taxableIncome: (rate: number): string => `所得税の課税所得（税率 ${rate}%）`,
+  incomeTaxLine: "所得税 + 復興特別所得税",
+  residentTaxLine: (label: string): string => `住民税（${label}）`,
+  totalTax: "税額の合計",
+  baselineTitle: (label: string): string => `現状の見込み（${label}）`,
+  combinedAll: "まとめて実行した場合",
+  combinedIfIdeco: "iDeCo の追加も年内に間に合う場合",
+  furusatoLimitYear: "控除上限額の目安（年間）",
+  donated: "寄附済み",
+  furusatoRemainingToDonate: "上限までの残り（追加で寄附する額）",
+  furusatoOutOfPocket: "上限まで寄附した場合の自己負担",
+  furusatoLimitAfter: "掛金を追加した場合の上限（まとめて実行した場合）",
+  idecoTitle: "iDeCo（個人型確定拠出年金）",
+  blueTitle: "青色申告特別控除",
+  blueOption: (label: string, tax: number): string => `${label}（税額 ${yenJa(tax)}）`,
+  current: "現在",
+  less: (n: number): string => `${yenJa(n)} 減`,
+  more: (n: number): string => `${yenJa(n)} 増`,
+  nhiTitle: (rate: number): string => `国民健康保険料（所得割 ${rate}%・翌年度の目安）`,
+  nhiBase: "所得割の算定基礎",
+  nhiLevy: "所得割額の目安",
+  nhiOption: (label: string, levy: number): string => `${label}（${yenJa(levy)}）`,
+  usedTitle: "計算に使った値",
+  glossaryTitle: "ことばの説明",
+  glossary: GLOSSARY,
+  actionField: (name: string, label: string): string => `${name}の${label}`,
+
+  // --- 年内にやること ---
+  split: (total: number, incomeTax: number, residentTax: number): string => `${yenJa(total)}（所得税 ${yenJa(incomeTax)}・住民税 ${yenJa(residentTax)}）`,
+  planLead: (payment: number, saving: number, several: boolean): string =>
+    `年内に${several ? "合わせて " : " "}${yenJa(payment)}払うと、税金が ${yenJa(saving)}減る見込みです。`,
+  planNone: "いまの見込みでは、年内に追加で払って税金が減るものはありません。",
+  budgetOver: (over: number): string => `自分で決めた払う額が、出せるお金を ${yenJa(over)}超えています。`,
+  furusatoOff: (note: string): string => `今回は対象になりません。${note}`,
+  furusatoSkipped: (amount: number, saving: number, self: number): string =>
+    `やることに入れていません。上限の目安まで ${yenJa(amount)}寄附しても、減る税額は ${yenJa(saving)}で、自己負担（${yenJa(self)}）のほうが大きく、割に合いにくいためです。返礼品が目的で寄附するなら、「払う額」に額を入れると計算に入ります`,
+  furusatoEnough: (paid: number, limit: number): string => `これ以上の寄附はしない（寄附済みの ${yenJa(paid)}が、上限の目安の ${yenJa(limit)}に達しています）`,
+  furusatoZero: "寄附しない（0 円にしています）",
+  furusatoMore: (amount: number, paid: number, total: number): string =>
+    `あと ${yenJa(amount)}寄附する（寄附済みの ${yenJa(paid)}と合わせて、ことしの合計 ${yenJa(total)}）`,
+  furusatoDonate: (amount: number): string => `${yenJa(amount)}寄附する`,
+  furusatoHintLimit: (limit: number): string => `上限の目安は年間 ${yenJa(limit)}です（これを超えると、超えた分のほとんどが自己負担になります）。`,
+  furusatoHintLowered: (original: number): string => `掛金を払う分、上限の目安は ${yenJa(original)}から下がっています。`,
+  furusatoOver: (over: number): string => `上限の目安を ${yenJa(over)}超えています。超えた分は、ほとんどが自己負担になります。`,
+  furusatoWorthFull:
+    "手元に残るもの: 返礼品。払った額と同じだけ税金が減ります（自己負担の 2,000 円は、寄附済みの分で負担しています）。寄附と引き換えなので、手元のお金は増えません。",
+  furusatoWorth: (amount: number, saving: number, self: number, poor: boolean): string =>
+    `手元に残るもの: 返礼品。払う ${yenJa(amount)}のうち ${yenJa(saving)}が税金から引かれ、差の ${yenJa(self)}が自己負担です。手元のお金は増えないので、得になるのは返礼品の分です。${poor ? "減る税額より自己負担のほうが大きく、割に合いにくい額です。" : ""}`,
+  kyosaiKind: (optional: boolean): string =>
+    optional ? "さらに減らしたい場合。個人事業主が、自分の退職金を積み立てる制度（中小機構が運営）" : "個人事業主が、自分の退職金を積み立てる制度（中小機構が運営）",
+  kyosaiOptionalDo: "いま入っていない方は、新しく加入して年内に掛金を払うと、さらに税金が減ります。払える額を「払う額」に入れると、合計に入ります",
+  kyosaiZeroChosen: "追加で払わない（0 円にしています）",
+  kyosaiNoMore: "これ以上払っても、税額は減りません",
+  kyosaiIncrease: (amount: number): string => `掛金を、年内にあと ${yenJa(amount)}多く払う（掛金の増額か、先の月の分をまとめて払う前納）`,
+  kyosaiJoin: (amount: number): string => `新しく加入して、年内に ${yenJa(amount)}の掛金を払う`,
+  kyosaiHintMax: (max: number): string => `年間の上限（月 70,000 円 × 12 か月）までの残りは ${yenJa(max)}です。`,
+  kyosaiHintIfJoined: (amount: number, saving: number): string =>
+    `${yenJa(amount)}を払った場合は、それだけで税金が ${yenJa(saving)}減ります（いまは「やること」に入れていません。払う額を入れると入ります）。払った掛金は、自分の積立として残ります。`,
+  kyosaiHintNoEffect: (limit: number): string => `${yenJa(limit)}を超えて払っても、税額はそれ以上減りません。`,
+  kyosaiHintCapped: (amount: number): string => `入れた額のうち、税額が減る ${yenJa(amount)}までで計算しています。`,
+  notIncluded: "やることに入れていません（払う額を入れると入ります）",
+  kyosaiWorth: (amount: number, saving: number): string =>
+    `手元に残るもの: 払った ${yenJa(amount)}は、将来受け取る自分の積立です。得になるのは、いま税金が減る ${yenJa(saving)}です（受け取るときに税金がかかります）。`,
+  idecoIncrease: (amount: number): string => `掛金を、年内にあと ${yenJa(amount)}多く払う`,
+  idecoFull: "追加はできません（年間の限度額まで払う見込みです）",
+  idecoIfKnown: "年内に増やせる額が分かっていれば、その額を「払う額」に入れる（分からなければ、このままで構いません）",
+  idecoHintMax: (max: number): string => `年間の限度額までの残りは ${yenJa(max)}です。`,
+  idecoHintIf: (additional: number, saving: number): string =>
+    `${yenJa(additional)}を年内に払えた場合は、それだけで税金が ${yenJa(saving)}減ります（いまは「やること」に入れていません。払う額を入れると入ります）。`,
+  idecoWorth: (amount: number, saving: number): string =>
+    `手元に残るもの: 払った ${yenJa(amount)}は、60 歳以降に受け取る自分の年金の積立です。得になるのは、いま税金が減る ${yenJa(saving)}です（受け取るときに税金がかかります）。`,
+  totalsTax: (label: string): string => `税額は、所得税と住民税（${label}）の合計です。`,
+  totalsRecomputed: "合計は、まとめて計算し直した額です。それぞれの「減る税額」は、小規模企業共済・iDeCo・ふるさと納税の順に実行したときの額です。",
+  totalsFurusato: (saving: number): string => `減る税額のうち ${yenJa(saving)}はふるさと納税の分で、寄附と引き換えです（手元のお金は増えません）。`,
+  totalsContributions: "掛金は、払った分が自分の積立として残ります。",
+  laterSaving: (saving: number): string => `青色申告特別控除が 65 万円なら、税額はいまの計算より ${yenJa(saving)}少なくなります。`,
+  laterNone: "いまの所得では、青色申告特別控除で税額は変わりません。",
+  laterUnknown:
+    "ただし、ことしの分に使えるのは「青色申告承認申請書」を期限までに税務署に出している方だけです（これから出す場合は、来年分からです）。出していて、複式簿記の帳簿と e-Tax での申告ができる方は、「もっと正確にする」の青色申告特別控除で 65 万円を選んでください。上の金額も変わります。",
+  laterNeeds: "65 万円にするには、複式簿記の帳簿と、e-Tax での期限内の申告が必要です。",
+
+  // --- 社会保険料の目安 ---
+  guideEmpty: "収入を入れると、ここに目安の額と、その出し方を出します。",
+  guideLabel: "目安: ",
+  guideRange: (low: number, high: number): string => `（幅 ${yenJa(low)}〜${yenJa(high)}）`,
+  guidePart: (label: string, amount: number): string => `${label}: ${yenJa(amount)}`,
+  guideNoteFreelance: "国民年金の免除や猶予を受けている方、家族の分も払っている方は、この目安と大きく違います。「金額を入れる」を選んでください。",
+  guideNoteEmployee: "健康保険組合や共済組合に入っている方、賞与が多い方は、この目安と違うことがあります。",
+  guideHow: "目安の出し方と、正確な額の調べ方",
+  partPension: (pct: string): string => `厚生年金（${pct}）`,
+  partHealth: (pct: string): string => `健康保険（協会けんぽの中央の県の料率で ${pct}）`,
+  partChild: (pct: string): string => `子ども・子育て支援金（${pct}）`,
+  partEmployment: (pct: string): string => `雇用保険（${pct}）`,
+  basisEmployeeRate: (middle: string, pension: string, health: string, child: string, employment: string): string =>
+    `給与の年収に、本人が負担する料率の合計 ${middle}を掛けた額です（厚生年金 ${pension}、協会けんぽの健康保険 ${health}、子ども・子育て支援金 ${child}、雇用保険 ${employment}。令和8年度）。`,
+  basisEmployeeRange: (care: string, low: string, high: string): string =>
+    `健康保険の料率は都道府県で違い、40〜64 歳は介護保険（${care}）が加わるので、幅は年収の ${low}〜${high}です。健康保険組合・共済組合は料率が別です。年収がおおむね 800 万円を超える方や賞与が多い方は、保険料に上限があるため、実際はこれより少なくなります。`,
+  basisEmployeeExact: "正確な額は、源泉徴収票の「社会保険料等の金額」か、給与明細の健康保険・厚生年金・雇用保険の合計（12 か月分と賞与分）です。",
+  partNationalPension: (_monthly: number): string => "国民年金（1 人分。月 17,920 円 × 12 か月）",
+  partNhi: (low: number, high: number): string => `国民健康保険（目安。${yenJa(low)}〜${yenJa(high)}）`,
+  basisPension: (monthly: number): string =>
+    `国民年金は定額で、1 人分が月 ${yenJa(monthly)}（令和8年度）です。免除や猶予を受けている方、家族の分も払っている方は額が変わります。`,
+  basisNhi: (cities: readonly string[], nhi: number, low: number, high: number): string =>
+    `国民健康保険は自治体ごとに料率が違います。ここでは ${cities.join("・")}の令和8年度の料率で、1 人で加入・40 歳未満・去年もことしと同じ所得として計算し、3 つの平均（${yenJa(nhi)}）を置いています。3 つの幅は、40〜64 歳の介護分を含めて ${yenJa(low)}〜${yenJa(high)}です。`,
+  basisNhiCaveat: "家族も加入している場合、お住まいの自治体、去年の所得によって、実際の額はこの幅の外になることもあります。所得が少ない世帯の軽減は入れていません。",
+  basisFreelanceExact: "正確な額は、自治体から届く国民健康保険の納付通知書と、国民年金の納付書・控除証明書の、ことし 1〜12 月に払う分の合計です。",
+  city: (name: string): string => name,
+
+  // --- 画面の状態 ---
+  saveFailed: "このブラウザでは保存できませんでした（プライベートブラウズなど）。",
+  saveLoaded: "この端末に保存してあった入力を読み込みました。",
+  saveOn: "この端末に保存しています。",
+  saveCleared: "保存した内容を消しました。",
+  placeholder: "左（上）の 3 つに答えると、ここに「年内にやること」と金額が出ます。",
+  checkInput: "入力を確認してください",
+  jumpError: (count: number): string => `入力を確認してください（${count} 件）　内容を見る`,
+  cautionTitle: "注意",
+  breakdownSummary: "内訳を見る",
+  breakdownSub: "いまの税額、それぞれの上限と残り枠、青色申告の区分ごとの税額、計算に使った値",
+  jumpPay: (payment: number, saving: number): string => `${yenJa(payment)}払うと 税金 −${yenJa(saving)}　結果を見る`,
+  jumpTax: (tax: number): string => `所得税 + 住民税の見込み ${yenJa(tax)}　結果を見る`,
+  announcePay: (payment: number, saving: number): string => `結果を更新しました。年内に ${yenJa(payment)}払うと、税金が ${yenJa(saving)}減る見込みです。`,
+  announceNone: "結果を更新しました。年内に追加で払って税金が減るものはありません。",
+  copied: "コピーしました。メールやメモに貼り付けられます。",
+
+  // --- 年内に出せるお金・仮に置いた値（web/logic.ts）---
+  budgetNothing: "この範囲で、年内に払って税金が減るものはありません。",
+  budgetBest: (furusato: boolean, kyosai: boolean): string =>
+    `出せるお金の範囲で、減る税額がいちばん大きくなる組み合わせです。${
+      furusato ? "ふるさと納税は払った額とほぼ同じだけ税金が減るので、先に入れています。ただし寄附と引き換えなので、手元のお金は増えません（得になるのは返礼品の分）。" : ""
+    }${kyosai ? "残りを小規模企業共済の掛金に回しています。掛金は自分の積立として残るので、手元に残るお金を重く見るなら、掛金を多めにしてください。" : ""}`,
+  budgetLimitUp: (from: number, to: number): string =>
+    `掛金を上限まで払う場合より掛金が少ないぶん、住民税が多く残るので、ふるさと納税の上限の目安は ${yenJa(from)}から ${yenJa(to)}に上がっています。`,
+  budgetLeftover: (left: number): string =>
+    `出せるお金のうち ${yenJa(left)}は、まだ使い道がありません。いま加入していない小規模企業共済は、自動では入れていないので、新しく加入して払う場合は、その「払う額」に額を入れてください。`,
+  assumeInsurance: (amount: number, employee: boolean, low: number, high: number): string =>
+    `社会保険料: 目安の ${yenJa(amount)}（${employee ? "給与の年収の約 14.7%" : "国民年金 + 国民健康保険の目安"}。幅は ${yenJa(low)}〜${yenJa(high)}）`,
+  assumeBlue: "青色申告特別控除: なし（白色申告として計算）",
+  assumeIncomeType: "副業の所得の種類: 雑所得（開業届を出して帳簿をつけている事業なら「事業所得」）",
+  assumeSpousePending: "配偶者: 所得（または給料の年収）を入れるまでは、配偶者なしで計算しています",
+  assumeNoFamily: "配偶者・扶養している家族: なし",
+  assumeNoPaid: "iDeCo・小規模企業共済の掛金、ふるさと納税の寄附済みの額、医療費控除や生命保険料控除など: なし",
+
+  // --- 文章にした結果（web/summary.ts）---
+  uSalary: "会社の年収（給与収入）",
+  uSideRevenue: "副業の売上",
+  uRevenue: "売上",
+  uExpenses: "経費",
+  uIncomeType: "所得の種類",
+  uBlue: "青色申告特別控除",
+  blueShort: { none: "なし（白色申告）", "10": "10 万円", "55": "55 万円", "65": "65 万円" } as Record<"none" | "10" | "55" | "65", string>,
+  uInsurance: "社会保険料",
+  insuranceEstimated: (amount: number, low: number, high: number): string => `${yenJa(amount)}（目安。幅は ${yenJa(low)}〜${yenJa(high)}）`,
+  uIdeco: "iDeCo の掛金（ことしの合計）",
+  uKyosai: "小規模企業共済の掛金（ことしの合計）",
+  uFurusato: "ふるさと納税の寄附済みの額",
+  uOther: "そのほかの控除",
+  uSpouse: "配偶者",
+  spouseYes: (income: number, over70: boolean): string => `いる（合計所得金額 ${yenJa(income)}${over70 ? "・70 歳以上" : ""}）`,
+  none: "なし",
+  depUnder16: (n: number): string => `16 歳未満 ${n} 人`,
+  depGeneral: (n: number): string => `16〜18 歳・23〜69 歳 ${n} 人`,
+  depSpecific: (n: number): string => `19〜22 歳 ${n} 人`,
+  depElderlyCohabiting: (n: number): string => `70 歳以上（同居の父母など） ${n} 人`,
+  depElderly: (n: number): string => `70 歳以上（それ以外） ${n} 人`,
+  listSeparator: "、",
+  uDependents: "扶養している家族",
+  lineFurusato: (amount: number, saving: number, limit: number, more: boolean): string =>
+    `ふるさと納税: ${more ? "あと " : ""}${yenJa(amount)}寄附する → 税金が ${yenJa(saving)}減る（12 月 31 日までに寄附した分。上限の目安は年間 ${yenJa(limit)}）`,
+  lineKyosai: (amount: number, saving: number, joined: boolean): string =>
+    `小規模企業共済: ${joined ? "掛金をあと " : "加入して掛金を "}${yenJa(amount)}払う → 税金が ${yenJa(saving)}減る（12 月 31 日までに支払った分）`,
+  lineIdeco: (amount: number, saving: number): string => `iDeCo: 掛金をあと ${yenJa(amount)}払う → 税金が ${yenJa(saving)}減る（12 月の引落し分まで）`,
+  sumTitle: (label: string): string => `年末までに、あと何をすればいくら税金が減るか（${label}の概算）`,
+  sumMadeBy: (version: string, date: string): string => `setsuzei ${version} で ${date} に計算`,
+  hPlan: "■ 年内にやること",
+  sumTotal: (payment: number, saving: number, before: number, after: number): string =>
+    `合計: 年内に ${yenJa(payment)}払うと、税金が ${yenJa(saving)}減る見込み（税額 ${yenJa(before)} → ${yenJa(after)}）`,
+  sumFurusatoNote: "※ ふるさと納税の分は寄附と引き換えで、手元のお金は増えません（得になるのは返礼品の分）。掛金は自分の積立として残ります。",
+  sumSkipped: (amount: number, saving: number, self: number): string =>
+    `※ ふるさと納税は、やることに入れていません。上限の目安まで ${yenJa(amount)}寄附しても、減る税額は ${yenJa(saving)}で、自己負担（${yenJa(self)}）のほうが大きいためです。`,
+  sumBudget: (amount: number, reason: string): string => `※ 年内に出せるお金を ${yenJa(amount)}として配分しています。${reason}`,
+  sumKyosaiNot: (amount: number, saving: number): string =>
+    `※ 小規模企業共済は、いま加入していないので合計に入れていません。新しく加入して ${yenJa(amount)}を年内に払えた場合は、それだけで税金が ${yenJa(saving)}減ります（11 月・12 月の申込みは、窓口で現金で払う手続きが必要）。`,
+  sumIdecoNot: (additional: number, saving: number): string =>
+    `※ iDeCo は合計に入れていません。限度額までの残り ${yenJa(additional)}を年内に払えた場合は、それだけで税金が ${yenJa(saving)}減ります（年内に増やせるかは加入先と時期しだい）。`,
+  hTax: "■ いまの税額の見込み",
+  sumIncomeTax: (n: number): string => `所得税 + 復興特別所得税: ${yenJa(n)}`,
+  sumResidentTax: (label: string, n: number): string => `住民税（${label}）: ${yenJa(n)}`,
+  sumTotalTax: (n: number): string => `合計: ${yenJa(n)}`,
+  hInputs: "■ 計算に使った値（年額の見込み）",
+  hAssumed: "■ 入力していないので、仮に置いた値",
+  hCaution: "■ 注意",
+  sumDisclaimer:
+    "概算です。入力値と簡略化した前提にもとづく目安で、実際の税額は申告内容やお住まいの自治体によって変わります。税理士や税務署・市区町村の判断に代わるものではありません。",
+
+  // --- 説明ページの計算機（web/page.ts）---
+  pSaving: "減る税額（所得税 + 住民税）",
+  pSavingResidentTax: "　うち住民税（翌年度）",
+  pBusinessIncome: "事業所得（青色申告特別控除後）",
+  pExtraContribution: "追加で支払う掛金",
+  pPaidPlanned: "支払済み・支払予定",
+  noLimit: "目安なし",
+  diffSame: "変わりません",
+  diffDown: (n: number): string => `${yenJa(n)} 下がります`,
+  diffUp: (n: number): string => `${yenJa(n)} 上がります`,
+  cmpRowTitle: (label: string, residentLabel: string): string => `${label}（${residentLabel}の住民税）`,
+  cmpSalaryIncome: "　給与所得",
+  cmpIncomeLevy: "　住民税の所得割額",
+  cmpSpecialCap: "　特例分の上限（所得割額の 20%）",
+  cmpBasic: "　所得税の基礎控除",
+  cmpAdjustment: "　人的控除差調整額",
+  cmpRateBase: "　割合を決める金額（住民税の課税総所得金額 − 人的控除差調整額）",
+  cmpRate: "　特例分の割合",
+  cmpSummary: (prevLabel: string, prev: string, curLabel: string, cur: string, diff: string): string => `${prevLabel} ${prev} → ${curLabel} ${cur}（${diff}）`,
+  limitOf: (label: string): string => `${label}の上限の目安`,
+  diffLabel: "同じ入力での差",
+  cmpCardTitle: "上限の目安の比較と、計算の途中の値",
+  fSummary: (limit: number, remaining: number): string => `上限の目安 ${yenJa(limit)}（あと ${yenJa(remaining)}）`,
+  fLimit: "上限の目安（年間）",
+  fCanDonate: "あと寄附できる額（支払う額）",
+  fSavingThen: "それで減る税額",
+  fRemaining: "上限までの残り",
+  fSavingRest: "残りを寄附した場合に、いまより減る税額",
+  fSavingFull: "上限まで寄附した場合に減る税額",
+  fOutOfPocket: "上限まで寄附した場合の自己負担（年間の寄附の合計に対して）",
+  contribSummary: (title: string, saving: number): string => `${title}で減る税額 ${yenJa(saving)}`,
+  contribNotApplicable: (title: string): string => `${title}は計算の対象外です`,
+  blueOptionsTitle: "青色申告特別控除の区分ごとの税額",
+  pCurrent: "現在の見込み",
+  pLess: (n: number): string => `${yenJa(n)} 減る`,
+  pMore: (n: number): string => `${yenJa(n)} 増える`,
+  blueTax: (label: string, tax: number): string => `${label}: 税額 ${yenJa(tax)}`,
+  pNhiTitle: (rate: number): string => `国民健康保険料（所得割）の目安（料率 ${rate}%）`,
+  pNhiOption: (label: string, levy: number): string => `${label}: 所得割 ${yenJa(levy)}`,
+  vs65: (saving: number): string => `65万円にすると ${yenJa(saving)} 減る`,
+  vs65None: "区分ごとの税額",
+  placeholderIncome: "収入を入力すると、ここに結果が出ます。",
+  placeholderRevenue: "売上を入力すると、ここに結果が出ます。",
+  pJump: (summary: string): string => `${summary}　結果を見る ↓`,
+  pJumpError: (count: number): string => `入力を確認してください（${count} 件）　内容を見る ↓`,
+};
+
+export type WebMessages = typeof ja;
+
+const CITY_EN: Record<string, string> = { 東京都新宿区: "Shinjuku (Tokyo)", 札幌市: "Sapporo", 福岡市: "Fukuoka" };
+
+const en: WebMessages = {
+  locale: "en",
+  yen: yenEn,
+  digits: (n: number): string => n.toLocaleString("en-US"),
+  siteUrl: "https://ozko00.github.io/setsuzei/en/",
+  exampleRevenue: "4,800,000",
+  exampleExpenses: "750,000",
+
+  furusato: "Furusato nozei",
+  kyosai: "Small Business Mutual Aid",
+  ideco: "iDeCo",
+
+  saving: "Tax saved",
+  savingIncomeTax: "  of which income tax",
+  savingResidentTax: "  of which resident tax",
+  annualLimit: "Annual limit",
+  paid: "Already paid this year",
+  remaining: "Room left this year",
+  additionalTried: "Extra amount used in this estimate (what you would pay)",
+  combinedTitle: (title: string, parts: readonly string[]): string => `${title} (${parts.join(" + ")})`,
+  furusatoExtra: "Extra furusato nozei donation",
+  kyosaiExtra: "Extra Small Business Mutual Aid contribution",
+  idecoExtra: "Extra iDeCo contribution",
+  totalExtraPayment: "Total you would pay",
+  totalSaving: "Total tax saved",
+  fromContributions: "  from the extra contributions",
+  fromFurusato: "  from furusato nozei (in exchange for the donation)",
+  ofIncomeTax: "  (income tax)",
+  ofResidentTax: "  (resident tax)",
+  totalTaxAfter: "Total tax afterwards",
+  blueLabel: { none: "White return", "10": "Blue return, ¥100,000", "55": "Blue return, ¥550,000", "65": "Blue return, ¥650,000" },
+  salaryIncome: (adjustment: number): string => `Employment income${adjustment > 0 ? ` (after a ${yenEn(adjustment)} adjustment deduction)` : ""}`,
+  businessIncome: "Business income",
+  miscIncome: "Miscellaneous income",
+  totalIncome: "Total income",
+  taxableIncome: (rate: number): string => `Taxable income for income tax (${rate}% bracket)`,
+  incomeTaxLine: "Income tax + special income tax for reconstruction",
+  residentTaxLine: (label: string): string => `Resident tax (${label})`,
+  totalTax: "Total tax",
+  baselineTitle: (label: string): string => `Where you stand now: ${label}`,
+  combinedAll: "If you do all of it",
+  combinedIfIdeco: "If the extra iDeCo contribution also makes it this year",
+  furusatoLimitYear: "Donation limit for the year (estimate)",
+  donated: "Already donated",
+  furusatoRemainingToDonate: "Left before the limit (what you would still donate)",
+  furusatoOutOfPocket: "Out-of-pocket cost if you donate up to the limit",
+  furusatoLimitAfter: "Limit after the extra contributions (if you do all of it)",
+  idecoTitle: "iDeCo (individual-type defined contribution pension)",
+  blueTitle: "Special deduction for blue returns",
+  blueOption: (label: string, tax: number): string => `${label} (tax ${yenEn(tax)})`,
+  current: "now",
+  less: (n: number): string => `${yenEn(n)} less`,
+  more: (n: number): string => `${yenEn(n)} more`,
+  nhiTitle: (rate: number): string => `National Health Insurance, income-based part at ${rate}% (next fiscal year, estimate)`,
+  nhiBase: "Income the premium is charged on",
+  nhiLevy: "Income-based part (estimate)",
+  nhiOption: (label: string, levy: number): string => `${label} (${yenEn(levy)})`,
+  usedTitle: "Figures used",
+  glossaryTitle: "Terms",
+  glossary: [
+    ["Income (shotoku)", "Revenue minus expenses. For a salary, pay minus the employment income deduction. “Total income” is the sum of these"],
+    ["Deductions and exemptions (kojo)", "Amounts taken off your income before tax is worked out: social insurance premiums, pension contributions, family members and so on"],
+    ["Taxable income", "Income minus deductions. Income tax is this amount times the rate for its bracket (5% to 45%)"],
+    [
+      "Resident tax (juminzei)",
+      "Local tax paid to your city and prefecture, billed from the following June. NTA's English guide calls it “inhabitant tax”. The income-based part is 10% of taxable income; the per-person part is a flat amount of about ¥5,000",
+    ],
+    [
+      "Business income and miscellaneous income",
+      "Income from work you run as an ongoing business (with an opening notice filed and books kept) is business income (jigyo shotoku). Side income that does not amount to that is miscellaneous income (zatsu shotoku), which cannot use the blue-return deduction",
+    ],
+    ["Final tax return (kakutei shinkoku)", "The yearly income tax return, filed between February 16 and March 15 of the following year at the tax office or online with e-Tax"],
+    ["Blue return (aoiro shinkoku)", "A return type for business owners who keep proper books, approved in advance by the tax office. It gives a special deduction of up to ¥650,000. Everyone else files a “white return”"],
+  ],
+  actionField: (name: string, label: string): string => `${name}: ${label}`,
+
+  split: (total: number, incomeTax: number, residentTax: number): string => `${yenEn(total)} (income tax ${yenEn(incomeTax)}, resident tax ${yenEn(residentTax)})`,
+  planLead: (payment: number, saving: number, several: boolean): string =>
+    `Pay ${yenEn(payment)}${several ? " in total" : ""} by December 31 and your tax goes down by about ${yenEn(saving)}.`,
+  planNone: "On these figures, there is nothing more to pay this year that would lower your tax.",
+  budgetOver: (over: number): string => ` The amounts you set yourself are ${yenEn(over)} over what you said you can spend.`,
+  furusatoOff: (note: string): string => `Not available for you this year. ${note}`,
+  furusatoSkipped: (amount: number, saving: number, self: number): string =>
+    `Not in your to-do list. Donating up to the limit (${yenEn(amount)}) would save only ${yenEn(saving)} in tax and cost you ${yenEn(self)} out of pocket, which is more than you save. If you want the return gifts anyway, enter an amount under “Amount to pay” and it will be counted`,
+  furusatoEnough: (paid: number, limit: number): string => `Donate nothing more (the ${yenEn(paid)} you have donated already reaches the ${yenEn(limit)} limit)`,
+  furusatoZero: "Donate nothing (set to ¥0)",
+  furusatoMore: (amount: number, paid: number, total: number): string =>
+    `Donate ${yenEn(amount)} more (with the ${yenEn(paid)} already donated, ${yenEn(total)} for the year)`,
+  furusatoDonate: (amount: number): string => `Donate ${yenEn(amount)}`,
+  furusatoHintLimit: (limit: number): string => `Your limit for the year is about ${yenEn(limit)}. Above it, almost all of the excess comes out of your own pocket.`,
+  furusatoHintLowered: (original: number): string => ` It is down from ${yenEn(original)} because of the contributions you would pay.`,
+  furusatoOver: (over: number): string => `${yenEn(over)} over the limit. Almost all of the excess comes out of your own pocket.`,
+  furusatoWorthFull:
+    "What you get: the return gifts. Your tax goes down by the full amount (the ¥2,000 out-of-pocket cost is already covered by what you donated earlier). It is an exchange for the donation, so you do not end up with more cash.",
+  furusatoWorth: (amount: number, saving: number, self: number, poor: boolean): string =>
+    `What you get: the return gifts. Of the ${yenEn(amount)} you pay, ${yenEn(saving)} comes off your tax and ${yenEn(self)} is out of pocket. You do not end up with more cash; the gain is the gifts.${poor ? " At this amount the out-of-pocket cost is larger than the tax saved, so it is hard to justify." : ""}`,
+  kyosaiKind: (optional: boolean): string =>
+    optional
+      ? "To save more: a retirement fund for sole proprietors, run by SMRJ, a government agency for small businesses"
+      : "A retirement fund for sole proprietors, run by SMRJ, a government agency for small businesses",
+  kyosaiOptionalDo:
+    "If you are not a member yet, joining and paying contributions by year-end lowers your tax further. It is a long-term commitment: cancelling early can return less than you paid in (see the caveats below). Enter what you could pay under “Amount to pay” to add it to the total",
+  kyosaiZeroChosen: "Pay nothing extra (set to ¥0)",
+  kyosaiNoMore: "Paying more would not lower your tax",
+  kyosaiIncrease: (amount: number): string => `Pay ${yenEn(amount)} more in contributions by year-end (raise the monthly amount, or prepay coming months)`,
+  kyosaiJoin: (amount: number): string => `Join, and pay ${yenEn(amount)} in contributions by year-end`,
+  kyosaiHintMax: (max: number): string => `Room left under the annual limit (¥70,000 a month × 12): ${yenEn(max)}.`,
+  kyosaiHintIfJoined: (amount: number, saving: number): string =>
+    ` Paying ${yenEn(amount)} would by itself cut your tax by ${yenEn(saving)} (not in your to-do list now; enter an amount to add it). What you pay in stays yours as savings.`,
+  kyosaiHintNoEffect: (limit: number): string => ` Paying more than ${yenEn(limit)} would not lower your tax any further.`,
+  kyosaiHintCapped: (amount: number): string => ` Of the amount you entered, only ${yenEn(amount)} lowers your tax, so that is what is used.`,
+  notIncluded: "Not in your to-do list (enter an amount to add it)",
+  kyosaiWorth: (amount: number, saving: number): string =>
+    `What you get: the ${yenEn(amount)} stays yours as savings you receive later. The gain is the ${yenEn(saving)} of tax saved now. The payout is taxed when you receive it, and cancelling early can return less than you paid in (see the caveats below).`,
+  idecoIncrease: (amount: number): string => `Pay ${yenEn(amount)} more in contributions by year-end`,
+  idecoFull: "Nothing to add (you are on track to reach the annual limit)",
+  idecoIfKnown: "Only if you already have an iDeCo account: if you know how much more you can pay in this year, enter it under “Amount to pay”. If you have no account or do not know, leave it as it is",
+  idecoHintMax: (max: number): string => `Room left under the annual limit: ${yenEn(max)}.`,
+  idecoHintIf: (additional: number, saving: number): string =>
+    ` If you could pay in ${yenEn(additional)} this year, that alone would cut your tax by ${yenEn(saving)} (not in your to-do list now; enter an amount to add it).`,
+  idecoWorth: (amount: number, saving: number): string =>
+    `What you get: the ${yenEn(amount)} goes into your own pension savings, paid out from age 60. The gain is the ${yenEn(saving)} of tax saved now (the payout is taxed when you receive it).`,
+  totalsTax: (label: string): string => `Tax means income tax plus resident tax (${label}; resident tax on this year's income is billed in the following fiscal year).`,
+  totalsRecomputed:
+    " The total is recomputed with everything together. The “tax saved” shown for each item assumes you do them in this order: Small Business Mutual Aid, then iDeCo, then furusato nozei.",
+  totalsFurusato: (saving: number): string => ` ${yenEn(saving)} of the saving comes from furusato nozei, in exchange for the donation (you do not end up with more cash).`,
+  totalsContributions: " Contributions stay yours as savings.",
+  laterSaving: (saving: number): string => `With the ¥650,000 special deduction for blue returns, your tax would be ${yenEn(saving)} lower than this estimate.`,
+  laterNone: "At your current income, the special deduction for blue returns would not change your tax.",
+  laterUnknown:
+    " For this year, though, it is only available if you filed the blue return application (aoiro shinkoku shonin shinseisho) with the tax office by its deadline; if you file it now, it starts next year. If you did file it, keep double-entry books and file with e-Tax, choose ¥650,000 under “Make it more accurate”. The amounts above will change too.",
+  laterNeeds: " The ¥650,000 level needs double-entry books and a return filed on time with e-Tax.",
+
+  guideEmpty: "Enter your income and a rough figure appears here, with how it was worked out.",
+  guideLabel: "Rough figure: ",
+  guideRange: (low: number, high: number): string => ` (range ${yenEn(low)} to ${yenEn(high)})`,
+  guidePart: (label: string, amount: number): string => `${label}: ${yenEn(amount)}`,
+  guideNoteFreelance:
+    "If your National Pension premiums are exempted or deferred, or you also pay for family members, your real figure is very different. Choose “Enter the amount”.",
+  guideNoteEmployee: "If you are in a company health insurance society or a mutual aid association, or get large bonuses, your real figure may differ.",
+  guideHow: "How this figure is worked out, and where to find the exact one",
+  partPension: (pct: string): string => `Employees' Pension Insurance (${pct})`,
+  partHealth: (pct: string): string => `Health insurance (${pct}, the median prefecture rate of Kyokai Kenpo, the public insurer most company employees are in)`,
+  partChild: (pct: string): string => `Child and child-rearing support levy (${pct})`,
+  partEmployment: (pct: string): string => `Employment insurance (${pct})`,
+  basisEmployeeRate: (middle: string, pension: string, health: string, child: string, employment: string): string =>
+    `Your annual salary times ${middle}, the total of the rates the employee pays (Employees' Pension Insurance ${pension}, Kyokai Kenpo health insurance ${health}, child and child-rearing support levy ${child}, employment insurance ${employment}; fiscal 2026 rates).`,
+  basisEmployeeRange: (care: string, low: string, high: string): string =>
+    `Health insurance rates differ by prefecture, and people aged 40 to 64 also pay long-term care insurance (${care}), so the range is ${low} to ${high} of salary. Company health insurance societies and mutual aid associations have their own rates. Premiums are capped, so above roughly ¥8 million in salary, or with large bonuses, you actually pay less than this.`,
+  basisEmployeeExact:
+    "The exact figure is the “社会保険料等の金額” box (social insurance premiums) on your withholding slip (gensen choshuhyo), or the health insurance, pension and employment insurance lines of your payslips added up over 12 months plus bonuses.",
+  partNationalPension: (monthly: number): string => `National Pension (one person, ${yenEn(monthly)} a month × 12)`,
+  partNhi: (low: number, high: number): string => `National Health Insurance (rough figure; ${yenEn(low)} to ${yenEn(high)})`,
+  basisPension: (monthly: number): string =>
+    `The National Pension premium is a flat ${yenEn(monthly)} a month per person (fiscal 2026). It differs if you have an exemption or deferral, or pay for family members too.`,
+  basisNhi: (cities: readonly string[], nhi: number, low: number, high: number): string =>
+    `National Health Insurance rates differ by municipality. This uses the fiscal 2026 rates of ${cities.join(", ")}, for one person under 40 whose income last year was the same as this year, and takes the average of the three (${yenEn(nhi)}). Across the three, including the long-term care part for ages 40 to 64, the range is ${yenEn(low)} to ${yenEn(high)}.`,
+  basisNhiCaveat:
+    "With family members on the same plan, in another municipality, or with a different income last year, your real figure can fall outside this range. Reductions for low-income households are not included.",
+  basisFreelanceExact:
+    "The exact figure is what you pay from January to December this year: the National Health Insurance bill from your city office, plus your National Pension payment slips or the deduction certificate that arrives in autumn.",
+  city: (name: string): string => CITY_EN[name] ?? name,
+
+  saveFailed: "Could not save in this browser (private browsing, for example).",
+  saveLoaded: "Loaded the entries saved on this device.",
+  saveOn: "Saving on this device.",
+  saveCleared: "Saved entries deleted.",
+  placeholder: "Answer the three questions and your year-end to-do list appears here, with amounts.",
+  checkInput: "Check your entries",
+  jumpError: (count: number): string => `Check your entries (${count}) · See details`,
+  cautionTitle: "Things to note",
+  breakdownSummary: "See the breakdown",
+  breakdownSub: "Your tax now, each limit and the room left, tax at each blue-return level, and the figures used",
+  jumpPay: (payment: number, saving: number): string => `Pay ${yenEn(payment)} → tax down ${yenEn(saving)} · See result`,
+  jumpTax: (tax: number): string => `Income tax + resident tax: about ${yenEn(tax)} · See result`,
+  announcePay: (payment: number, saving: number): string => `Result updated. Pay ${yenEn(payment)} by year-end and your tax goes down by about ${yenEn(saving)}.`,
+  announceNone: "Result updated. There is nothing more to pay this year that would lower your tax.",
+  copied: "Copied. You can paste it into an email or a note.",
+
+  budgetNothing: "Within this amount, there is nothing to pay this year that would lower your tax.",
+  budgetBest: (furusato: boolean, kyosai: boolean): string =>
+    `This is the mix that saves the most tax within what you can spend.${
+      furusato
+        ? " Furusato nozei goes first because it cuts your tax by almost as much as you pay. But it is an exchange for a donation, so you do not end up with more cash (the gain is the return gifts)."
+        : ""
+    }${kyosai ? " The rest goes to Small Business Mutual Aid. Contributions stay yours as savings, so if keeping your money matters more, shift more toward contributions." : ""}`,
+  budgetLimitUp: (from: number, to: number): string =>
+    ` Because you pay less in contributions than the maximum, more resident tax remains, so the furusato nozei limit rises from ${yenEn(from)} to ${yenEn(to)}.`,
+  budgetLeftover: (left: number): string =>
+    ` ${yenEn(left)} of what you can spend is still unused. Small Business Mutual Aid is not added automatically for people who are not members yet: if you would join and pay, enter an amount under its “Amount to pay”.`,
+  assumeInsurance: (amount: number, employee: boolean, low: number, high: number): string =>
+    `Social insurance premiums: a rough ${yenEn(amount)} (${employee ? "about 14.7% of salary" : "National Pension + National Health Insurance"}; range ${yenEn(low)} to ${yenEn(high)})`,
+  assumeBlue: "Special deduction for blue returns: none (treated as a white return)",
+  assumeIncomeType: "Type of side income: miscellaneous income (if you filed an opening notice and keep books for it as a business, choose “business income”)",
+  assumeSpousePending: "Spouse: treated as no spouse until you enter their income or salary",
+  assumeNoFamily: "Spouse and dependents: none",
+  assumeNoPaid: "iDeCo and Small Business Mutual Aid contributions, furusato nozei already donated, medical or life-insurance deductions: none",
+
+  uSalary: "Salary (gross, per year)",
+  uSideRevenue: "Side-business revenue",
+  uRevenue: "Revenue",
+  uExpenses: "Expenses",
+  uIncomeType: "Type of income",
+  uBlue: "Special deduction for blue returns",
+  blueShort: { none: "none (white return)", "10": "¥100,000", "55": "¥550,000", "65": "¥650,000" },
+  uInsurance: "Social insurance premiums",
+  insuranceEstimated: (amount: number, low: number, high: number): string => `${yenEn(amount)} (rough figure; range ${yenEn(low)} to ${yenEn(high)})`,
+  uIdeco: "iDeCo contributions (total for the year)",
+  uKyosai: "Small Business Mutual Aid contributions (total for the year)",
+  uFurusato: "Furusato nozei already donated",
+  uOther: "Other deductions",
+  uSpouse: "Spouse",
+  spouseYes: (income: number, over70: boolean): string => `yes (total income ${yenEn(income)}${over70 ? ", aged 70 or over" : ""})`,
+  none: "none",
+  depUnder16: (n: number): string => `under 16: ${people(n)}`,
+  depGeneral: (n: number): string => `16 to 18 or 23 to 69: ${people(n)}`,
+  depSpecific: (n: number): string => `19 to 22: ${people(n)}`,
+  depElderlyCohabiting: (n: number): string => `70 or over, parent or grandparent living with you: ${people(n)}`,
+  depElderly: (n: number): string => `70 or over, other: ${people(n)}`,
+  listSeparator: "; ",
+  uDependents: "Dependents",
+  lineFurusato: (amount: number, saving: number, limit: number, more: boolean): string =>
+    `Furusato nozei: donate ${yenEn(amount)}${more ? " more" : ""} → tax down ${yenEn(saving)} (donations paid by December 31; limit for the year about ${yenEn(limit)})`,
+  lineKyosai: (amount: number, saving: number, joined: boolean): string =>
+    `Small Business Mutual Aid: ${joined ? "pay" : "join and pay"} ${yenEn(amount)}${joined ? " more" : ""} in contributions → tax down ${yenEn(saving)} (paid by December 31)`,
+  lineIdeco: (amount: number, saving: number): string => `iDeCo: pay ${yenEn(amount)} more in contributions → tax down ${yenEn(saving)} (debited by December)`,
+  sumTitle: (label: string): string => `What to do before year-end, and how much tax it saves. Estimate for ${label}`,
+  sumMadeBy: (version: string, date: string): string => `Calculated with setsuzei ${version} on ${date}`,
+  hPlan: "== To do before year-end ==",
+  sumTotal: (payment: number, saving: number, before: number, after: number): string =>
+    `Total: pay ${yenEn(payment)} by year-end and tax goes down by about ${yenEn(saving)} (tax ${yenEn(before)} → ${yenEn(after)})`,
+  sumFurusatoNote: "Note: the furusato nozei part is an exchange for a donation, so you do not end up with more cash (the gain is the return gifts). Contributions stay yours as savings.",
+  sumSkipped: (amount: number, saving: number, self: number): string =>
+    `Note: furusato nozei is not in the list. Donating up to the limit (${yenEn(amount)}) would save ${yenEn(saving)} in tax, less than the ${yenEn(self)} out of pocket.`,
+  sumBudget: (amount: number, reason: string): string => `Note: allocated within ${yenEn(amount)} available this year. ${reason.trim()}`,
+  sumKyosaiNot: (amount: number, saving: number): string =>
+    `Note: Small Business Mutual Aid is not in the total because you are not a member yet. Joining and paying ${yenEn(amount)} by year-end would by itself cut your tax by ${yenEn(saving)} (applications in November and December have to be made at a counter, paying in cash).`,
+  sumIdecoNot: (additional: number, saving: number): string =>
+    `Note: iDeCo is not in the total. Paying in the remaining ${yenEn(additional)} this year would by itself cut your tax by ${yenEn(saving)} (whether that is still possible depends on your provider and the date).`,
+  hTax: "== Your tax now (estimate) ==",
+  sumIncomeTax: (n: number): string => `Income tax + special income tax for reconstruction: ${yenEn(n)}`,
+  sumResidentTax: (label: string, n: number): string => `Resident tax (${label}): ${yenEn(n)}`,
+  sumTotalTax: (n: number): string => `Total: ${yenEn(n)}`,
+  hInputs: "== Figures used (per year) ==",
+  hAssumed: "== Not entered, so assumed ==",
+  hCaution: "== Things to note ==",
+  sumDisclaimer:
+    "This is an estimate based on the figures entered and simplified assumptions. Actual tax depends on what you file and on your municipality. It does not replace the judgment of a tax accountant, the tax office or your city office.",
+
+  pSaving: "Tax saved (income tax + resident tax)",
+  pSavingResidentTax: "  of which resident tax (next fiscal year)",
+  pBusinessIncome: "Business income (after the blue-return deduction)",
+  pExtraContribution: "Extra contribution you would pay",
+  pPaidPlanned: "Paid or scheduled this year",
+  noLimit: "no limit shown",
+  diffSame: "no change",
+  diffDown: (n: number): string => `down ${yenEn(n)}`,
+  diffUp: (n: number): string => `up ${yenEn(n)}`,
+  cmpRowTitle: (label: string, residentLabel: string): string => `${label.charAt(0).toUpperCase()}${label.slice(1)} (resident tax of ${residentLabel})`,
+  cmpSalaryIncome: "  Employment income",
+  cmpIncomeLevy: "  Income-based part of resident tax",
+  cmpSpecialCap: "  Cap on the special portion (20% of the income-based part)",
+  cmpBasic: "  Basic exemption for income tax",
+  cmpAdjustment: "  Personal-deduction adjustment",
+  cmpRateBase: "  Amount that picks the rate (resident-tax taxable income − the adjustment)",
+  cmpRate: "  Rate of the special portion",
+  cmpSummary: (prevLabel: string, prev: string, curLabel: string, cur: string, diff: string): string => `${prevLabel} ${prev} → ${curLabel} ${cur} (${diff})`,
+  limitOf: (label: string): string => `Limit for ${label}`,
+  diffLabel: "Difference for the same input",
+  cmpCardTitle: "The two limits side by side, with the steps in between",
+  fSummary: (limit: number, remaining: number): string => `Limit about ${yenEn(limit)} (${yenEn(remaining)} left)`,
+  fLimit: "Limit for the year (estimate)",
+  fCanDonate: "What you can still donate",
+  fSavingThen: "Tax saved by donating it",
+  fRemaining: "Left before the limit",
+  fSavingRest: "Further tax saved if you donate the rest",
+  fSavingFull: "Tax saved if you donate up to the limit",
+  fOutOfPocket: "Out-of-pocket cost if you donate up to the limit (on the year's total donations)",
+  contribSummary: (title: string, saving: number): string => `${title}: tax saved ${yenEn(saving)}`,
+  contribNotApplicable: (title: string): string => `${title} does not apply to this input`,
+  blueOptionsTitle: "Tax at each level of the special deduction for blue returns",
+  pCurrent: "your current forecast",
+  pLess: (n: number): string => `${yenEn(n)} less`,
+  pMore: (n: number): string => `${yenEn(n)} more`,
+  blueTax: (label: string, tax: number): string => `${label}: tax ${yenEn(tax)}`,
+  pNhiTitle: (rate: number): string => `National Health Insurance, income-based part (estimate at ${rate}%)`,
+  pNhiOption: (label: string, levy: number): string => `${label}: income-based part ${yenEn(levy)}`,
+  vs65: (saving: number): string => `Moving to ¥650,000 saves ${yenEn(saving)}`,
+  vs65None: "Tax at each level",
+  placeholderIncome: "Enter your income and the result appears here.",
+  placeholderRevenue: "Enter your revenue and the result appears here.",
+  pJump: (summary: string): string => `${summary} · See result ↓`,
+  pJumpError: (count: number): string => `Check your entries (${count}) · See details ↓`,
+};
+
+const WEB_MESSAGES: Readonly<Record<Locale, WebMessages>> = { ja, en };
+
+export function webMessages(locale: Locale = "ja"): WebMessages {
+  return WEB_MESSAGES[locale];
+}

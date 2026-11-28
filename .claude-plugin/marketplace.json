@@ -9,7 +9,7 @@
     {
       "name": "setsuzei",
       "source": "./",
-      "description": "Japanese income/resident tax estimates for freelancers and side-job workers (tax year 2026): furusato nozei limit, iDeCo, Small Enterprise Mutual Aid, blue-return deduction. MCP tools + skill, local only.",
+      "description": "Japanese income/resident tax estimates for freelancers and side-job workers (tax year 2026): furusato nozei limit, iDeCo, Small Business Mutual Aid, blue-return deduction. MCP tools + skill, local only.",
       "category": "finance",
       "homepage": "https://github.com/ozko00/setsuzei"
     }

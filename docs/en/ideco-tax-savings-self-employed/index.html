@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>iDeCo tax savings calculator for freelancers in Japan (tax year 2026) | setsuzei</title>
+<meta name="description" content="Estimate how much iDeCo contributions cut your income tax and resident tax as a freelancer or sole proprietor in Japan, using the tax year 2026 rates and basic exemption. Shows what the room left before year-end is worth. Nothing you enter is sent anywhere.">
+<link rel="canonical" href="https://ozko00.github.io/setsuzei/en/ideco-tax-savings-self-employed/">
+<link rel="alternate" hreflang="ja" href="https://ozko00.github.io/setsuzei/ideco-kojin-jigyonushi/">
+<link rel="alternate" hreflang="en" href="https://ozko00.github.io/setsuzei/en/ideco-tax-savings-self-employed/">
+<link rel="alternate" hreflang="x-default" href="https://ozko00.github.io/setsuzei/ideco-kojin-jigyonushi/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="setsuzei">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta property="og:url" content="https://ozko00.github.io/setsuzei/en/ideco-tax-savings-self-employed/">
+<meta property="og:title" content="iDeCo tax savings calculator for freelancers in Japan (tax year 2026) | setsuzei">
+<meta property="og:description" content="Estimate how much iDeCo contributions cut your income tax and resident tax as a freelancer or sole proprietor in Japan, using the tax year 2026 rates and basic exemption. Shows what the room left before year-end is worth. Nothing you enter is sent anywhere.">
+<meta property="og:image" content="https://ozko00.github.io/setsuzei/img/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b6b57">
+<link rel="icon" href="../../img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../style.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"iDeCo tax savings calculator for freelancers and the self-employed","url":"https://ozko00.github.io/setsuzei/en/ideco-tax-savings-self-employed/","description":"Estimate how much iDeCo contributions cut your income tax and resident tax as a freelancer or sole proprietor in Japan, using the tax year 2026 rates and basic exemption. Shows what the room left before year-end is worth. Nothing you enter is sent anywhere.","inLanguage":"en","applicationCategory":"FinanceApplication","operatingSystem":"Any","browserRequirements":"Requires JavaScript","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"JPY"},"license":"https://opensource.org/license/mit","codeRepository":"https://github.com/ozko00/setsuzei"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","inLanguage":"en","mainEntity":[{"@type":"Question","name":"How much tax does iDeCo save a freelancer?","acceptedAnswer":{"@type":"Answer","text":"It depends on your income and contributions. With an income of ¥5,000,000 (same assumptions as the table), paying the maximum ¥68,000 a month (¥816,000 a year) cuts income tax and resident tax by ¥154,400 a year in total. The money is basically locked until you turn 60 (iDeCo official site: four points before you start (Japanese only)), the account has fees, and the payout is taxable (iDeCo official site: features of iDeCo (Japanese only), iDeCo official site: tax advantages (Japanese only)). Weigh it against the cash you need on hand."}},{"@type":"Question","name":"Can I raise my iDeCo contributions in December to save more this year?","acceptedAnswer":{"@type":"Answer","text":"Often not. You can change the amount only once per contribution year, December to the following November (iDeCo official site: eligibility, contributions and benefits (Japanese only)). Paying the remaining room in one go needs an annual-schedule form filed in advance, which takes effect from the month after you apply (debited the month after that), and missed months cannot be made up (National Pension Fund Association: paying contributions on an annual schedule (Japanese only)). Only amounts debited by December (the November contribution) count for this year, so under “Extra you can still pay in this year” enter what your provider confirms you can actually add."}},{"@type":"Question","name":"I heard the limit goes up in December 2026. Does that raise my 2026 saving?","acceptedAnswer":{"@type":"Answer","text":"No. The limit for Category 1 insured persons rises to ¥75,000 a month from December 2026 (the ministry's notice (Japanese only)), but the December contribution is debited in January of the following year (iDeCo official site: four points before you start (Japanese only); the National Pension Fund Association also says “from the December 2026 contribution, debited in January 2027”, National Pension Fund Association: notice on changing contributions for the higher limit (Japanese only)). Contributions are deducted in the year they are paid, so tax year 2026 (payments from January to December 2026) is calculated at ¥68,000 a month."}},{"@type":"Question","name":"Does iDeCo lower my National Health Insurance premium?","acceptedAnswer":{"@type":"Answer","text":"No. The income-based part of the premium is charged on total income minus the basic deduction, and deductions such as iDeCo are not subtracted (Order for Enforcement of the National Health Insurance Act, Art. 29-7 (Japanese only); Local Tax Act, Art. 703-4 (Japanese only)). What goes down is income tax and resident tax."}},{"@type":"Question","name":"Does iDeCo save tax in a low-income year?","acceptedAnswer":{"@type":"Answer","text":"Not if you have no taxable income. With an income of ¥1,200,000 (same assumptions as the table), taxable income for income tax is ¥0 and contributing up to the limit saves ¥0. A deduction can only reduce tax you would otherwise owe."}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"setsuzei","item":"https://ozko00.github.io/setsuzei/en/"},{"@type":"ListItem","position":2,"name":"iDeCo tax savings (self-employed)","item":"https://ozko00.github.io/setsuzei/en/ideco-tax-savings-self-employed/"}]}</script>
+</head>
+<body class="article">
+<a class="skip" href="#results">Skip to the result</a>
+<header class="site">
+  <p class="brand"><a href="../"><span class="mark" aria-hidden="true">税</span></a><a href="../">setsuzei</a><span class="tag">Tax year 2026 · estimate</span><a class="lang" href="../../ideco-kojin-jigyonushi/" lang="ja" hreflang="ja">日本語</a></p>
+  <p class="crumbs"><a href="../">Full year-end calculator</a> › iDeCo tax savings (self-employed)</p>
+  <h1>iDeCo tax savings calculator for freelancers and the self-employed</h1>
+  <p class="lead">iDeCo is Japan's individual-type defined contribution pension: you pay in monthly, choose the investments, and can take the money out from age 60. Every yen you contribute is deducted from your income. For the self-employed (Category 1 insured persons of the National Pension) the limit is ¥68,000 a month, ¥816,000 a year. Enter your revenue and expenses to see how much income tax and resident tax that saves.</p>
+  <p class="privacy">An estimate for tax year 2026 (Reiwa 8; income from January to December 2026). What you enter is calculated on this page only; it is not sent or stored anywhere.</p>
+</header>
+
+<main>
+<form id="form" autocomplete="off" novalidate data-kind="ideco">
+  <p class="hint">Enter every amount in yen as your <strong>forecast for the whole year</strong>. <code>6,000,000</code>, <code>6m</code> and <code>600万</code> all work. The form starts with example figures.</p>
+  <fieldset>
+    <legend>Revenue and expenses</legend>
+    <label>Freelance or business revenue<span class="sub">For the whole year, before expenses</span>
+      <input name="revenue" inputmode="numeric" placeholder="e.g. 8,000,000" value="8,000,000"></label>
+    <label>Business expenses
+      <input name="expenses" inputmode="numeric" placeholder="e.g. 1,500,000" value="1,500,000"></label>
+    <label>Special deduction for blue returns<span class="sub">A deduction for business owners approved to file a “blue return” (aoiro shinkoku) with proper books</span>
+      <select name="blue">
+        <option value="none">White return (no deduction)</option>
+        <option value="10">Blue return, ¥100,000</option>
+        <option value="55">Blue return, ¥550,000</option>
+        <option value="65" selected>Blue return, ¥650,000</option>
+      </select></label>
+    <label>Social insurance premiums<span class="sub">National Health Insurance, National Pension and the like, for the year</span>
+      <input name="social-insurance" inputmode="numeric" placeholder="e.g. 900,000" value="900,000"></label>
+  </fieldset>
+  <fieldset>
+    <legend>Contributions</legend>
+    <label>iDeCo contributions (paid or scheduled)<span class="sub">Expected total for the year</span>
+      <input name="ideco-paid" inputmode="numeric" placeholder="e.g. 276,000"></label>
+    <label>Extra you can still pay in this year<span class="sub">Left empty: the room left under the annual limit, up to where it stops lowering your tax. Ask your provider whether an increase is still possible this year</span>
+      <input name="ideco-add" inputmode="numeric"></label>
+  </fieldset>
+  <p class="hint">If you also have a salary, a spouse or dependents, use <a id="full" href="../">the full calculator</a>, which takes every item.</p>
+</form>
+
+<div class="results" id="results">
+  <h2>Result</h2>
+  <div id="result" aria-live="polite"><p class="placeholder">Enter your revenue and the result appears here.</p></div>
+  <noscript><p class="card error">The calculator needs JavaScript. The tables below can be read without it.</p></noscript>
+  <section class="card disclaimer">
+    <h3>About this result</h3>
+    <p><strong>This is an estimate</strong> based on the figures you entered and simplified assumptions. Your actual tax depends on what you file and on your municipality. It does not replace the judgment of a tax accountant (zeirishi), the tax office or your city office. Check with a professional or the office in charge before any important decision.</p>
+    <p>It assumes you are a resident of Japan for tax purposes for the whole year and still live in Japan on January 1 next year. Foreign income, tax treaties and the rules for non-residents are not handled.</p>
+  </section>
+</div>
+</main>
+
+<article class="prose">
+<section>
+  <h2>How it is calculated, and the basis</h2>
+  <p>The saving is the difference between your tax without and with the contributions.</p>
+  <p class="formula">Tax saved ≈ contributions × (income tax rate × 1.021 + resident tax 10%)</p>
+  <ul>
+    <li>iDeCo contributions are deducted in full from income, under the deduction for small business mutual aid premiums (<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1135.htm" rel="noopener noreferrer" hreflang="ja">NTA Tax Answer No. 1135: deduction for small business mutual aid premiums (Japanese only)</a>). What iDeCo is and who can join is explained in English on the <a href="https://www.ideco-koushiki.jp/english/" rel="noopener noreferrer" hreflang="en">iDeCo official site</a>.</li>
+    <li>The income tax rate is 5% to 45% depending on taxable income (<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2260.htm" rel="noopener noreferrer" hreflang="ja">NTA Tax Answer No. 2260: income tax rates (Japanese only)</a>). If the contributions move you into a lower bracket, the saving is a little smaller than the formula; the calculator accounts for that.</li>
+    <li>The income-based part of resident tax is a flat 10% (<a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/150790_06.html" rel="noopener noreferrer" hreflang="ja">Ministry of Internal Affairs and Communications: individual resident tax (Japanese only)</a>). The resident tax saving shows up in the following fiscal year (fiscal 2027).</li>
+    <li>The limit is shared with National Pension Fund contributions and the additional pension premium (<a href="https://www.ideco-koushiki.jp/start/" rel="noopener noreferrer" hreflang="ja">iDeCo official site: four points before you start (Japanese only)</a>).</li>
+    <li>The saving comes in exchange for paying the contributions. As a rule you cannot withdraw before 60, and account fees apply, which differ by provider (<a href="https://www.ideco-koushiki.jp/guide/" rel="noopener noreferrer" hreflang="ja">iDeCo official site: features of iDeCo (Japanese only)</a>).</li>
+    <li>The payout is taxable: a lump sum is retirement income (<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1420.htm" rel="noopener noreferrer" hreflang="ja">NTA Tax Answer No. 1420: retirement income (Japanese only)</a>) and an annuity is treated like a public pension, each with its own deduction (<a href="https://www.ideco-koushiki.jp/guide/good.html" rel="noopener noreferrer" hreflang="ja">iDeCo official site: tax advantages (Japanese only)</a>). This calculator does not estimate tax at payout.</li>
+    <li>Late in the year an increase often comes too late. The monthly amount can be changed only once per contribution year, December to November (<a href="https://www.ideco-koushiki.jp/guide/structure.html" rel="noopener noreferrer" hreflang="ja">iDeCo official site: eligibility, contributions and benefits (Japanese only)</a>), and paying several months at once needs an annual-schedule form filed in advance (<a href="https://www.ideco-koushiki.jp/library/pdf/annual_unit_contribution_291201revision.pdf" rel="noopener noreferrer" hreflang="ja">National Pension Fund Association: paying contributions on an annual schedule (Japanese only)</a>).</li>
+    <li>Once income tax and the income-based part of resident tax reach zero, more contributions save nothing. The calculator stops the extra amount there.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Examples</h2>
+  <div class="table-wrap">
+    <table class="examples">
+      <caption>iDeCo tax savings by income and contribution (per year; income tax + resident tax; tax year 2026)</caption>
+      <thead><tr><th scope="col">Income (revenue − expenses)</th><th scope="col">Income tax rate</th><th scope="col">¥10,000 a month</th><th scope="col">¥23,000 a month</th><th scope="col">¥50,000 a month</th><th scope="col">¥68,000 a month</th></tr></thead>
+      <tbody>
+      <tr><th scope="row">¥3,000,000</th><td>5%</td><td>¥18,200</td><td>¥41,700</td><td>¥90,700</td><td>¥123,300</td></tr>
+      <tr><th scope="row">¥4,000,000</th><td>5%</td><td>¥18,100</td><td>¥41,600</td><td>¥90,600</td><td>¥123,200</td></tr>
+      <tr><th scope="row">¥5,000,000</th><td>10%</td><td>¥24,300</td><td>¥55,800</td><td>¥121,300</td><td>¥154,400</td></tr>
+      <tr><th scope="row">¥6,000,000</th><td>20%</td><td>¥36,500</td><td>¥83,900</td><td>¥170,200</td><td>¥213,900</td></tr>
+      <tr><th scope="row">¥8,000,000</th><td>20%</td><td>¥36,500</td><td>¥84,000</td><td>¥182,500</td><td>¥248,200</td></tr>
+      <tr><th scope="row">¥10,000,000</th><td>23%</td><td>¥40,200</td><td>¥92,400</td><td>¥191,100</td><td>¥256,800</td></tr>
+      <tr><th scope="row">¥15,000,000</th><td>33%</td><td>¥52,500</td><td>¥120,600</td><td>¥262,200</td><td>¥356,600</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Assumptions for the table: a freelancer with no salary, the ¥650,000 special deduction for blue returns, no dependents, and social insurance premiums at 15% of income (revenue minus expenses). Income tax is for tax year 2026 and resident tax for fiscal 2027. Your premiums and family change the result, so put your own figures into the calculator above. Contributions are for a full 12 months.</p>
+</section>
+
+<section>
+  <h2>Common questions</h2>
+  <h3>How much tax does iDeCo save a freelancer?</h3>
+  <p>It depends on your income and contributions. With an income of ¥5,000,000 (same assumptions as the table), paying the maximum ¥68,000 a month (¥816,000 a year) cuts income tax and resident tax by ¥154,400 a year in total. The money is basically locked until you turn 60 (<a href="https://www.ideco-koushiki.jp/start/" rel="noopener noreferrer" hreflang="ja">iDeCo official site: four points before you start (Japanese only)</a>), the account has fees, and the payout is taxable (<a href="https://www.ideco-koushiki.jp/guide/" rel="noopener noreferrer" hreflang="ja">iDeCo official site: features of iDeCo (Japanese only)</a>, <a href="https://www.ideco-koushiki.jp/guide/good.html" rel="noopener noreferrer" hreflang="ja">iDeCo official site: tax advantages (Japanese only)</a>). Weigh it against the cash you need on hand.</p>
+  <h3>Can I raise my iDeCo contributions in December to save more this year?</h3>
+  <p>Often not. You can change the amount only once per contribution year, December to the following November (<a href="https://www.ideco-koushiki.jp/guide/structure.html" rel="noopener noreferrer" hreflang="ja">iDeCo official site: eligibility, contributions and benefits (Japanese only)</a>). Paying the remaining room in one go needs an annual-schedule form filed in advance, which takes effect from the month after you apply (debited the month after that), and missed months cannot be made up (<a href="https://www.ideco-koushiki.jp/library/pdf/annual_unit_contribution_291201revision.pdf" rel="noopener noreferrer" hreflang="ja">National Pension Fund Association: paying contributions on an annual schedule (Japanese only)</a>). Only amounts debited by December (the November contribution) count for this year, so under “Extra you can still pay in this year” enter what your provider confirms you can actually add.</p>
+  <h3>I heard the limit goes up in December 2026. Does that raise my 2026 saving?</h3>
+  <p>No. The limit for Category 1 insured persons rises to ¥75,000 a month from December 2026 (<a href="https://www.mhlw.go.jp/web_magazine/column/20261020.html" rel="noopener noreferrer" hreflang="ja">the ministry's notice (Japanese only)</a>), but the December contribution is debited in January of the following year (<a href="https://www.ideco-koushiki.jp/start/" rel="noopener noreferrer" hreflang="ja">iDeCo official site: four points before you start (Japanese only)</a>; the National Pension Fund Association also says “from the December 2026 contribution, debited in January 2027”, <a href="https://www.ideco-koushiki.jp/library/pdf/notice202612-02.pdf" rel="noopener noreferrer" hreflang="ja">National Pension Fund Association: notice on changing contributions for the higher limit (Japanese only)</a>). Contributions are deducted in the year they are paid, so tax year 2026 (payments from January to December 2026) is calculated at ¥68,000 a month.</p>
+  <h3>Does iDeCo lower my National Health Insurance premium?</h3>
+  <p>No. The income-based part of the premium is charged on total income minus the basic deduction, and deductions such as iDeCo are not subtracted (<a href="https://laws.e-gov.go.jp/law/333CO0000000362" rel="noopener noreferrer" hreflang="ja">Order for Enforcement of the National Health Insurance Act, Art. 29-7 (Japanese only)</a>; <a href="https://laws.e-gov.go.jp/law/325AC0000000226" rel="noopener noreferrer" hreflang="ja">Local Tax Act, Art. 703-4 (Japanese only)</a>). What goes down is income tax and resident tax.</p>
+  <h3>Does iDeCo save tax in a low-income year?</h3>
+  <p>Not if you have no taxable income. With an income of ¥1,200,000 (same assumptions as the table), taxable income for income tax is ¥0 and contributing up to the limit saves ¥0. A deduction can only reduce tax you would otherwise owe.</p>
+</section>
+
+<section>
+  <h2>Sources</h2>
+  <p>Official pages in English:</p>
+  <ul class="sources">
+    <li><a href="https://www.ideco-koushiki.jp/english/" rel="noopener noreferrer" hreflang="en">iDeCo official site: What is iDeCo? (English)</a></li>
+    <li><a href="https://www.nta.go.jp/english/taxes/individual/incometax_2025.htm" rel="noopener noreferrer" hreflang="en">NTA: Income Tax and Special Income Tax for Reconstruction Guide (English, 2025 edition)</a></li>
+  </ul>
+  <p>Primary sources the numbers were checked against:</p>
+  <ul class="sources">
+    <li><a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1135.htm" rel="noopener noreferrer" hreflang="ja">NTA Tax Answer No. 1135: deduction for small business mutual aid premiums (Japanese only)</a></li>
+    <li><a href="https://www.mhlw.go.jp/web_magazine/column/20261020.html" rel="noopener noreferrer" hreflang="ja">Ministry of Health, Labour and Welfare: iDeCo changes from December 2026 (Japanese only)</a></li>
+    <li><a href="https://www.ideco-koushiki.jp/start/" rel="noopener noreferrer" hreflang="ja">iDeCo official site: four points before you start (Japanese only)</a></li>
+    <li><a href="https://www.ideco-koushiki.jp/guide/" rel="noopener noreferrer" hreflang="ja">iDeCo official site: features of iDeCo (Japanese only)</a></li>
+    <li><a href="https://www.ideco-koushiki.jp/guide/structure.html" rel="noopener noreferrer" hreflang="ja">iDeCo official site: eligibility, contributions and benefits (Japanese only)</a></li>
+    <li><a href="https://www.ideco-koushiki.jp/library/pdf/annual_unit_contribution_291201revision.pdf" rel="noopener noreferrer" hreflang="ja">National Pension Fund Association: paying contributions on an annual schedule (Japanese only)</a></li>
+    <li><a href="https://www.ideco-koushiki.jp/library/pdf/notice202612-02.pdf" rel="noopener noreferrer" hreflang="ja">National Pension Fund Association: notice on changing contributions for the higher limit (Japanese only)</a></li>
+    <li><a href="https://www.ideco-koushiki.jp/guide/good.html" rel="noopener noreferrer" hreflang="ja">iDeCo official site: tax advantages (Japanese only)</a></li>
+    <li><a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1420.htm" rel="noopener noreferrer" hreflang="ja">NTA Tax Answer No. 1420: retirement income (Japanese only)</a></li>
+    <li><a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2260.htm" rel="noopener noreferrer" hreflang="ja">NTA Tax Answer No. 2260: income tax rates (Japanese only)</a></li>
+    <li><a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/150790_06.html" rel="noopener noreferrer" hreflang="ja">Ministry of Internal Affairs and Communications: individual resident tax (Japanese only)</a></li>
+    <li><a href="https://laws.e-gov.go.jp/law/333CO0000000362" rel="noopener noreferrer" hreflang="ja">e-Gov: Order for Enforcement of the National Health Insurance Act (Japanese only)</a></li>
+    <li><a href="https://laws.e-gov.go.jp/law/325AC0000000226" rel="noopener noreferrer" hreflang="ja">e-Gov: Local Tax Act (Japanese only)</a></li>
+  </ul>
+  <p class="note">Every number was checked against a primary source and is kept in a <a href="https://github.com/ozko00/setsuzei/blob/main/src/data/2026.ts" rel="noopener">data file with the source URLs</a>. The assumptions, and what is not calculated, are in the <a href="https://github.com/ozko00/setsuzei/blob/main/README.en.md" rel="noopener">README</a>. English terms follow the NTA's English income tax guide where it has one. Last reviewed: 2026-11-27.</p>
+</section>
+
+<nav class="related" aria-label="Other calculators">
+  <h2>Other calculators</h2>
+  <ul>
+    <li><a href="../">Full year-end calculator (furusato nozei + iDeCo + Small Business Mutual Aid + blue return)</a></li>
+    <li><a href="../furusato-nozei-limit-freelance/">Furusato nozei limit calculator for freelancers and sole proprietors</a></li>
+    <li><a href="../small-business-mutual-aid-tax-savings/">Small Business Mutual Aid (shokibo kigyo kyosai) tax savings calculator</a></li>
+    <li><a href="../blue-return-deduction/">Blue return special deduction: ¥650,000 vs ¥550,000 vs ¥100,000 in actual tax</a></li>
+    <li><a href="../furusato-nozei-limit-2026/">Is your furusato nozei limit lower for 2026? Compare it with 2025</a></li>
+  </ul>
+</nav>
+</article>
+
+<a id="jump" class="jump" href="#results" hidden></a>
+
+<footer class="site">
+  <p>setsuzei · MIT License · The same calculation runs on the command line with <code>npx setsuzei</code> (Node.js 20 or later; output in Japanese). · <a href="https://github.com/ozko00/setsuzei/blob/main/README.en.md" rel="noopener">How to run it, source code and assumptions (GitHub)</a> · <a href="../../ideco-kojin-jigyonushi/" lang="ja" hreflang="ja">日本語版</a></p>
+</footer>
+<script type="module" src="../../js/web/page.js"></script>
+</body>
+</html>

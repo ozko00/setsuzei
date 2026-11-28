@@ -5,6 +5,7 @@
  * 操作はすべて記録し、結果が画面に出るまでの操作数をあとで数えられるようにする。
  *
  *   起動:  node scripts/persona-browser.mjs serve --docs docs --dir <記録を置くフォルダ> [--mobile]
+ *          （--path en/ を付けると、英語版のトップから始める）
  *   操作:  node scripts/persona-browser.mjs <記録を置くフォルダ> <コマンド> [引数]
  *
  *   look            いまの画面を画像に保存し、画面に見えている文字と、押せるものの座標を出す
@@ -127,7 +128,7 @@ async function serve(args) {
   const [width, height] = mobile ? [375, 720] : [1280, 800];
   await page.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile });
   await page.send("Emulation.setTouchEmulationEnabled", { enabled: mobile });
-  await page.goto(opt("--url") ?? site.base);
+  await page.goto(opt("--url") ?? `${site.base}${opt("--path") ?? ""}`);
   let shots = 0;
 
   const elementAt = (x, y) => `(() => { let el = document.elementFromPoint(${x}, ${y}); if (el && el.tagName === "LABEL") el = el.control ?? el.querySelector("select") ?? el; return el; })()`;

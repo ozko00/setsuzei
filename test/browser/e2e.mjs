@@ -832,10 +832,11 @@ browserTest("トップ: キーボードだけで 3 問に答えられ、読み�
     return page.evaluate('(() => { const el = document.activeElement; return el.name || el.id || el.className || el.tagName; })()');
   };
   const order = [];
-  for (let i = 0; i < 6; i++) order.push(await tab());
-  // 結果へ移動 → 保存の説明へのリンク → 例 → 働き方 → 売上 → 経費
+  for (let i = 0; i < 7; i++) order.push(await tab());
+  // 結果へ移動 → English（言語の切り替え）→ 保存の説明へのリンク → 例 → 働き方 → 売上 → 経費
   assert.deepEqual(order.slice(-3), ["work", "revenue", "expenses"]);
   assert.equal(order[0], "skip");
+  assert.equal(order[1], "lang");
   await page.type('input[name="revenue"]', "380万");
   // 入力欄・選択欄には、すべて読み上げ用の名前がある
   const unnamed = await page.evaluate(
@@ -1181,4 +1182,198 @@ browserTest("令和7年分との比較: スマホ幅（375px）で、横スク�
   assert.deepEqual(await page.evaluate(OVERFLOW), [], "入力エラーのとき");
   await fillYear(page, { salary: "", "social-insurance": "" });
   assert.deepEqual(await page.evaluate(OVERFLOW), [], "空のとき");
+});
+
+// ───────────────────────── 英語版（/en/） ─────────────────────────
+// 英語版は、同じ計算コア・同じ画面のコードに、英語の文面を当てたもの。
+// 同じ入力なら日本語版と同じ数字になること、文面が英語になっていること、言語を行き来できることを確かめる。
+
+const EN_TOP = () => `${server.base}en/`;
+const PAGE_PAIRS = [
+  ["furusato-nozei-freelance", "furusato-nozei-limit-freelance"],
+  ["ideco-kojin-jigyonushi", "ideco-tax-savings-self-employed"],
+  ["shokibo-kyosai-setsuzei", "small-business-mutual-aid-tax-savings"],
+  ["aoiro-shinkoku-65-55-10", "blue-return-deduction"],
+  ["furusato-nozei-jogen-reiwa8", "furusato-nozei-limit-2026"],
+];
+
+/** 英語版の画面に、書類や窓口で必要になる日本語として出してよい語 */
+const EN_ALLOWED_JAPANESE = [
+  "掛金月額変更（増額・減額）申込書", "青色申告承認申請書", "青色申告特別控除額", "青色申告特別控除", "社会保険料等の金額", "社会保険料控除",
+  "小規模企業共済", "ふるさと納税", "源泉徴収票", "控除証明書", "納付通知書", "支払金額", "青色申告", "現金あり", "受領書", "住民税", "日本語版", "日本語", "480万", "600万", "税",
+];
+const japaneseLeft = (text) => {
+  let rest = text;
+  for (const word of EN_ALLOWED_JAPANESE) rest = rest.split(word).join("");
+  return rest.match(/[^\n]*[ぁ-んァ-ヶ一-龥][^\n]*/g) ?? [];
+};
+
+/** 画面に出ている数字だけを読む（言語で変わらないはずのもの）。「計算に使った値」と用語の説明は、書き方が言語で違うので除く */
+const NUMBERS = `(() => {
+  const text = (el) => (el ? el.textContent ?? "" : "").trim();
+  const nums = (s) => s.match(/\\d+(?:,\\d{3})*(?:\\.\\d+)?/g) ?? [];
+  const skip = ["計算に使った値", "Figures used", "ことばの説明", "Terms"];
+  const plan = document.querySelector("#plan");
+  return {
+    totals: ["total-saving", "total-payment", "total-tax", "furusato-saving", "kyosai-saving", "ideco-saving"].map((id) => nums(text(document.getElementById(id)))),
+    amounts: ["furusato-add", "kyosai-add", "ideco-add"].map((id) => (document.getElementById(id) ? document.getElementById(id).value : null)),
+    figures: Array.from(document.querySelectorAll("#result .headline .figure strong")).map((e) => nums(text(e))),
+    rows: Array.from(document.querySelectorAll("#result section.card"))
+      .filter((c) => !skip.includes(text(c.querySelector("h3"))))
+      .flatMap((c) => Array.from(c.querySelectorAll(".row dd")).map((e) => nums(text(e)))),
+    cards: document.querySelectorAll("#result section.card").length,
+    effective: plan && plan.dataset.effective ? JSON.parse(plan.dataset.effective) : null,
+    lang: document.documentElement.lang,
+  };
+})()`;
+
+browserTest("英語版トップ: 同じ入力なら、日本語版・CLI と同じ数字になる。文面は英語", async (page) => {
+  const cases = [
+    { revenue: "8,000,000", expenses: "1,500,000", blue: "65", "social-insurance": "900,000", "furusato-paid": "20,000", "kyosai-paid": "120,000" },
+    { salary: "6,000,000", revenue: "1,000,000", expenses: "200,000", "social-insurance": "880,000", "ideco-paid": "144,000" },
+    { revenue: "4.8m", expenses: "750k", "social-insurance": "590,000", "nhi-rate": "11.5", blue: "55", "spouse-income": "0", "dependents-under16": "1" },
+  ];
+  for (const values of cases) {
+    await page.goto(EN_TOP());
+    await fillTop(page, values);
+    const en = await page.evaluate(NUMBERS);
+    const view = await page.evaluate(READ);
+    assert.equal(en.lang, "en");
+    assert.ok(en.cards >= 6, "内訳のカードが出ていません");
+    assert.match(view.plan.lead, /^(Pay ¥[\d,]+( in total)? by December 31 and your tax goes down by about ¥[\d,]+\.|On these figures)/);
+    assert.deepEqual(japaneseLeft(view.text), [], "英語版の画面に日本語の文が残っています");
+
+    await page.goto(server.base);
+    await fillTop(page, values);
+    const ja = await page.evaluate(NUMBERS);
+    assert.equal(ja.lang, "ja");
+    assert.deepEqual({ ...en, lang: "" }, { ...ja, lang: "" }, `日本語版と数字が違います: ${JSON.stringify(values)}`);
+
+    // CLI と同じ（計算に使った値を CLI に渡した結果）
+    const expected = cli(en.effective);
+    assert.ok(expected.ok);
+    // 「いまの税額の見込み」は、CLI の現状の税額と同じ
+    assert.equal(amountOf(en.totals[2][0]), expected.result.baseline.totalTax);
+  }
+});
+
+browserTest("英語版トップ: 例を入れると、日本語版の例と同じ数字。目安と仮に置いた値も英語で出る", async (page) => {
+  await page.goto(EN_TOP());
+  await page.click("#example");
+  const en = await page.evaluate(NUMBERS);
+  const view = await page.evaluate(READ);
+  assert.equal(await page.evaluate('document.querySelector(\'input[name="revenue"]\').value'), "4,800,000");
+  assert.ok(view.plan.assumed.length >= 3);
+  assert.ok(view.plan.assumed.some((line) => line.startsWith("Social insurance premiums: a rough ¥")));
+  assert.match(view.plan.furusato.todo, /^Donate ¥[\d,]+$/);
+  assert.match(view.plan.furusato.worth, /^What you get: the return gifts\./);
+  assert.deepEqual(japaneseLeft(view.text), []);
+  assert.match(await page.evaluate('document.querySelector("#si-guide").textContent'), /Rough figure: ¥[\d,]+ \(range ¥[\d,]+ to ¥[\d,]+\)/);
+
+  await page.goto(server.base);
+  await page.click("#example");
+  const ja = await page.evaluate(NUMBERS);
+  // 例の金額の書き方（480万 と 4,800,000）は違うが、計算に使う値と結果は同じ
+  assert.deepEqual({ ...en, lang: "", effective: null }, { ...ja, lang: "", effective: null });
+  assert.equal(cli(en.effective).result.baseline.totalTax, cli(ja.effective).result.baseline.totalTax);
+});
+
+browserTest("英語版トップ: 誤入力は、欄の英語の名前と英語の説明で指摘する", async (page) => {
+  await page.goto(EN_TOP());
+  await page.type('input[name="revenue"]', "abc");
+  let view = await page.evaluate(READ);
+  assert.ok(view.alert);
+  assert.deepEqual(view.invalid, ["revenue"]);
+  assert.match(view.alert[0], /^Revenue this year: this does not read as an amount \("abc"\)/);
+  assert.equal(view.jump.error, true);
+  assert.match(view.jump.text, /^Check your entries \(1\)/);
+  await page.type('input[name="revenue"]', "-5,000,000");
+  view = await page.evaluate(READ);
+  assert.match(view.alert[0], /^Revenue this year: enter an amount of 0 or more/);
+  assert.deepEqual(japaneseLeft(view.alert.join("\n")), []);
+  await page.type('input[name="revenue"]', "¥5,000,000");
+  view = await page.evaluate(READ);
+  assert.equal(view.alert, null);
+  assert.equal(view.effective.revenue, "¥5,000,000");
+});
+
+browserTest("言語の切り替え: トップと説明ページ 5 枚で、日本語版と英語版を行き来できる", async (page) => {
+  await page.goto(server.base);
+  await page.navigateBy(() => page.click("header a.lang"));
+  assert.equal(await page.evaluate("location.pathname"), "/setsuzei/en/");
+  assert.equal(await page.evaluate("document.documentElement.lang"), "en");
+  await page.navigateBy(() => page.click("header a.lang"));
+  assert.equal(await page.evaluate("location.pathname"), "/setsuzei/");
+  for (const [ja, en] of PAGE_PAIRS) {
+    await page.goto(`${server.base}${ja}/`);
+    await page.navigateBy(() => page.click("header a.lang"));
+    assert.equal(await page.evaluate("location.pathname"), `/setsuzei/en/${en}/`);
+    // 英語版のページから「全部まとめて計算する」へ行くと、英語版のトップに着く
+    assert.equal(await page.evaluate('new URL(document.querySelector("#full").href).pathname'), "/setsuzei/en/");
+    await page.navigateBy(() => page.click("header a.lang"));
+    assert.equal(await page.evaluate("location.pathname"), `/setsuzei/${ja}/`);
+  }
+});
+
+browserTest("英語版の説明ページ 5 枚: はじめの例で、日本語版と同じ数字。文面は英語", async (page) => {
+  for (const [ja, en] of PAGE_PAIRS) {
+    await page.goto(`${server.base}en/${en}/`);
+    const enView = await page.evaluate(NUMBERS);
+    const text = await page.evaluate('document.querySelector("main").innerText');
+    assert.equal(enView.lang, "en");
+    assert.ok(enView.rows.length >= 4, `${en}: 結果が出ていません`);
+    assert.deepEqual(japaneseLeft(text), [], `${en}: 日本語の文が残っています`);
+    await page.goto(`${server.base}${ja}/`);
+    const jaView = await page.evaluate(NUMBERS);
+    assert.deepEqual({ ...enView, lang: "" }, { ...jaView, lang: "" }, `${en}: 日本語版と数字が違います`);
+  }
+  // 入力を引き継いで英語版のトップへ（金額は英語の書き方のまま読める）
+  await page.goto(`${server.base}en/${PAGE_PAIRS[0][1]}/`);
+  await page.navigateBy(() => page.click("#full"));
+  assert.equal(await page.evaluate("location.pathname"), "/setsuzei/en/");
+  const top = await page.evaluate(NUMBERS);
+  assert.equal(top.effective.revenue, "8,000,000");
+  assert.equal(cli(top.effective).ok, true);
+});
+
+browserTest("英語版: スマホ幅（375px）で、トップも説明ページも横スクロール・はみ出しがない", async (page) => {
+  await page.viewport(375, 720, true);
+  await page.goto(EN_TOP());
+  assert.deepEqual(await page.evaluate(OVERFLOW), [], "トップ: 空のとき");
+  await page.click("#example");
+  await openMore(page);
+  assert.deepEqual(await page.evaluate(OVERFLOW), [], "トップ: 例を入れたとき");
+  await page.type('input[name="revenue"]', "9,876,543,210");
+  assert.deepEqual(await page.evaluate(OVERFLOW), [], "トップ: 桁の多い金額のとき");
+  await page.type('input[name="revenue"]', "not a number at all, just a long line of text to wrap");
+  assert.ok((await page.evaluate(READ)).alert);
+  assert.deepEqual(await page.evaluate(OVERFLOW), [], "トップ: 入力エラーのとき");
+  for (const [, en] of PAGE_PAIRS) {
+    await page.goto(`${server.base}en/${en}/`);
+    assert.deepEqual(await page.evaluate(OVERFLOW), [], `${en}: 初期値のとき`);
+  }
+});
+
+browserTest("スマホ幅: 入力欄に打っている間は、画面下の「結果を見る」の帯を出さない（次の欄に重なって、押し間違えないように）", async (page) => {
+  await page.viewport(375, 720, true);
+  for (const url of [server.base, EN_TOP()]) {
+    await page.goto(url);
+    await page.click('input[name="work"][value="employee"]');
+    await page.type('input[name="salary"]', "7,800,000");
+    // 打ち終えた直後（カーソルは欄の中）: 結果は出ているが、帯は出ていない
+    let view = await page.evaluate(READ);
+    assert.ok(view.plan.lead !== "");
+    assert.equal(view.jump.shown, false, `${url}: 打っている間`);
+    // 帯が出ていないので、画面の下のほうにある次の欄をそのまま押して打てる
+    await page.type('input[name="revenue"]', "900,000");
+    await page.type('input[name="expenses"]', "120,000");
+    assert.equal(await page.evaluate("location.hash"), "");
+    assert.equal(await page.evaluate('document.querySelector(\'input[name="expenses"]\').value'), "120,000");
+    // 欄からカーソルを外すと、帯が出る
+    // （合計が画面に見えている間は帯を出さないので、合計が見えない位置＝ページの先頭で確かめる）
+    await page.evaluate("document.activeElement.blur(); window.scrollTo(0, 0)");
+    await page.evaluate("new Promise((r) => setTimeout(r, 200))");
+    view = await page.evaluate(READ);
+    assert.equal(view.jump.shown, true, `${url}: カーソルを外したあと`);
+  }
 });

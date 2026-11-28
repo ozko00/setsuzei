@@ -11,7 +11,7 @@ It estimates Japanese national income tax and local resident tax for freelancers
 
 - **Furusato nozei** (hometown tax donation): the donation limit at which the out-of-pocket cost stays at about 2,000 yen
 - **iDeCo** (individual defined-contribution pension): remaining contribution room and the tax reduction
-- **Small Enterprise Mutual Aid** (shokibo kigyo kyosai): remaining room and the tax reduction
+- **Small Business Mutual Aid** (shokibo kigyo kyosai): remaining room and the tax reduction
 - **Blue-return special deduction** (aoiro shinkoku tokubetsu kojo): tax at each level (none / 100,000 / 550,000 / 650,000 yen)
 
 Why an engine instead of letting the model calculate:
@@ -72,7 +72,7 @@ Keep the version (`@0.4.0`). The `mcp` subcommand exists from 0.4.0, and without
 
 - Inputs are annual amounts in whole yen (integers). Unknown fields and non-integer amounts are rejected with a message the model can act on.
 - Every result has `meta`: `estimate: true`, the disclaimer, the assumptions, what is not calculated, and the sources.
-- Notes and warnings inside the result are in Japanese.
+- Notes and warnings inside the result are in Japanese (the CLI and the MCP tools have no English output yet; the library and the browser version do).
 - Protocol: supports the current MCP revision (2026-07-28, per-request metadata and `server/discover`) and the earlier handshake-based revisions (2025-11-25, 2025-06-18, 2025-03-26, 2024-11-05). Tools only; no resources, prompts or sampling.
 - Checked with Claude Code, the official MCP Inspector (CLI) and the client of the official TypeScript SDK. **Not checked with Claude Desktop**; the configuration above is the standard form.
 
@@ -90,7 +90,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 npx setsuzei --revenue 8000000 --expenses 1500000 --blue 65 --social-insurance 900000 --json
 ```
 
-`--json` prints the same structure the MCP tool returns in `result`. Run `npx setsuzei --help` for all flags (help text is in Japanese). Amounts also accept Japanese notation such as `800万`.
+`--json` prints the same structure the MCP tool returns in `result`. Run `npx setsuzei --help` for all flags (help text is in Japanese). Amounts accept `8,000,000`, `8m`, `750k`, `¥8,000,000` and Japanese notation such as `800万`.
 
 ### Library
 
@@ -99,6 +99,13 @@ import { calculate } from "setsuzei";
 
 const result = calculate({ businessRevenue: 8_000_000, businessExpenses: 1_500_000, blueReturn: "65", socialInsurance: 900_000 });
 console.log(result.baseline.totalTax, result.measures.furusato.limit);
+```
+
+Notes, warnings and input errors are in Japanese by default. Pass `{ locale: "en" }` as the second argument to get them in English; the numbers do not change.
+
+```ts
+const english = calculate(input, { locale: "en" });
+console.log(english.warnings, english.measures.furusato.notes);
 ```
 
 ## Model alone vs. with the tool (measured)
@@ -116,7 +123,17 @@ On 2026-11-27 the same three questions were asked of the model alone (Claude Son
 
 ## Browser version
 
-For people rather than agents: <https://ozko00.github.io/setsuzei/> (Japanese). Answer three questions (work style, revenue, expenses) and it shows what to do before year-end, how much to pay and how much tax it saves. It uses the same engine and makes no network requests.
+For people rather than agents: **<https://ozko00.github.io/setsuzei/en/>** (English) and <https://ozko00.github.io/setsuzei/> (Japanese). Answer three questions (work style, revenue, expenses) and it shows what to do before year-end, how much to pay and how much tax it saves. It uses the same engine and makes no network requests.
+
+The English version is written for freelancers and employees with side income who live in Japan: each scheme gets a one-line explanation, amounts stay in yen, and the Japanese names you need on forms and at counters are shown next to the English. It has the full calculator and five single-topic pages:
+
+- [Furusato nozei limit calculator for freelancers and sole proprietors](https://ozko00.github.io/setsuzei/en/furusato-nozei-limit-freelance/)
+- [iDeCo tax savings calculator for freelancers and the self-employed](https://ozko00.github.io/setsuzei/en/ideco-tax-savings-self-employed/)
+- [Small Business Mutual Aid (shokibo kigyo kyosai) tax savings calculator](https://ozko00.github.io/setsuzei/en/small-business-mutual-aid-tax-savings/)
+- [Blue return special deduction: ¥650,000 vs ¥550,000 vs ¥100,000 in actual tax](https://ozko00.github.io/setsuzei/en/blue-return-deduction/)
+- [Is your furusato nozei limit lower for 2026? Compare it with 2025](https://ozko00.github.io/setsuzei/en/furusato-nozei-limit-2026/)
+
+The same input gives the same numbers in both languages (covered by tests). It assumes you are a resident of Japan for tax purposes; foreign income, tax treaties and non-resident rules are not handled. English terms follow the National Tax Agency's [English income tax guide](https://www.nta.go.jp/english/taxes/individual/incometax_2025.htm) where it has one.
 
 ## What is and is not calculated
 
@@ -132,10 +149,10 @@ Details, assumptions and the comparison with the ministry's published table are 
 | --- | --- |
 | ふるさと納税 | furusato nozei (hometown tax donation) |
 | iDeCo（個人型確定拠出年金） | iDeCo (individual defined-contribution pension) |
-| 小規模企業共済 | Small Enterprise Mutual Aid |
-| 青色申告特別控除 | blue-return special deduction |
-| 所得税・復興特別所得税 | income tax and special reconstruction income tax |
-| 住民税（所得割・均等割） | resident tax (income-based part, per-capita part) |
+| 小規模企業共済 | Small Business Mutual Aid (SMRJ's own English name; NTA: “small business mutual aid premiums”) |
+| 青色申告特別控除 | special deduction for blue returns (blue-return deduction) |
+| 所得税・復興特別所得税 | income tax and special income tax for reconstruction |
+| 住民税（所得割・均等割） | resident tax (income-based part, per-person part); “inhabitant tax” in NTA's English guide |
 | 事業所得・雑所得 | business income, miscellaneous income |
 | 令和8年分 | tax year 2026 (Reiwa 8) |
 

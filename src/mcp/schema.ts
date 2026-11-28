@@ -44,7 +44,7 @@ export const taxInputSchema: JsonSchema = {
     socialInsurance: yen("Social insurance premiums paid this year (national health insurance, national pension, or the amounts withheld from salary)"),
     idecoPaid: yen("iDeCo contributions this year, already made or fixed"),
     idecoAnnualLimit: yen("Annual iDeCo contribution limit for this person. If omitted it is assumed from the employment type"),
-    kyosaiPaid: yen("Small Enterprise Mutual Aid (小規模企業共済) premiums this year, already paid or fixed"),
+    kyosaiPaid: yen("Small Business Mutual Aid (小規模企業共済) premiums this year, already paid or fixed"),
     furusatoPaid: yen("Furusato nozei (hometown tax donations) already made this year"),
     spouse: obj(
       {
@@ -94,7 +94,7 @@ const deductions = obj({
   spouse: amount(),
   dependents: amount(),
   socialInsurance: amount(),
-  smallBusinessMutualAid: amount("iDeCo + Small Enterprise Mutual Aid"),
+  smallBusinessMutualAid: amount("iDeCo + Small Business Mutual Aid"),
   donation: amount(),
   other: amount(),
   total: amount(),
