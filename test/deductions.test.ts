@@ -11,6 +11,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { lifeInsuranceDeduction, lifeTier } from "../src/core/estimate.js";
+import { formatResult } from "../src/cli/format.js";
 import { FORM_2026 } from "../src/core/filing.js";
 import { calculate, getSources, getTaxYear, type TaxInput } from "../src/index.js";
 
@@ -95,6 +96,19 @@ describe("セルフメディケーション税制（国税庁 No.1129）と、�
   });
 });
 
+describe("医療費控除の方法は、所得が変わる試算ごとに選び直す", () => {
+  it("青色申告の区分ごとの税額は、その区分で計算し直した税額と同じ（足切り額が所得で変わる）", () => {
+    // 売上 200 万円: 白色だと所得 200 万円 → 足切り 10 万円で、セルフメディケーション税制が有利。
+    // 青色 65 万円だと所得 135 万円 → 足切り 67,500 円で、通常の医療費控除 32,500 円が有利
+    const input = { businessRevenue: 2_000_000, medicalExpenses: 100_000, selfMedicationExpenses: 30_000 } as const;
+    const r = calculate(input);
+    assert.equal(r.deductionDetails.medical.method, "selfMedication");
+    const with65 = calculate({ ...input, blueReturn: "65" });
+    assert.equal(with65.deductionDetails.medical.method, "normal");
+    assert.equal(r.measures.blueReturn.options.find((o) => o.level === "65")?.totalTax, with65.baseline.totalTax);
+  });
+});
+
 describe("生命保険料控除（国税庁 No.1140・地方税法 第314条の2）", () => {
   it("所得税の表（新契約・旧契約）。1 円未満は切り上げる", () => {
     const pairs: [number, number][] = [[20_000, 20_000], [20_001, 20_001], [40_000, 30_000], [40_001, 30_001], [80_000, 40_000], [200_000, 40_000]];
@@ -125,6 +139,14 @@ describe("生命保険料控除（国税庁 No.1140・地方税法 第314条の2
     assert.equal(r.residentTax.life, 28_000);
   });
 
+  it("住民税は所得税と別に、有利なほうで計算する（新 8 万・旧 5.4 万 → 所得税は新旧で 40,000 円、住民税は旧だけの 31,000 円）", () => {
+    // 所得税: 新 40,000 + 旧 38,500 → 上限 40,000 ＞ 旧だけ 38,500。住民税: 新旧 28,000 ＜ 旧だけ 54,000 ÷ 4 + 17,500 = 31,000
+    const r = lifeInsuranceDeduction(data, { lifeNew: 80_000, lifeOld: 54_000, medicalCare: 0, pensionNew: 0, pensionOld: 0 }, false);
+    assert.equal(r.lifeOldOnly, false);
+    assert.equal(r.incomeTax.life, 40_000);
+    assert.equal(r.residentTax.life, 31_000);
+  });
+
   it("3 区分の合計は所得税 12 万円・住民税 7 万円まで", () => {
     const r = lifeInsuranceDeduction(data, { lifeNew: 200_000, lifeOld: 0, medicalCare: 200_000, pensionNew: 200_000, pensionOld: 0 }, false);
     assert.deepEqual(r.incomeTax, { life: 40_000, medicalCare: 40_000, pension: 40_000, total: 120_000 });
@@ -141,7 +163,8 @@ describe("生命保険料控除（国税庁 No.1140・地方税法 第314条の2
     // 新旧の両方でも合計 6 万円まで（新 12 万 → 60,000 + 旧 7 万 → 42,500 → 60,000）
     const both = lifeInsuranceDeduction(data, { lifeNew: 120_000, lifeOld: 70_000, medicalCare: 0, pensionNew: 0, pensionOld: 0 }, true);
     assert.equal(both.incomeTax.life, 60_000);
-    assert.equal(both.residentTax.life, 28_000);
+    // 住民税に特例はなく、新旧 28,000 円より旧だけ（70,000 ÷ 4 + 17,500 = 35,000 円）が大きい
+    assert.equal(both.residentTax.life, 35_000);
     // 16 歳未満の子を入れると自動で特例。いなければ 4 万円
     const withChild = calculate({ ...FREELANCER, lifeInsuranceNew: 120_000, dependents: { under16: 1 } });
     assert.equal(withChild.baseline.incomeTax.deductions.lifeInsurance, 60_000);
@@ -201,6 +224,8 @@ describe("確定申告書のどの欄に書くか（令和８年分の確定申�
     assert.equal(entry?.amount, 28_000);
     assert.match(entry?.note ?? "", /「区分」の欄に 1/);
     assert.doesNotMatch(r.filing.entries.find((e) => e.field === "㉘")?.note ?? "", /に 1/);
+    // CLI の --filing でも、欄の説明（「区分」に 1）を落とさない
+    assert.match(formatResult(self, "test", { filing: true }), /㉘ 医療費[^\n]*\n\s+セルフメディケーション税制による控除の額。「区分」の欄に 1/);
   });
 
   it("旧契約だけを申告するほうが大きいときは、新契約の保険料を第二表に書かない", () => {

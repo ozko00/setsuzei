@@ -278,12 +278,12 @@ export function formatResult(r: SetsuzeiResult, version: string, options: { fili
       const entries = g.entries.filter((e) => e.sheet === sheet);
       if (entries.length === 0) continue;
       out.push(`  ◆ ${sheetName[sheet]}`);
-      out.push(
-        ...table(
-          entries.map((e) => [`${e.field ? `${e.field} ` : ""}${e.label}`, e.amount === null ? (e.field === "㊾" ? "（計算していません）" : "（金額ではない）") : yen(e.amount)]),
-          "    ",
-        ),
+      // 欄の番号・名前と金額の行のすぐ下に、その欄の説明（「区分」に 1 を書く、など）を添える
+      const lines = table(
+        entries.map((e) => [`${e.field ? `${e.field} ` : ""}${e.label}`, e.amount === null ? (e.field === "㊾" ? "（計算していません）" : "（金額ではない）") : yen(e.amount)]),
+        "    ",
       );
+      entries.forEach((e, i) => out.push(lines[i] ?? "", `        ${e.note}`));
     }
     out.push(...g.notes.map((n) => `  ※ ${n}`));
     out.push("");

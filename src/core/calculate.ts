@@ -5,6 +5,7 @@ import {
   estimate,
   furusatoLimit,
   furusatoLimitDetail,
+  chooseMedical,
   lifeInsuranceDeduction,
   medicalDeduction,
   medicalFloor,
@@ -189,29 +190,13 @@ function prepare(rawInput: TaxInput): {
     medical: {
       netExpenses: Math.max(0, normalized.medicalExpenses - normalized.medicalReimbursed),
       selfMedication: normalized.selfMedicationExpenses,
-      method: "none",
+      method: "auto",
     },
     lifeInsurance: { incomeTax: life.incomeTax.total, residentTax: life.residentTax.total },
   };
-  // 医療費控除は、通常の控除とセルフメディケーション税制のうち、税額が少なくなるほうを使う（選択適用で、併用はできない）
-  // （税額が同じなら控除額が大きいほう。控除額がどちらも 0 なら控除なし）
-  const totalIncome = estimate(data, base).totalIncome;
-  const normalDeduction = medicalDeduction(data, base.medical, totalIncome, "normal");
-  const selfDeduction = medicalDeduction(data, base.medical, totalIncome, "selfMedication");
-  const taxWith = (method: MedicalMethod): number => estimate(data, withMedical(base, method)).totalTax;
-  const normalTax = taxWith("normal");
-  const selfTax = taxWith("selfMedication");
-  const method: MedicalMethod =
-    normalDeduction === 0 && selfDeduction === 0
-      ? "none"
-      : selfTax < normalTax || (selfTax === normalTax && selfDeduction > normalDeduction)
-        ? "selfMedication"
-        : "normal";
-  return { input, year, data, normalized, base: withMedical(base, method) };
-}
-
-function withMedical(base: Scenario, method: MedicalMethod): Scenario {
-  return { ...base, medical: { ...base.medical, method } };
+  // 医療費控除は、通常の控除とセルフメディケーション税制のうち、税額が少なくなるほうを使う（選択適用で、併用はできない）。
+  // 所得が変わる試算（青色申告の区分など）でも、そのたびに選び直す（estimate の auto）
+  return { input, year, data, normalized, base };
 }
 
 function lifePaid(n: SetsuzeiResult["input"]): Parameters<typeof lifeInsuranceDeduction>[1] {
@@ -531,7 +516,7 @@ function calculateIn(rawInput: TaxInput): SetsuzeiResult {
 
 /** 医療費控除: 通常の控除とセルフメディケーション税制の比較 */
 function medicalResult(data: TaxYearData, base: Scenario, baseline: TaxEstimate): MedicalDeductionResult {
-  const med = base.medical;
+  const med = { ...base.medical, method: chooseMedical(data, base).method };
   const applicable = med.netExpenses > 0 || med.selfMedication > 0;
   const at = (method: MedicalMethod): TaxEstimate => estimate(data, { ...base, medical: { ...med, method } });
   const normal = at("normal");

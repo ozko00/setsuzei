@@ -4,7 +4,7 @@ export function medicalFloor(data, totalIncome) {
     return Math.min(rule.floorMax, Math.floor((Math.max(0, totalIncome) * rule.floorIncomePercent) / 100));
 }
 /** 医療費控除の額（所得税・住民税で同じ式）。method が none なら 0 */
-export function medicalDeduction(data, m, totalIncome, method = m.method) {
+export function medicalDeduction(data, m, totalIncome, method) {
     const rule = data.medical;
     if (method === "normal")
         return Math.min(rule.cap, Math.max(0, m.netExpenses - medicalFloor(data, totalIncome)));
@@ -26,9 +26,13 @@ export function lifeTier(tiers, paid) {
 }
 /**
  * 生命保険料控除の額（所得税・住民税）。
- * 新契約と旧契約の両方がある区分は、「両方を申告する（区分の上限あり）」と「旧契約だけを申告する」のうち、
- * 所得税の控除が大きいほうを選ぶ（同じなら住民税の控除が大きいほう）。申告した保険料は住民税にもそのまま使われるので、
- * 住民税も同じ選び方で計算する（国税庁 No.1140 の「新契約と旧契約の双方に加入している場合」の表）。
+ * 新契約と旧契約の両方がある区分は、「両方で計算する（区分の上限あり）」と「旧契約だけで計算する」のうち、
+ * 控除が大きいほうを、所得税と住民税で別々に選ぶ。
+ * - 所得税: 国税庁 No.1140 の「新契約と旧契約の双方に加入している場合」の表（旧契約が 6 万円を超えるなら旧だけ）。
+ *   旧だけを選んだ区分（lifeOldOnly / pensionOldOnly）は、申告書に新契約の分を書かない。
+ * - 住民税: 新旧両方で計算した額（上限 28,000 円）より、旧契約だけの額が大きければ旧だけの額
+ *   （小牧市「個人の市県民税の計算方法」: 旧契約のみの控除額が 28,000 円を超える場合は、有利となる旧契約のみの控除額）。
+ *   所得税で旧だけを選ぶのは旧契約が 6 万円を超えるときで、そのとき住民税も旧だけ（32,500 円以上）が大きいので、食い違わない。
  */
 export function lifeInsuranceDeduction(data, paid, under23) {
     const it = data.lifeInsurance.incomeTax;
@@ -42,8 +46,7 @@ export function lifeInsuranceDeduction(data, paid, under23) {
         if (newPaid === 0 || oldPaid === 0)
             return { ...both, oldOnly: false };
         const oldOnly = { it: lifeTier(it.oldContract, oldPaid), rt: lifeTier(rt.oldContract, oldPaid) };
-        const pickOld = oldOnly.it > both.it || (oldOnly.it === both.it && oldOnly.rt > both.rt);
-        return pickOld ? { ...oldOnly, oldOnly: true } : { ...both, oldOnly: false };
+        return { it: Math.max(both.it, oldOnly.it), rt: Math.max(both.rt, oldOnly.rt), oldOnly: oldOnly.it > both.it };
     };
     const life = category(paid.lifeNew, paid.lifeOld, special ? special.newLife : it.newContract, special ? special.combinedLifeCap : it.combinedCap);
     const pension = category(paid.pensionNew, paid.pensionOld, it.newContract, it.combinedCap);
@@ -227,8 +230,28 @@ function specialCreditRatePer100k(data, residentTaxable, adjustmentAmount) {
     const incomeTaxRate = lookupTier(rule.specialRateBrackets, base, 0);
     return (100 - rule.basicRatePercent) * 1_000 - incomeTaxRate * (1_000 + data.incomeTax.reconstructionPermille);
 }
-/** シナリオ 1 つ分の所得税・住民税を概算する。 */
+/**
+ * 医療費控除の方法を選ぶ: 通常の控除とセルフメディケーション税制のうち、税額が少なくなるほう
+ * （税額が同じなら控除額が大きいほう。控除額がどちらも 0 なら控除なし）。選択適用で、併用はできない。
+ * 所得（青色申告特別控除など）が変わると通常の控除の足切り額が変わるので、シナリオごとに選び直す。
+ */
+export function chooseMedical(data, s) {
+    const at = (method) => estimate(data, { ...s, medical: { ...s.medical, method } });
+    if (s.medical.netExpenses <= 0 && s.medical.selfMedication <= 0)
+        return { method: "none", estimate: at("none") };
+    const normal = at("normal");
+    const self = at("selfMedication");
+    const normalDeduction = normal.incomeTax.deductions.medical;
+    const selfDeduction = self.incomeTax.deductions.medical;
+    if (normalDeduction === 0 && selfDeduction === 0)
+        return { method: "none", estimate: normal };
+    const useSelf = self.totalTax < normal.totalTax || (self.totalTax === normal.totalTax && selfDeduction > normalDeduction);
+    return useSelf ? { method: "selfMedication", estimate: self } : { method: "normal", estimate: normal };
+}
+/** シナリオ 1 つ分の所得税・住民税を概算する。医療費控除の方法が auto なら、税額が少ないほうを選ぶ。 */
 export function estimate(data, s) {
+    if (s.medical.method === "auto")
+        return chooseMedical(data, s).estimate;
     // --- 所得 ---
     const adjustment = s.incomeAdjustmentEligible ? incomeAdjustment(data, s.salaryRevenue) : 0;
     const salary = salaryIncome(data, s.salaryRevenue) - adjustment;
@@ -247,7 +270,7 @@ export function estimate(data, s) {
     const totalIncome = Math.max(0, salary + businessIncome);
     const spouse = spouseAmounts(data, totalIncome, s.spouse);
     // 医療費控除は所得税・住民税で同じ式（足切り額が総所得金額等で決まる）
-    const medical = medicalDeduction(data, s.medical, totalIncome);
+    const medical = medicalDeduction(data, s.medical, totalIncome, s.medical.method);
     // --- 所得税 ---
     const itRule = data.incomeTax;
     const donationCap = Math.floor((totalIncome * itRule.donation.incomeCapPercent) / 100);

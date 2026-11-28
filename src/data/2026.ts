@@ -354,6 +354,8 @@ export const taxYear2026: TaxYearData = {
     },
     // 住民税の生命保険料控除。新契約 最高 28,000 円、旧契約 最高 35,000 円、新旧両方で 28,000 円、合計 70,000 円。
     // 23 歳未満の扶養親族の特例は住民税にはない（2027-01-01 時点の条文で確認）。
+    // 新旧両方の支払がある区分は、旧契約のみの控除額が 28,000 円を超えれば旧契約のみの額（所得税とは別に選ぶ）。
+    // 出典: 小牧市「個人の市県民税の計算方法」 https://www.city.komaki.aichi.jp/admin/soshiki/soumu/kazei/7/1/48422.html
     // 出典: 地方税法 第314条の2第1項第5号
     // https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002
     residentTax: {
@@ -533,6 +535,10 @@ export const sources2026: readonly Source[] = [
   {
     title: "国税庁 確定申告の手引き（令和7年分）生命保険料控除（新旧両方の契約がある場合の計算、1 円未満の端数）",
     url: "https://www.nta.go.jp/taxes/shiraberu/shinkoku/tebiki/2025/03/order3/3-3_12.htm",
+  },
+  {
+    title: "小牧市 個人の市県民税の計算方法（住民税の生命保険料控除: 新旧両方の支払がある場合、旧契約のみの控除額が 28,000 円を超えれば旧契約のみの額）",
+    url: "https://www.city.komaki.aichi.jp/admin/soshiki/soumu/kazei/7/1/48422.html",
   },
   {
     title: "国税庁 令和８年分の所得税等の確定申告書（案）（第一表・第二表の欄の番号）",
