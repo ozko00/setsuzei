@@ -52,6 +52,17 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 - CLI とブラウザ版は同じ入力で同じ数字になることをテストで確かめています。入力項目を足すときは、CLI のフラグ（[`src/cli/flags.ts`](src/cli/flags.ts)）とフォーム（[`docs/index.html`](docs/index.html)）の両方に足してください。
 - 計算の前提や、計算しないものが変わる場合は、README の「何を計算し、何を計算しないか」も直してください。
 
+### 英語版（docs/en/）
+
+ブラウザ版には英語版があります（トップ [`docs/en/index.html`](docs/en/index.html) と、説明ページ 5 枚）。計算は日本語版と同じ計算コア・同じ画面のコードで、文面だけを言語ごとに持ちます。
+
+- 文面の置き場所: 計算コアの注記・注意・入力エラーは [`src/core/messages.ts`](src/core/messages.ts)、画面の文面は [`web/messages.ts`](web/messages.ts)、説明ページの本文は [`site/pages-en.ts`](site/pages-en.ts)（日本語は [`site/pages.ts`](site/pages.ts)）、トップの固定の文面は `docs/index.html` と `docs/en/index.html`。**文面を足す・変えるときは、日本語と英語の両方を直します**（項目がそろっていることと、同じ入力で数字が変わらないことを [`test/english.test.ts`](test/english.test.ts) が確かめます）。
+- 英語は逐語訳にせず、日本の制度を知らない人が読んで分かるように書きます。制度には一言ずつ説明を添え、金額は円のまま（`¥`）にします。書類や窓口で必要になる日本語（源泉徴収票、青色申告承認申請書 など）は、英語の横に添えます。
+- 用語は、国税庁の英語の手引き（<https://www.nta.go.jp/english/taxes/individual/incometax_2025.htm>）にある言い方（blue return、final tax return、special income tax for reconstruction など）と、英語圏の利用者がふだん使う言い方（furusato nozei、resident tax、iDeCo）に合わせます。小規模企業共済は、中小機構の英語のページの呼び名（Small Business Mutual Aid）です。
+- リンクは、公的機関に英語のページがあればそちらに張り、なければ日本語のページに「(Japanese only)」と添えます。英語のページとして張ってよい URL は `site/pages-en.ts` の `EN_LINKS` にあります（足すときは、開けることを確かめてください）。
+- 日本語版と英語版は 1 対 1 です。ページを足すときは両方に足し、`hreflang`・相互リンク・sitemap がそろうようにします（テストが確かめます）。
+- 計算の関数は `calculate(input, { locale: "en" })` で英語の文面を返します。CLI と MCP サーバーの出力は、いまは日本語だけです。
+
 ## Agent Skill を変えたとき
 
 [`skills/setsuzei/SKILL.md`](skills/setsuzei/SKILL.md) を変えたら、実際にエージェントで通ることを確かめてください。テスト（`npm test`）が見るのは文面の決まりごとだけで、エージェントの振る舞いは見ません。

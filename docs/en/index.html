@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>setsuzei | Year-end tax savings calculator for freelancers in Japan (furusato nozei, iDeCo)</title>
+<meta name="description" content="For freelancers and employees with side income in Japan. Estimates how much furusato nozei, iDeCo, Small Business Mutual Aid and the blue-return deduction can still cut your income tax and resident tax before December 31 (tax year 2026). Everything is calculated in your browser.">
+<link rel="canonical" href="https://ozko00.github.io/setsuzei/en/">
+<link rel="alternate" hreflang="ja" href="https://ozko00.github.io/setsuzei/">
+<link rel="alternate" hreflang="en" href="https://ozko00.github.io/setsuzei/en/">
+<link rel="alternate" hreflang="x-default" href="https://ozko00.github.io/setsuzei/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="setsuzei">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta property="og:url" content="https://ozko00.github.io/setsuzei/en/">
+<meta property="og:title" content="setsuzei | Year-end tax savings calculator for freelancers in Japan (furusato nozei, iDeCo)">
+<meta property="og:description" content="For freelancers and employees with side income in Japan. Estimates how much furusato nozei, iDeCo, Small Business Mutual Aid and the blue-return deduction can still cut your income tax and resident tax before December 31 (tax year 2026). Everything is calculated in your browser.">
+<meta property="og:image" content="https://ozko00.github.io/setsuzei/img/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="setsuzei: what to do before year-end and how much tax it saves. An estimate for freelancers and people with side income in Japan (tax year 2026). The image text is in Japanese.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b6b57">
+<link rel="icon" href="../img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../style.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"setsuzei","url":"https://ozko00.github.io/setsuzei/en/","description":"For freelancers and employees with side income in Japan. Estimates how much furusato nozei, iDeCo, Small Business Mutual Aid and the blue-return deduction can still cut your income tax and resident tax before December 31 (tax year 2026). Everything is calculated in your browser.","inLanguage":"en","applicationCategory":"FinanceApplication","operatingSystem":"Any","browserRequirements":"Requires JavaScript","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"JPY"},"license":"https://opensource.org/license/mit","codeRepository":"https://github.com/ozko00/setsuzei"}</script>
+</head>
+<body>
+<a class="skip" href="#results">Skip to the result</a>
+<header class="site">
+  <p class="brand"><span class="mark" aria-hidden="true">税</span>setsuzei<span class="tag">Tax year 2026 · estimate</span><a class="lang" href="../" lang="ja" hreflang="ja">日本語</a></p>
+  <h1>What can you still do before December 31 to cut your Japanese taxes, and by how much?</h1>
+  <p class="lead">For freelancers and employees with side income who live in Japan. Answer three questions and you get a to-do list with amounts.</p>
+  <p class="privacy">Everything is calculated on this page and nothing is sent anywhere. Your entries are stored only if you choose <a href="#save-box">Save on this device</a>.</p>
+</header>
+
+<main>
+<form id="form" autocomplete="off" novalidate>
+  <section class="panel quick" aria-labelledby="quick-title">
+    <h2 id="quick-title">Start with three questions</h2>
+    <p class="hint">Enter amounts in yen, as your <strong>forecast for the whole of this year</strong>. Rough figures are fine. <code>4,800,000</code>, <code>4.8m</code> and <code>480万</code> all work.
+      <button type="button" id="example" class="link">Try an example</button></p>
+
+    <fieldset class="question">
+      <legend><span class="num">1</span>How you work</legend>
+      <div class="segmented">
+        <label class="seg"><input type="radio" name="work" value="freelance" checked><span>Freelancer<small>Sole proprietor. No salary from an employer</small></span></label>
+        <label class="seg"><input type="radio" name="work" value="employee"><span>Employee + side income<small>Part-timers too. You are paid a salary</small></span></label>
+      </div>
+    </fieldset>
+
+    <div class="question">
+      <label class="only-employee"><span class="num">2</span>Annual salary<span class="sub">Gross, before tax and insurance are taken out. On your withholding slip (gensen choshuhyo, 源泉徴収票) it is the “支払金額” box</span>
+        <input name="salary" inputmode="numeric" placeholder="e.g. 6,000,000"></label>
+      <label><span class="num only-freelance">2</span><span class="only-freelance">Revenue this year</span><span class="only-employee">Side-business revenue</span><span class="sub"><span class="only-freelance">Everything your work brings in, before expenses</span><span class="only-employee">Everything your side work brings in, before expenses. Leave empty if none</span></span>
+        <input name="revenue" inputmode="numeric" placeholder="e.g. 4,800,000"></label>
+    </div>
+
+    <div class="question">
+      <label><span class="num">3</span>Expenses<span class="sub"><span class="only-freelance">What you spent to do the work</span><span class="only-employee">What you spent on the side work</span>. You can leave it empty if you do not know yet</span>
+        <input name="expenses" inputmode="numeric" placeholder="e.g. 750,000"></label>
+    </div>
+  </section>
+
+  <details class="panel more" id="more">
+    <summary><span class="summary-title">Make it more accurate</span><span class="summary-sub">Social insurance, blue return, contributions, family. Fill in only what you know</span></summary>
+
+    <fieldset>
+      <legend>Social insurance premiums</legend>
+      <p class="sub only-freelance">National Health Insurance (kokumin kenko hoken) plus National Pension (kokumin nenkin): the total you pay from January to December this year. All of it is deducted from your income.</p>
+      <p class="sub only-employee">Health insurance, Employees' Pension Insurance and employment insurance taken out of your salary: the total for the year. All of it is deducted from your income.</p>
+      <div class="choices">
+        <label class="inline"><input type="radio" name="si-mode" value="estimate" checked> I don't know (use a rough figure)</label>
+        <label class="inline"><input type="radio" name="si-mode" value="enter"> Enter the amount</label>
+      </div>
+      <div class="only-si-estimate guide" id="si-guide" aria-live="polite"></div>
+      <div class="only-si-enter">
+        <label>Social insurance premiums for the year<span class="sub">Until you enter an amount, the rough figure is used</span>
+          <input name="social-insurance" inputmode="numeric" placeholder="e.g. 590,000"></label>
+        <details class="help">
+          <summary>Where do I find this?</summary>
+          <ul>
+            <li><strong>Employees</strong>: the “社会保険料等の金額” box on your withholding slip (源泉徴収票). If this year's slip is not out yet, last year's figure is a fair guide.</li>
+            <li><strong>National Health Insurance</strong>: the annual amount on the bill (納付通知書) your city office sends. If you pay by direct debit, add up the debits in your bank book.</li>
+            <li><strong>National Pension</strong>: the total of your payment slips, or the deduction certificate (控除証明書) that arrives in autumn.</li>
+            <li>If you filed a tax return last year, the “社会保険料控除” line on page 1 of the return also helps.</li>
+          </ul>
+        </details>
+      </div>
+    </fieldset>
+
+    <fieldset class="only-has-business">
+      <legend><span class="only-freelance">How you file</span><span class="only-employee">How you file the side income</span></legend>
+      <div class="field">
+        <span class="field-label">Type of income<span class="sub">Work you run as an ongoing business, with an opening notice (kaigyo todoke) filed and books kept, is “business income” (jigyo shotoku). Other side income is normally “miscellaneous income” (zatsu shotoku)</span></span>
+        <div class="choices">
+          <label class="inline"><input type="radio" name="income-type" value="business" checked> Business income</label>
+          <label class="inline"><input type="radio" name="income-type" value="misc"> Miscellaneous income</label>
+        </div>
+      </div>
+      <label class="only-business">Special deduction for blue returns<span class="sub">A “blue return” (aoiro shinkoku) is a return type for business owners who keep proper books. Only people whose application (青色申告承認申請書) the tax office has accepted can use this deduction</span>
+        <select name="blue">
+          <option value="unknown">Not sure, or never applied (calculate without it)</option>
+          <option value="none">White return (no deduction)</option>
+          <option value="10">Blue return, ¥100,000 (simple books)</option>
+          <option value="55">Blue return, ¥550,000 (double-entry books, filed on paper)</option>
+          <option value="65">Blue return, ¥650,000 (double-entry books + e-Tax)</option>
+        </select></label>
+      <details class="help only-business">
+        <summary>Blue or white: how can I tell?</summary>
+        <ul>
+          <li>If you filed the blue return application (青色申告承認申請書) with the tax office, usually when you opened the business, you file a blue return. If not, you file a white return.</li>
+          <li>Double-entry books kept with accounting software and a return filed online with e-Tax give ¥650,000. The same books filed on paper give ¥550,000. Simple books give ¥100,000.</li>
+          <li>If you have last year's return, the amount is on page 1 in the “青色申告特別控除額” box.</li>
+        </ul>
+      </details>
+    </fieldset>
+
+    <fieldset>
+      <legend>Already paid, or due before year-end</legend>
+      <label>iDeCo contributions<span class="sub">iDeCo is a private pension you fund yourself; contributions are fully deductible. Enter the total for this year, or leave empty if you have no account</span>
+        <input name="ideco-paid" inputmode="numeric" placeholder="e.g. 144,000"></label>
+      <label>Small Business Mutual Aid contributions<span class="sub">Shokibo kigyo kyosai (小規模企業共済), a retirement fund for sole proprietors. Leave empty if you are not a member</span>
+        <input name="kyosai-paid" inputmode="numeric" placeholder="e.g. 360,000"></label>
+      <label>Furusato nozei already donated<span class="sub">Furusato nozei (ふるさと納税, “hometown tax”) is a donation to a municipality that comes off your taxes. Enter what you have donated so far this year</span>
+        <input name="furusato-paid" inputmode="numeric" placeholder="e.g. 30,000"></label>
+      <label>Other deductions, in total<span class="sub">Medical expenses, life insurance premiums and so on. Last year's return or year-end adjustment is a fair guide</span>
+        <input name="other-deductions" inputmode="numeric" placeholder="e.g. 80,000"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Family</legend>
+      <label class="inline"><input type="checkbox" name="has-spouse"> <span>I have a spouse<span class="sub">Living in the same household. After ticking, fill in one of the two fields below (until you do, the calculation assumes no spouse)</span></span></label>
+      <div class="only-spouse">
+        <label>Spouse's annual salary<span class="sub">If their only income is a salary: the gross amount, before tax and insurance. Enter 0 if they have no income</span>
+          <input name="spouse-salary" inputmode="numeric" placeholder="e.g. 4,000,000"></label>
+        <label>Spouse's total income<span class="sub">Use this instead if they have other income, or you know their income after expenses (this field takes priority). Above ¥1.33 million there is no exemption</span>
+          <input name="spouse-income" inputmode="numeric" placeholder="e.g. 0"></label>
+        <label class="inline"><input type="checkbox" name="spouse-70"> My spouse is 70 or over</label>
+      </div>
+      <p class="field-label">Dependents you support<span class="sub">By age on December 31 this year. Children under 16 do not reduce your income tax, but enter them anyway: they affect the income level below which resident tax is waived</span></p>
+      <div class="grid2">
+        <label>Under 16
+          <input name="dependents-under16" inputmode="numeric" placeholder="0"></label>
+        <label>16 to 18, or 23 to 69
+          <input name="dependents" inputmode="numeric" placeholder="0"></label>
+        <label>19 to 22
+          <input name="dependents-specific" inputmode="numeric" placeholder="0"></label>
+        <label>70 or over (parents or grandparents living with you)
+          <input name="dependents-elderly-cohabiting" inputmode="numeric" placeholder="0"></label>
+        <label>70 or over (others)
+          <input name="dependents-elderly" inputmode="numeric" placeholder="0"></label>
+      </div>
+      <label class="inline only-employee"><input type="checkbox" name="income-adjustment"> <span>I have a dependent under 23 (a child aged 16 to 18, for example) or a family member with a severe disability<span class="sub">Matters only if your salary is above ¥8.5 million (an extra deduction, shotoku kingaku chosei kojo). Applied automatically when you enter dependents under 16 or aged 19 to 22</span></span></label>
+    </fieldset>
+
+    <details class="nested">
+      <summary>Advanced settings</summary>
+      <label>iDeCo annual limit<span class="sub">Left empty, it is guessed from how you work: ¥68,000 a month with no salary, or ¥23,000 a month for an employee whose company has no corporate pension. Enter it if your company has a corporate pension or you are a public servant</span>
+        <input name="ideco-limit" inputmode="numeric"></label>
+      <label>National Health Insurance income-based rate (%)<span class="sub">The sum of the medical, support, long-term care and other parts in your municipality. If entered, you also get a rough figure for how the blue-return level changes next fiscal year's premium</span>
+        <input name="nhi-rate" inputmode="decimal" placeholder="e.g. 11.5"></label>
+    </details>
+  </details>
+
+  <div class="form-actions">
+    <button type="reset" class="link">Clear the form</button>
+  </div>
+
+</form>
+
+<div class="results" id="results">
+  <h2 class="results-title">Result</h2>
+  <p class="sr-only" id="live" role="status" aria-live="polite"></p>
+  <div id="notice"></div>
+
+  <section class="plan" id="plan" hidden aria-labelledby="plan-title">
+    <h3 id="plan-title">To do before year-end</h3>
+    <p class="plan-lead" id="plan-lead"></p>
+    <p class="approx"><strong>This is an estimate.</strong> Your actual tax depends on what you file.</p>
+    <div class="assumed" id="assumed" hidden>
+      <p class="assumed-title">For anything you have not entered yet, these assumptions are used:</p>
+      <ul id="assumed-list"></ul>
+      <button type="button" class="button" id="open-more">Correct these assumptions</button>
+    </div>
+
+    <div class="budget">
+      <label for="budget">What you can spend before year-end<span class="optional-mark">optional</span><span class="sub">How much you could put toward donations and contributions by December 31 (for example, 100,000 if you can take up to ¥100,000 from savings). If you enter it, you get the mix that saves the most tax within that amount. If you leave it empty, the result goes up to each limit</span></label>
+      <span class="amount-field"><input id="budget" name="budget" form="form" inputmode="numeric" placeholder="e.g. 100,000"><span class="unit">yen</span></span>
+      <p class="sub" id="budget-reason"></p>
+    </div>
+
+    <ol class="actions">
+      <li class="action" id="act-furusato">
+        <h4><span class="action-name">Furusato nozei</span><span class="action-kind">Donate to a municipality (ふるさと納税, “hometown tax”) and receive return gifts</span></h4>
+        <dl class="steps">
+          <div><dt>What to do</dt><dd id="furusato-do"></dd></div>
+          <div class="pay"><dt><label for="furusato-add">Amount to pay</label></dt><dd>
+            <span class="amount-field"><input id="furusato-add" name="furusato-add" form="form" inputmode="numeric" aria-describedby="furusato-hint"><span class="unit">yen</span></span>
+            <input type="range" id="furusato-range" min="0" step="1000" aria-label="Adjust the furusato nozei amount">
+            <span class="sub" id="furusato-hint"></span></dd></div>
+          <div><dt>Tax saved</dt><dd><span class="saving" id="furusato-saving"></span>
+            <span class="sub worth" id="furusato-worth"></span></dd></div>
+        </dl>
+        <details class="help more-info">
+          <summary>How to do it, deadline, caveats (by December 31)</summary>
+          <dl class="info">
+            <div><dt>How</dt><dd><ol class="howto">
+              <li>Pick a municipality and complete the donation (the payment itself) by December 31.</li>
+              <li>Keep the donation receipt (受領書) the municipality sends you.</li>
+              <li>Claim it as a deduction for donations on your final tax return (kakutei shinkoku), due by March 15 next year, with the receipts.</li>
+              <li>If you file a tax return, you cannot use the “one-stop exception”. That shortcut is only for employees and others who do not need to file a return.</li>
+            </ol><a href="https://www.nta.go.jp/english/taxes/individual/incometax_2025.htm" rel="noopener noreferrer" target="_blank" hreflang="en">NTA: Income Tax Guide in English (2025 edition; see “Deduction for donations”)</a>, <a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/furusato/mechanism/procedure.html" rel="noopener noreferrer" target="_blank" hreflang="ja">Ministry of Internal Affairs and Communications: how furusato nozei works (Japanese only)</a>, <a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1155.htm" rel="noopener noreferrer" target="_blank" hreflang="ja">NTA Tax Answer No. 1155: furusato nozei (Japanese only)</a></dd></div>
+            <div><dt>Deadline</dt><dd>Donations paid by December 31 count for this year.</dd></div>
+            <div><dt>Caveats</dt><dd>The money you donate does leave your account. Your tax goes down by at most the donation minus ¥2,000, so what you gain is the return gifts. You claim it on your tax return.</dd></div>
+          </dl>
+          <ul id="furusato-notes"></ul>
+        </details>
+        <p class="action-off" id="furusato-off"></p>
+      </li>
+
+      <li class="action" id="act-kyosai">
+        <h4><span class="action-name">Small Business Mutual Aid</span><span class="action-kind" id="kyosai-kind">A retirement fund for sole proprietors, run by SMRJ, a government agency for small businesses</span></h4>
+        <dl class="steps">
+          <div><dt>What to do</dt><dd id="kyosai-do"></dd></div>
+          <div class="pay"><dt><label for="kyosai-add">Amount to pay</label></dt><dd>
+            <span class="amount-field"><input id="kyosai-add" name="kyosai-add" form="form" inputmode="numeric" placeholder="0" aria-describedby="kyosai-hint"><span class="unit">yen</span></span>
+            <input type="range" id="kyosai-range" min="0" step="1000" aria-label="Adjust the Small Business Mutual Aid amount">
+            <span class="sub" id="kyosai-hint"></span></dd></div>
+          <div><dt>Tax saved</dt><dd><span class="saving" id="kyosai-saving"></span>
+            <span class="sub worth" id="kyosai-worth"></span></dd></div>
+        </dl>
+        <details class="help more-info">
+          <summary>How to do it, deadline, caveats</summary>
+          <dl class="info">
+            <div><dt>How</dt><dd><ul class="howto">
+              <li><strong>Joining</strong>: for an application in November or December to count for this year, apply at the counter of an SMRJ agent (a chamber of commerce and industry, a commerce and industry association, or a bank) and pay the contribution in cash on the spot (the “現金あり” option). If you choose annual payment and pay 12 months in cash, the whole amount counts for this year. Online applications are first debited two months later, so applying online in November or December counts for next year.</li>
+              <li><strong>Raising your contribution</strong>: hand in the change form (掛金月額変更（増額・減額）申込書) at an agent's counter, or mail it to SMRJ. The cut-off is the end of each month; if the paperwork is done by then, the higher amount applies from that month.</li>
+              <li><strong>Raising it and prepaying coming months</strong>: do it at an agent's counter, paying in cash with the application (this cannot be done by mail).</li>
+            </ul>The scheme is called 小規模企業共済 (shokibo kigyo kyosai) in Japanese; you will need that name at the counter. <a href="https://www.smrj.go.jp/kyosai/skyosai/news/2026/qsktgp000000cx1u.html" rel="noopener noreferrer" target="_blank" hreflang="ja">SMRJ notice: what counts as a deduction for 2026 (Japanese only)</a>, <a href="https://kyosai-web.smrj.go.jp/skyosai/entry/index_07.html" rel="noopener noreferrer" target="_blank" hreflang="ja">SMRJ: paying your first contribution (Japanese only)</a>, <a href="https://kyosai-web.smrj.go.jp/customer/skyosai/installment/describe/index_03.html" rel="noopener noreferrer" target="_blank" hreflang="ja">SMRJ: raising your contribution (Japanese only)</a>, <a href="https://kyosai-web.smrj.go.jp/customer/skyosai/installment/describe/index_02.html" rel="noopener noreferrer" target="_blank" hreflang="ja">SMRJ: raising and prepaying (Japanese only)</a></dd></div>
+            <div><dt>Deadline</dt><dd>Contributions paid by December 31 count for this year. Ask the counter about its last business day of the year and the documents you need. If you raise the amount by direct debit, check that the higher debit happens within the year.</dd></div>
+            <div><dt>Caveats</dt><dd>What you pay in stays yours as savings, paid out when you close the business or retire (it is taxed when you receive it). If you cancel voluntarily with fewer than 20 years of contributions you get back less than you paid, and with fewer than 12 months nothing. Whether you qualify to join is not checked here. SMRJ is the Organization for Small &amp; Medium Enterprises and Regional Innovation, an independent administrative agency.</dd></div>
+          </dl>
+          <ul id="kyosai-notes"></ul>
+        </details>
+      </li>
+
+      <li class="action" id="act-ideco">
+        <h4><span class="action-name">iDeCo</span><span class="action-kind">A private pension you fund yourself. Only if you can still raise contributions this year</span></h4>
+        <dl class="steps">
+          <div><dt>What to do</dt><dd id="ideco-do"></dd></div>
+          <div class="pay"><dt><label for="ideco-add">Amount to pay</label></dt><dd>
+            <span class="amount-field"><input id="ideco-add" name="ideco-add" form="form" inputmode="numeric" placeholder="0" aria-describedby="ideco-hint"><span class="unit">yen</span></span>
+            <input type="range" id="ideco-range" min="0" step="1000" aria-label="Adjust the extra iDeCo amount">
+            <span class="sub" id="ideco-hint"></span></dd></div>
+          <div><dt>Tax saved</dt><dd><span class="saving" id="ideco-saving"></span>
+            <span class="sub worth" id="ideco-worth"></span></dd></div>
+        </dl>
+        <details class="help more-info">
+          <summary>How to do it, deadline, caveats</summary>
+          <dl class="info">
+            <div><dt>How</dt><dd><ol class="howto">
+              <li>Contact the financial institution that runs your iDeCo account and ask for the form to change your contribution amount.</li>
+              <li>Submit the form. You can change the amount once per contribution year (December to the following November).</li>
+              <li>Ask from which monthly debit the new amount applies, and whether that debit still falls within this year.</li>
+            </ol><a href="https://www.ideco-koushiki.jp/english/" rel="noopener noreferrer" target="_blank" hreflang="en">iDeCo official site: What is iDeCo? (English)</a>, <a href="https://www.ideco-koushiki.jp/join/" rel="noopener noreferrer" target="_blank" hreflang="ja">iDeCo official site: change forms (Japanese only)</a></dd></div>
+            <div><dt>Deadline</dt><dd>Contributions debited by December count for this year.</dd></div>
+            <div><dt>Caveats</dt><dd>The amount can be changed only once a year, and whether you can still add more this year depends on your provider and the date. As a rule you cannot withdraw before age 60.</dd></div>
+          </dl>
+          <ul id="ideco-notes"></ul>
+        </details>
+      </li>
+    </ol>
+
+    <div class="headline" id="totals">
+      <div class="figure accent"><span class="label">Total tax saved</span><strong id="total-saving"></strong></div>
+      <div class="figure"><span class="label">What you pay this year to get it</span><strong id="total-payment"></strong></div>
+      <div class="figure"><span class="label">Your tax now → afterwards</span><strong id="total-tax"></strong></div>
+    </div>
+    <p class="sub" id="totals-note"></p>
+    <p class="plan-tools">
+      <button type="button" class="link" id="plan-reset" hidden>Reset the amounts to the suggested ones</button>
+    </p>
+
+    <div class="later" id="later" hidden>
+      <h4>When you file your return</h4>
+      <p id="later-text"></p>
+      <details class="help more-info">
+        <summary>Switching to a blue return (the application and its deadline)</summary>
+        <ul class="howto">
+          <li>To file a blue return from next year, submit the blue return application (青色申告承認申請書) to the tax office for your address by March 15 next year.</li>
+          <li>If you have just started the business, submitting it within two months of the start date makes that year a blue-return year.</li>
+          <li>The ¥650,000 deduction needs double-entry books, a balance sheet and a profit-and-loss statement attached, a return filed on time, and filing with e-Tax (or qualifying electronic books).</li>
+        </ul>
+        <p class="sub"><a href="https://www.nta.go.jp/english/taxes/individual/incometax_2025.htm" rel="noopener noreferrer" target="_blank" hreflang="en">NTA: Income Tax Guide in English (2025 edition; search for “blue return”)</a>, <a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2070.htm" rel="noopener noreferrer" target="_blank" hreflang="ja">NTA Tax Answer No. 2070: the blue return system (Japanese only)</a></p>
+      </details>
+    </div>
+
+    <div class="share">
+      <button type="button" class="button" id="copy">Copy the result as text</button>
+      <button type="button" class="button" id="print">Print</button>
+      <span class="sub" id="share-status" role="status"></span>
+      <label class="copy-fallback" id="copy-fallback" hidden>Copying did not work. Select the text below and copy it
+        <textarea id="copy-text" rows="10" readonly></textarea></label>
+    </div>
+  </section>
+
+  <div id="result"></div>
+
+  <section class="card disclaimer">
+    <h3>About this result</h3>
+    <p><strong>This is an estimate</strong> based on the figures you entered and simplified assumptions. Your actual tax depends on what you file and on your municipality. It does not replace the judgment of a tax accountant (zeirishi), the tax office or your city office. Check with a professional or the office in charge before any important decision.</p>
+    <p>It assumes you are a resident of Japan for tax purposes for the whole year, that everything you entered is taxable in Japan, and that you still live in Japan on January 1 next year (resident tax is charged by the municipality where you live on that date). Foreign income, tax treaties and the rules for non-residents are not handled.</p>
+    <p>Not calculated: the full National Health Insurance premium, enterprise tax, consumption tax, the waiver of the per-person part of resident tax, separately taxed income (such as capital gains), the housing loan credit and other tax credits.</p>
+    <details>
+      <summary>Primary sources behind the numbers</summary>
+      <p class="sub">Every rate and threshold was checked against these official pages. They are in Japanese; titles are shown as published.</p>
+      <ul id="sources" class="sources"></ul>
+      <p class="sub">Sources for the rough social insurance figure (when you choose “I don't know”):</p>
+      <ul id="guide-sources" class="sources"></ul>
+    </details>
+  </section>
+</div>
+
+<section class="panel save" id="save-box" aria-labelledby="save-title">
+  <h2 id="save-title" class="small-title">Pick up where you left off</h2>
+  <label class="inline"><input type="checkbox" id="save"> Save my entries on this device</label>
+  <p class="sub">Off by default. If you tick it, the values in the form (income, expenses, deductions, family, amounts to pay, what you can spend) are stored only in this browser on this device, so you can continue next time. Results are not stored. Nothing is sent anywhere. Untick it and the stored values are deleted at once. Do not tick it on a shared device.</p>
+  <p class="sub" id="save-status" role="status"></p>
+</section>
+</main>
+
+<div class="about">
+<section>
+  <h2>Single-topic calculators</h2>
+  <ul>
+    <li><a href="furusato-nozei-limit-freelance/">Furusato nozei limit calculator for freelancers and sole proprietors</a></li>
+    <li><a href="ideco-tax-savings-self-employed/">iDeCo tax savings calculator for freelancers and the self-employed</a></li>
+    <li><a href="small-business-mutual-aid-tax-savings/">Small Business Mutual Aid (shokibo kigyo kyosai) tax savings calculator</a></li>
+    <li><a href="blue-return-deduction/">Blue return special deduction: ¥650,000 vs ¥550,000 vs ¥100,000 in actual tax</a></li>
+    <li><a href="furusato-nozei-limit-2026/">Is your furusato nozei limit lower for 2026? Compare it with 2025</a></li>
+  </ul>
+  <p>Each has the formula and its legal basis, tables by income, and common questions.</p>
+</section>
+<section>
+  <h2>About this calculator</h2>
+  <p>From your forecast income, expenses and family for the year, it estimates income tax for tax year 2026 (Reiwa 8) and resident tax for fiscal 2027, and how much these four things would cut them:</p>
+  <ul>
+    <li><strong>Furusato nozei</strong> (ふるさと納税, “hometown tax”): you donate to a municipality of your choice, get local products in return, and the donation minus about ¥2,000 comes off your income tax and resident tax. The calculator gives the donation limit at which the out-of-pocket cost stays at about ¥2,000, and the tax saved.</li>
+    <li><strong>iDeCo</strong>: an individual-type defined contribution pension. Contributions are fully deductible; the money is locked until 60. You get the room left under the annual limit and the tax saved by filling it.</li>
+    <li><strong>Small Business Mutual Aid</strong> (小規模企業共済, shokibo kigyo kyosai): a retirement fund for sole proprietors and small-company directors. Contributions of up to ¥70,000 a month are fully deductible. You get the room left and the tax saved.</li>
+    <li><strong>Special deduction for blue returns</strong> (青色申告特別控除): ¥100,000, ¥550,000 or ¥650,000 off business income for people approved to file a “blue return” with proper books. You get the tax at each level and the difference.</li>
+  </ul>
+  <p>The total under “To do before year-end” is recomputed with everything together, not added up. It includes furusato nozei and, for people who are already members, extra Small Business Mutual Aid contributions. Joining Small Business Mutual Aid and extra iDeCo contributions are included only when you enter an amount yourself, because joining in time needs a visit to a counter, and iDeCo amounts can be changed only once a year.</p>
+  <p>You can move each amount and see how the tax changes. If you enter what you can spend before year-end, you get the mix that saves the most tax within it. Furusato nozei goes first because it cuts tax by almost as much as you pay, but it is an exchange for a donation: you do not end up with more cash.</p>
+  <h3>Assumptions</h3>
+  <ul>
+    <li>Every amount is treated as your forecast for the whole calendar year. Japan's tax year is January to December.</li>
+    <li>You are a resident of Japan for tax purposes all year and still live in Japan on January 1, 2027. Resident tax (住民税, juminzei; “inhabitant tax” in NTA's English guide) for fiscal 2027 is billed from June 2027 by the municipality where you live on that date.</li>
+    <li>Social insurance premiums are deducted as entered. While “I don't know” is selected, a rough figure is used and shown with its range. For employees it comes from the Employees' Pension, Kyokai Kenpo health insurance and employment insurance rates; for freelancers from the flat National Pension premium and the National Health Insurance rates of three cities. Your real figure will differ.</li>
+    <li>With only the first three answers, it assumes no blue-return deduction, no dependents, and no contributions or donations so far, and says so in the result. For “Employee + side income”, the side income is treated as miscellaneous income (you can change this).</li>
+    <li>Resident tax uses the standard rate: 10% on income plus ¥5,000 for the per-person part and the forest environment tax.</li>
+    <li>Furusato nozei assumes you file a final tax return. The iDeCo limit is assumed to be ¥68,000 a month with no salary, or ¥23,000 a month for an employee whose company has no corporate pension (you can change it).</li>
+    <li>The income level below which the income-based part of resident tax is waived is worked out from your spouse and dependents (including children under 16). The waiver of the per-person part differs by municipality and is not calculated.</li>
+    <li>The full National Health Insurance premium, enterprise tax, consumption tax, separately taxed income, and the housing loan credit are not calculated.</li>
+  </ul>
+  <h3>Sources</h3>
+  <p>Every rate, deduction and limit comes from a primary source: the National Tax Agency's Tax Answers, the Ministry of Internal Affairs and Communications, statutes on e-Gov (such as the Local Tax Act), the Ministry of Health, Labour and Welfare, and SMRJ. The source for each number is listed under “Primary sources behind the numbers” above and in the <a href="https://github.com/ozko00/setsuzei/blob/main/src/data/2026.ts" rel="noopener">data file</a>. English terms follow the NTA's English income tax guide where it has one.</p>
+</section>
+</div>
+
+<a id="jump" class="jump" href="#plan" hidden></a>
+
+<footer class="site">
+  <p><span id="version">setsuzei</span> · MIT License · The same calculation runs on the command line with <code>npx setsuzei</code> (Node.js 20 or later; output in Japanese). · <a href="https://github.com/ozko00/setsuzei/blob/main/README.en.md" rel="noopener">How to run it, source code and assumptions (GitHub)</a> · <a href="../" lang="ja" hreflang="ja">日本語版</a></p>
+</footer>
+<noscript><p class="card error">This calculator needs JavaScript.</p></noscript>
+<script type="module" src="../js/web/main.js"></script>
+</body>
+</html>

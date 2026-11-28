@@ -1,3 +1,4 @@
+import { m } from "./messages.js";
 import { DEFAULT_YEAR, supportedYears } from "../data/index.js";
 import type { BlueReturn, DependentsInput, SpouseInput, TaxInput } from "./types.js";
 
@@ -5,7 +6,7 @@ import type { BlueReturn, DependentsInput, SpouseInput, TaxInput } from "./types
 export class InputError extends Error {
   readonly issues: readonly string[];
   constructor(issues: readonly string[]) {
-    super(`入力に誤りがあります:\n${issues.map((i) => `  - ${i}`).join("\n")}`);
+    super(`${m().inputHeader}\n${issues.map((i) => `  - ${i}`).join("\n")}`);
     this.name = "InputError";
     this.issues = issues;
   }
@@ -51,11 +52,11 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function checkAmount(value: unknown, name: string, issues: string[], max = MAX_AMOUNT): number | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value === "number" && Number.isInteger(value) && value > max) {
-    issues.push(`${name}: 大きすぎます。${max.toLocaleString("ja-JP")} 以下で指定してください（受け取った値: ${value.toLocaleString("ja-JP")}）`);
+    issues.push(m().tooLarge(name, max, value));
     return undefined;
   }
   if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
-    issues.push(`${name}: 0 以上の整数（円）で指定してください（受け取った値: ${JSON.stringify(value)}）`);
+    issues.push(m().notAmount(name, value));
     return undefined;
   }
   return value;
@@ -67,11 +68,11 @@ function checkAmount(value: unknown, name: string, issues: string[], max = MAX_A
  */
 export function validateInput(raw: unknown): TaxInput {
   if (!isPlainObject(raw)) {
-    throw new InputError(["入力は JSON オブジェクトで指定してください"]);
+    throw new InputError([m().notObject]);
   }
   const issues: string[] = [];
   for (const key of Object.keys(raw)) {
-    if (!KNOWN_KEYS.has(key)) issues.push(`${key}: 知らない項目です`);
+    if (!KNOWN_KEYS.has(key)) issues.push(m().unknownKey(key));
   }
 
   const out: { -readonly [K in keyof TaxInput]: TaxInput[K] } = {};
@@ -79,7 +80,7 @@ export function validateInput(raw: unknown): TaxInput {
   if (raw["year"] !== undefined && raw["year"] !== null) {
     const year = raw["year"];
     if (typeof year !== "number" || !supportedYears().includes(year)) {
-      issues.push(`year: 対応している年分は ${supportedYears().join(", ")} です（省略時は ${DEFAULT_YEAR}）`);
+      issues.push(m().yearUnsupported(supportedYears().join(", "), DEFAULT_YEAR));
     } else {
       out.year = year;
     }
@@ -102,7 +103,7 @@ export function validateInput(raw: unknown): TaxInput {
     if (ok) out.nhiIncomeRatePercent = nhiRate;
     else {
       issues.push(
-        `nhiIncomeRatePercent: 0 より大きく 100 以下のパーセント（小数第3位まで。例: 11.5）で指定してください（受け取った値: ${JSON.stringify(nhiRate)}）`,
+        m().nhiRate(nhiRate),
       );
     }
   }
@@ -110,13 +111,13 @@ export function validateInput(raw: unknown): TaxInput {
   const adjustment = raw["incomeAdjustment"];
   if (adjustment !== undefined && adjustment !== null) {
     if (typeof adjustment === "boolean") out.incomeAdjustment = adjustment;
-    else issues.push("incomeAdjustment: true / false で指定してください");
+    else issues.push(m().incomeAdjustmentBool);
   }
 
   const type = raw["businessIncomeType"];
   if (type !== undefined && type !== null) {
     if (type === "business" || type === "misc") out.businessIncomeType = type;
-    else issues.push(`businessIncomeType: "business"（事業所得）か "misc"（雑所得）で指定してください`);
+    else issues.push(m().incomeType);
   }
 
   const blue = raw["blueReturn"];
@@ -125,25 +126,25 @@ export function validateInput(raw: unknown): TaxInput {
     if (typeof normalized === "string" && (BLUE_VALUES as readonly string[]).includes(normalized)) {
       out.blueReturn = normalized as BlueReturn;
     } else {
-      issues.push(`blueReturn: "none" / "10" / "55" / "65" のいずれかで指定してください`);
+      issues.push(m().blueLevels);
     }
   }
 
   const spouse = raw["spouse"];
   if (spouse !== undefined && spouse !== null) {
     if (!isPlainObject(spouse)) {
-      issues.push("spouse: { income, age70OrOlder } の形で指定してください");
+      issues.push(m().spouseShape);
     } else {
       for (const key of Object.keys(spouse)) {
-        if (key !== "income" && key !== "age70OrOlder") issues.push(`spouse.${key}: 知らない項目です`);
+        if (key !== "income" && key !== "age70OrOlder") issues.push(m().unknownKey(`spouse.${key}`));
       }
       const income = checkAmount(spouse["income"], "spouse.income", issues);
       if (spouse["income"] === undefined || spouse["income"] === null) {
-        issues.push("spouse.income: 配偶者の合計所得金額（円）を指定してください");
+        issues.push(m().spouseIncome);
       }
       const age = spouse["age70OrOlder"];
       if (age !== undefined && age !== null && typeof age !== "boolean") {
-        issues.push("spouse.age70OrOlder: true / false で指定してください");
+        issues.push(m().spouse70);
       }
       if (income !== undefined) {
         const s: { -readonly [K in keyof SpouseInput]: SpouseInput[K] } = { income };
@@ -156,11 +157,11 @@ export function validateInput(raw: unknown): TaxInput {
   const dependents = raw["dependents"];
   if (dependents !== undefined && dependents !== null) {
     if (!isPlainObject(dependents)) {
-      issues.push("dependents: { general, specific, elderly, elderlyCohabiting, under16 } の形で人数を指定してください");
+      issues.push(m().dependentsShape);
     } else {
       const d: { -readonly [K in keyof DependentsInput]: DependentsInput[K] } = {};
       for (const key of Object.keys(dependents)) {
-        if (!(DEPENDENT_KEYS as readonly string[]).includes(key)) issues.push(`dependents.${key}: 知らない項目です`);
+        if (!(DEPENDENT_KEYS as readonly string[]).includes(key)) issues.push(m().unknownKey(`dependents.${key}`));
       }
       for (const key of DEPENDENT_KEYS) {
         const value = checkAmount(dependents[key], `dependents.${key}`, issues, 99);
@@ -171,7 +172,7 @@ export function validateInput(raw: unknown): TaxInput {
   }
 
   if (out.blueReturn && out.blueReturn !== "none" && out.businessIncomeType === "misc") {
-    issues.push("blueReturn: 雑所得には青色申告特別控除を適用できません");
+    issues.push(m().blueForMisc);
   }
 
   if (issues.length > 0) throw new InputError(issues);

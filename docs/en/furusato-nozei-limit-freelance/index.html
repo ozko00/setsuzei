@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Furusato nozei limit calculator for freelancers in Japan (tax year 2026) | setsuzei</title>
+<meta name="description" content="Work out your furusato nozei (hometown tax) donation limit from your freelance revenue and expenses. Reflects the higher basic exemption for tax year 2026 and shows how iDeCo or Small Business Mutual Aid lowers the limit. Nothing you enter is sent anywhere.">
+<link rel="canonical" href="https://ozko00.github.io/setsuzei/en/furusato-nozei-limit-freelance/">
+<link rel="alternate" hreflang="ja" href="https://ozko00.github.io/setsuzei/furusato-nozei-freelance/">
+<link rel="alternate" hreflang="en" href="https://ozko00.github.io/setsuzei/en/furusato-nozei-limit-freelance/">
+<link rel="alternate" hreflang="x-default" href="https://ozko00.github.io/setsuzei/furusato-nozei-freelance/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="setsuzei">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta property="og:url" content="https://ozko00.github.io/setsuzei/en/furusato-nozei-limit-freelance/">
+<meta property="og:title" content="Furusato nozei limit calculator for freelancers in Japan (tax year 2026) | setsuzei">
+<meta property="og:description" content="Work out your furusato nozei (hometown tax) donation limit from your freelance revenue and expenses. Reflects the higher basic exemption for tax year 2026 and shows how iDeCo or Small Business Mutual Aid lowers the limit. Nothing you enter is sent anywhere.">
+<meta property="og:image" content="https://ozko00.github.io/setsuzei/img/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b6b57">
+<link rel="icon" href="../../img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../style.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Furusato nozei limit calculator for freelancers and sole proprietors","url":"https://ozko00.github.io/setsuzei/en/furusato-nozei-limit-freelance/","description":"Work out your furusato nozei (hometown tax) donation limit from your freelance revenue and expenses. Reflects the higher basic exemption for tax year 2026 and shows how iDeCo or Small Business Mutual Aid lowers the limit. Nothing you enter is sent anywhere.","inLanguage":"en","applicationCategory":"FinanceApplication","operatingSystem":"Any","browserRequirements":"Requires JavaScript","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"JPY"},"license":"https://opensource.org/license/mit","codeRepository":"https://github.com/ozko00/setsuzei"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","inLanguage":"en","mainEntity":[{"@type":"Question","name":"Does furusato nozei leave me with more money?","acceptedAnswer":{"@type":"Answer","text":"No. Your tax goes down by at most the donation minus ¥2,000 (Ministry of Internal Affairs and Communications: furusato nozei portal, how the deduction works (Japanese only)). You pay the donation first and get almost the same amount back later as lower tax, so it works like paying part of your tax in advance. What you gain is the return gifts. Anything you donate above the limit comes out of your own pocket."}},{"@type":"Question","name":"Can I use the charts made for employees?","acceptedAnswer":{"@type":"Answer","text":"Not reliably. Those charts take a salary, subtract the employment income deduction and assume social insurance at a fixed share of pay. A freelancer's limit comes from revenue minus expenses and the blue-return deduction, so the same “annual income” gives a different limit. Enter your revenue and expenses above."}},{"@type":"Question","name":"Does paying into iDeCo or Small Business Mutual Aid change my limit?","acceptedAnswer":{"@type":"Answer","text":"Yes, it lowers it. Contributions are fully deductible, which shrinks the income-based part of your resident tax. With an income of ¥5,000,000 and no dependents (same assumptions as the table), the limit is ¥80,000; paying ¥816,000 a year into iDeCo brings it to ¥56,000. Decide your contributions first, then your donations."}},{"@type":"Question","name":"I can't predict my revenue until year-end. How much is safe?","acceptedAnswer":{"@type":"Answer","text":"The limit follows your income. If income comes in below your forecast, the limit drops and the excess is out of pocket. The row one step below your expected income in the table gives a feel for the downside. The surest way is to enter a cautious revenue figure before you donate."}},{"@type":"Question","name":"With the same income as last year, is my 2026 limit different?","acceptedAnswer":{"@type":"Answer","text":"It can be. From tax year 2026 the basic exemption for income tax is higher (up to ¥1,040,000 depending on total income; NTA Tax Answer No. 1199: basic exemption (Japanese only), NTA's notice on the change (Japanese only)). That lowers taxable income and moves some people into a lower bracket. A lower rate makes the denominator of the formula larger, so the limit goes down a little. Your income tax itself is lower by the larger exemption."}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"setsuzei","item":"https://ozko00.github.io/setsuzei/en/"},{"@type":"ListItem","position":2,"name":"Furusato nozei limit (freelancers)","item":"https://ozko00.github.io/setsuzei/en/furusato-nozei-limit-freelance/"}]}</script>
+</head>
+<body class="article">
+<a class="skip" href="#results">Skip to the result</a>
+<header class="site">
+  <p class="brand"><a href="../"><span class="mark" aria-hidden="true">税</span></a><a href="../">setsuzei</a><span class="tag">Tax year 2026 · estimate</span><a class="lang" href="../../furusato-nozei-freelance/" lang="ja" hreflang="ja">日本語</a></p>
+  <p class="crumbs"><a href="../">Full year-end calculator</a> › Furusato nozei limit (freelancers)</p>
+  <h1>Furusato nozei limit calculator for freelancers and sole proprietors</h1>
+  <p class="lead">Furusato nozei (ふるさと納税, “hometown tax”) lets you donate to a Japanese municipality, receive local products in return, and have the donation minus about ¥2,000 taken off your income tax and resident tax. The charts you see online are indexed by an employee's salary; a freelancer's limit depends on income (revenue minus expenses) and deductions. Enter yours to get the donation limit at which the out-of-pocket cost stays at about ¥2,000.</p>
+  <p class="privacy">An estimate for tax year 2026 (Reiwa 8; income from January to December 2026). What you enter is calculated on this page only; it is not sent or stored anywhere.</p>
+</header>
+
+<main>
+<form id="form" autocomplete="off" novalidate data-kind="furusato">
+  <p class="hint">Enter every amount in yen as your <strong>forecast for the whole year</strong>. <code>6,000,000</code>, <code>6m</code> and <code>600万</code> all work. The form starts with example figures.</p>
+  <fieldset>
+    <legend>Revenue and expenses</legend>
+    <label>Freelance or business revenue<span class="sub">For the whole year, before expenses</span>
+      <input name="revenue" inputmode="numeric" placeholder="e.g. 8,000,000" value="8,000,000"></label>
+    <label>Business expenses
+      <input name="expenses" inputmode="numeric" placeholder="e.g. 1,500,000" value="1,500,000"></label>
+    <label>Special deduction for blue returns<span class="sub">A deduction for business owners approved to file a “blue return” (aoiro shinkoku) with proper books</span>
+      <select name="blue">
+        <option value="none">White return (no deduction)</option>
+        <option value="10">Blue return, ¥100,000</option>
+        <option value="55">Blue return, ¥550,000</option>
+        <option value="65" selected>Blue return, ¥650,000</option>
+      </select></label>
+    <label>Social insurance premiums<span class="sub">National Health Insurance, National Pension and the like, for the year</span>
+      <input name="social-insurance" inputmode="numeric" placeholder="e.g. 900,000" value="900,000"></label>
+  </fieldset>
+  <fieldset>
+    <legend>Contributions and donations</legend>
+    <label>Furusato nozei already donated<span class="sub">Total donated so far this year</span>
+      <input name="furusato-paid" inputmode="numeric" placeholder="e.g. 30,000"></label>
+    <label>iDeCo contributions<span class="sub">Expected total for the year. They lower the limit</span>
+      <input name="ideco-paid" inputmode="numeric" placeholder="e.g. 276,000"></label>
+    <label>Small Business Mutual Aid contributions<span class="sub">Expected total for the year. They lower the limit</span>
+      <input name="kyosai-paid" inputmode="numeric"></label>
+  </fieldset>
+  <p class="hint">If you also have a salary, a spouse or dependents, use <a id="full" href="../">the full calculator</a>, which takes every item.</p>
+</form>
+
+<div class="results" id="results">
+  <h2>Result</h2>
+  <div id="result" aria-live="polite"><p class="placeholder">Enter your revenue and the result appears here.</p></div>
+  <noscript><p class="card error">The calculator needs JavaScript. The tables below can be read without it.</p></noscript>
+  <section class="card disclaimer">
+    <h3>About this result</h3>
+    <p><strong>This is an estimate</strong> based on the figures you entered and simplified assumptions. Your actual tax depends on what you file and on your municipality. It does not replace the judgment of a tax accountant (zeirishi), the tax office or your city office. Check with a professional or the office in charge before any important decision.</p>
+    <p>It assumes you are a resident of Japan for tax purposes for the whole year and still live in Japan on January 1 next year. Foreign income, tax treaties and the rules for non-residents are not handled.</p>
+  </section>
+</div>
+</main>
+
+<article class="prose">
+<section>
+  <h2>How it is calculated, and the basis</h2>
+  <p>The limit is worked out as follows.</p>
+  <p class="formula">Limit = income-based part of resident tax × 20% ÷ (90% − income tax rate × 1.021) + ¥2,000</p>
+  <ul>
+    <li>The furusato nozei deduction has three parts: a deduction for donations in income tax, a basic portion in resident tax (10%), and a special portion in resident tax. The special portion is capped at 20% of the income-based part of your resident tax, and the donation that reaches that cap is the limit at which you pay only ¥2,000 yourself (<a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/furusato/mechanism/deduction.html" rel="noopener noreferrer" hreflang="ja">Ministry of Internal Affairs and Communications: furusato nozei portal, how the deduction works (Japanese only)</a>; <a href="https://laws.e-gov.go.jp/law/325AC0000000226" rel="noopener noreferrer" hreflang="ja">Local Tax Act, Art. 314-7 and Supplementary Provisions Art. 5-6 (Japanese only)</a>).</li>
+    <li>The income tax rate in the formula is your bracket, 5% to 45% in seven steps, set by your taxable income (<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2260.htm" rel="noopener noreferrer" hreflang="ja">NTA Tax Answer No. 2260: income tax rates (Japanese only)</a>). The 1.021 is the special income tax for reconstruction, a 2.1% surcharge on income tax.</li>
+    <li>Resident tax (住民税, juminzei) is the local tax you pay to your city and prefecture. Its income-based part is 10% of your income after deductions, less a small adjustment credit (<a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/150790_06.html" rel="noopener noreferrer" hreflang="ja">Ministry of Internal Affairs and Communications: individual resident tax (Japanese only)</a>).</li>
+    <li>Your tax goes down by at most the donation minus ¥2,000 (<a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/furusato/mechanism/deduction.html" rel="noopener noreferrer" hreflang="ja">Ministry of Internal Affairs and Communications: furusato nozei portal, how the deduction works (Japanese only)</a>). The same money leaves your account as a donation, so you do not end up with more cash. What you gain is the return gifts.</li>
+    <li>If your income is low enough that the income-based part of resident tax is waived (total income of ¥350,000 × (spouse and dependents + 1) + ¥100,000 or less, plus ¥320,000 if you have a spouse or dependents; <a href="https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002" rel="noopener noreferrer" hreflang="ja">Local Tax Act, Supplementary Provisions Art. 3-3 (Japanese only)</a>), no limit is shown. The same applies just above that level, where the tax is reduced. Children under 16 can be entered in <a href="../">the full calculator</a>.</li>
+    <li>The limit is rounded down to the nearest ¥1,000 and assumes you file a final tax return (kakutei shinkoku). Freelancers file one, so the “one-stop exception” is not available: it is only for employees and others who do not need to file (<a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/furusato/mechanism/deduction.html" rel="noopener noreferrer" hreflang="ja">the ministry's explanation (Japanese only)</a>). How to claim the deduction on the return is in the <a href="https://www.nta.go.jp/english/taxes/individual/incometax_2025.htm" rel="noopener noreferrer" hreflang="en">NTA's English income tax guide</a> under “Deduction for donations”.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Examples</h2>
+  <div class="table-wrap">
+    <table class="examples">
+      <caption>Furusato nozei limit by income (tax year 2026)</caption>
+      <thead><tr><th scope="col">Income (revenue − expenses)</th><th scope="col">Single</th><th scope="col">Spouse with no income and one child in high school</th><th scope="col">Single, paying ¥816,000 a year into iDeCo</th></tr></thead>
+      <tbody>
+      <tr><th scope="row">¥3,000,000</th><td>¥36,000</td><td>¥19,000</td><td>¥16,000</td></tr>
+      <tr><th scope="row">¥4,000,000</th><td>¥56,000</td><td>¥39,000</td><td>¥36,000</td></tr>
+      <tr><th scope="row">¥5,000,000</th><td>¥80,000</td><td>¥60,000</td><td>¥56,000</td></tr>
+      <tr><th scope="row">¥6,000,000</th><td>¥116,000</td><td>¥85,000</td><td>¥81,000</td></tr>
+      <tr><th scope="row">¥8,000,000</th><td>¥165,000</td><td>¥146,000</td><td>¥142,000</td></tr>
+      <tr><th scope="row">¥10,000,000</th><td>¥224,000</td><td>¥198,000</td><td>¥191,000</td></tr>
+      <tr><th scope="row">¥15,000,000</th><td>¥415,000</td><td>¥403,000</td><td>¥386,000</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Assumptions for the table: a freelancer with no salary, the ¥650,000 special deduction for blue returns, no dependents, and social insurance premiums at 15% of income (revenue minus expenses). Income tax is for tax year 2026 and resident tax for fiscal 2027. Your premiums and family change the result, so put your own figures into the calculator above.</p>
+</section>
+
+<section>
+  <h2>Common questions</h2>
+  <h3>Does furusato nozei leave me with more money?</h3>
+  <p>No. Your tax goes down by at most the donation minus ¥2,000 (<a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/furusato/mechanism/deduction.html" rel="noopener noreferrer" hreflang="ja">Ministry of Internal Affairs and Communications: furusato nozei portal, how the deduction works (Japanese only)</a>). You pay the donation first and get almost the same amount back later as lower tax, so it works like paying part of your tax in advance. What you gain is the return gifts. Anything you donate above the limit comes out of your own pocket.</p>
+  <h3>Can I use the charts made for employees?</h3>
+  <p>Not reliably. Those charts take a salary, subtract the employment income deduction and assume social insurance at a fixed share of pay. A freelancer's limit comes from revenue minus expenses and the blue-return deduction, so the same “annual income” gives a different limit. Enter your revenue and expenses above.</p>
+  <h3>Does paying into iDeCo or Small Business Mutual Aid change my limit?</h3>
+  <p>Yes, it lowers it. Contributions are fully deductible, which shrinks the income-based part of your resident tax. With an income of ¥5,000,000 and no dependents (same assumptions as the table), the limit is ¥80,000; paying ¥816,000 a year into iDeCo brings it to ¥56,000. Decide your contributions first, then your donations.</p>
+  <h3>I can't predict my revenue until year-end. How much is safe?</h3>
+  <p>The limit follows your income. If income comes in below your forecast, the limit drops and the excess is out of pocket. The row one step below your expected income in the table gives a feel for the downside. The surest way is to enter a cautious revenue figure before you donate.</p>
+  <h3>With the same income as last year, is my 2026 limit different?</h3>
+  <p>It can be. From tax year 2026 the basic exemption for income tax is higher (up to ¥1,040,000 depending on total income; <a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1199.htm" rel="noopener noreferrer" hreflang="ja">NTA Tax Answer No. 1199: basic exemption (Japanese only)</a>, <a href="https://www.nta.go.jp/users/gensen/2026kiso/index.htm" rel="noopener noreferrer" hreflang="ja">NTA's notice on the change (Japanese only)</a>). That lowers taxable income and moves some people into a lower bracket. A lower rate makes the denominator of the formula larger, so the limit goes down a little. Your income tax itself is lower by the larger exemption.</p>
+</section>
+
+<section>
+  <h2>Sources</h2>
+  <p>Official pages in English:</p>
+  <ul class="sources">
+    <li><a href="https://www.nta.go.jp/english/taxes/individual/incometax_2025.htm" rel="noopener noreferrer" hreflang="en">NTA: Income Tax and Special Income Tax for Reconstruction Guide (English, 2025 edition)</a></li>
+  </ul>
+  <p>Primary sources the numbers were checked against:</p>
+  <ul class="sources">
+    <li><a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/furusato/mechanism/deduction.html" rel="noopener noreferrer" hreflang="ja">Ministry of Internal Affairs and Communications: furusato nozei portal, how the deduction works (Japanese only)</a></li>
+    <li><a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1155.htm" rel="noopener noreferrer" hreflang="ja">NTA Tax Answer No. 1155: furusato nozei (deduction for donations) (Japanese only)</a></li>
+    <li><a href="https://laws.e-gov.go.jp/law/325AC0000000226" rel="noopener noreferrer" hreflang="ja">e-Gov: Local Tax Act (Japanese only)</a></li>
+    <li><a href="https://laws.e-gov.go.jp/law/325AC0000000226/20270101_508AC0000000002" rel="noopener noreferrer" hreflang="ja">e-Gov: Local Tax Act (text in force from January 1, 2027) (Japanese only)</a></li>
+    <li><a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2260.htm" rel="noopener noreferrer" hreflang="ja">NTA Tax Answer No. 2260: income tax rates (Japanese only)</a></li>
+    <li><a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1199.htm" rel="noopener noreferrer" hreflang="ja">NTA Tax Answer No. 1199: basic exemption (Japanese only)</a></li>
+    <li><a href="https://www.nta.go.jp/users/gensen/2026kiso/index.htm" rel="noopener noreferrer" hreflang="ja">NTA: the 2026 increase of the basic exemption for income tax (Japanese only)</a></li>
+    <li><a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/150790_06.html" rel="noopener noreferrer" hreflang="ja">Ministry of Internal Affairs and Communications: individual resident tax (Japanese only)</a></li>
+  </ul>
+  <p class="note">Every number was checked against a primary source and is kept in a <a href="https://github.com/ozko00/setsuzei/blob/main/src/data/2026.ts" rel="noopener">data file with the source URLs</a>. The assumptions, and what is not calculated, are in the <a href="https://github.com/ozko00/setsuzei/blob/main/README.en.md" rel="noopener">README</a>. English terms follow the NTA's English income tax guide where it has one. Last reviewed: 2026-11-27.</p>
+</section>
+
+<nav class="related" aria-label="Other calculators">
+  <h2>Other calculators</h2>
+  <ul>
+    <li><a href="../">Full year-end calculator (furusato nozei + iDeCo + Small Business Mutual Aid + blue return)</a></li>
+    <li><a href="../ideco-tax-savings-self-employed/">iDeCo tax savings calculator for freelancers and the self-employed</a></li>
+    <li><a href="../small-business-mutual-aid-tax-savings/">Small Business Mutual Aid (shokibo kigyo kyosai) tax savings calculator</a></li>
+    <li><a href="../blue-return-deduction/">Blue return special deduction: ¥650,000 vs ¥550,000 vs ¥100,000 in actual tax</a></li>
+    <li><a href="../furusato-nozei-limit-2026/">Is your furusato nozei limit lower for 2026? Compare it with 2025</a></li>
+  </ul>
+</nav>
+</article>
+
+<a id="jump" class="jump" href="#results" hidden></a>
+
+<footer class="site">
+  <p>setsuzei · MIT License · The same calculation runs on the command line with <code>npx setsuzei</code> (Node.js 20 or later; output in Japanese). · <a href="https://github.com/ozko00/setsuzei/blob/main/README.en.md" rel="noopener">How to run it, source code and assumptions (GitHub)</a> · <a href="../../furusato-nozei-freelance/" lang="ja" hreflang="ja">日本語版</a></p>
+</footer>
+<script type="module" src="../../js/web/page.js"></script>
+</body>
+</html>

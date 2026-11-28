@@ -5,10 +5,10 @@
 import { parseAmount } from "../src/cli/amount.js";
 import { sourcesInsuranceGuide } from "../src/data/2026-insurance-guide.js";
 import type { CombinedMeasure, ContributionMeasure, Saving, SetsuzeiResult } from "../src/core/types.js";
-import { GLOSSARY } from "../src/cli/format.js";
 import { getSources } from "../src/data/index.js";
 import { VERSION } from "../src/version.js";
 import { browserNote, computeTop, isBlankTop, queryToValues, splitIssue, type FormValues, type TopOutcome } from "./logic.js";
+import { webMessages } from "./messages.js";
 import { clearSaved, loadSaved, save, type Saved } from "./storage.js";
 import { summaryText, usedInputs } from "./summary.js";
 
@@ -25,8 +25,11 @@ function h(tag: string, attrs: Record<string, string> = {}, ...children: Child[]
   return el;
 }
 
-const yen = (n: number): string => `${n.toLocaleString("ja-JP")} 円`;
-const digits = (n: number): string => n.toLocaleString("ja-JP");
+/** このページの言語の文面（<html lang> で決まる）。計算は言語に関係なく同じ */
+const t = webMessages(document.documentElement.lang === "en" ? "en" : "ja");
+const locale = t.locale;
+const yen = t.yen;
+const digits = t.digits;
 
 /** [項目名, 金額, 行のクラス] */
 type Row = readonly [string, string, (string | undefined)?];
@@ -48,9 +51,9 @@ function notes(list: readonly string[]): HTMLElement | null {
 
 function savingRows(s: Saving): Row[] {
   return [
-    ["減る税額", yen(s.total), "strong"],
-    ["　うち所得税", yen(s.incomeTax)],
-    ["　うち住民税", yen(s.residentTax)],
+    [t.saving, yen(s.total), "strong"],
+    [t.savingIncomeTax, yen(s.incomeTax)],
+    [t.savingResidentTax, yen(s.residentTax)],
   ];
 }
 
@@ -63,10 +66,10 @@ function contributionCard(title: string, m: ContributionMeasure): HTMLElement {
   return card(
     title,
     rows([
-      ["年間上限", yen(m.annualLimit)],
-      ["支払済み", yen(m.paid)],
-      ["残り枠", yen(m.remaining)],
-      ["試算した追加額（追加で支払う額）", yen(m.additional), "strong"],
+      [t.annualLimit, yen(m.annualLimit)],
+      [t.paid, yen(m.paid)],
+      [t.remaining, yen(m.remaining)],
+      [t.additionalTried, yen(m.additional), "strong"],
       ...savingRows(m.saving),
     ]),
     notes(m.notes),
@@ -76,36 +79,36 @@ function contributionCard(title: string, m: ContributionMeasure): HTMLElement {
 /** まとめて実行した場合に含まれる策の名前 */
 function combinedParts(c: CombinedMeasure): string[] {
   return [
-    ...(c.furusatoAdditional > 0 ? ["ふるさと納税"] : []),
-    ...(c.kyosaiAdditional > 0 ? ["小規模企業共済"] : []),
-    ...(c.idecoAdditional > 0 ? ["iDeCo"] : []),
+    ...(c.furusatoAdditional > 0 ? [t.furusato] : []),
+    ...(c.kyosaiAdditional > 0 ? [t.kyosai] : []),
+    ...(c.idecoAdditional > 0 ? [t.ideco] : []),
   ];
 }
 
 function combinedCard(title: string, c: CombinedMeasure): HTMLElement {
   return card(
-    `${title}（${combinedParts(c).join(" + ")}）`,
+    t.combinedTitle(title, combinedParts(c)),
     rows([
-      ...(c.furusatoAdditional > 0 ? [["ふるさと納税の追加", yen(c.furusatoAdditional)] as const] : []),
-      ...(c.kyosaiAdditional > 0 ? [["小規模企業共済の追加", yen(c.kyosaiAdditional)] as const] : []),
-      ...(c.idecoAdditional > 0 ? [["iDeCo の追加", yen(c.idecoAdditional)] as const] : []),
-      ["追加で支払う額の合計", yen(c.totalPayment), "strong"],
-      ["減る税額の合計", yen(c.saving.total), "strong"],
+      ...(c.furusatoAdditional > 0 ? [[t.furusatoExtra, yen(c.furusatoAdditional)] as const] : []),
+      ...(c.kyosaiAdditional > 0 ? [[t.kyosaiExtra, yen(c.kyosaiAdditional)] as const] : []),
+      ...(c.idecoAdditional > 0 ? [[t.idecoExtra, yen(c.idecoAdditional)] as const] : []),
+      [t.totalExtraPayment, yen(c.totalPayment), "strong"],
+      [t.totalSaving, yen(c.saving.total), "strong"],
       ...(c.furusatoAdditional > 0
         ? [
-            ["　うち掛金の追加による分", yen(c.savingFromContributions.total)] as const,
-            ["　うちふるさと納税による分（寄附と引き換え）", yen(c.savingFromFurusato.total)] as const,
+            [t.fromContributions, yen(c.savingFromContributions.total)] as const,
+            [t.fromFurusato, yen(c.savingFromFurusato.total)] as const,
           ]
         : []),
-      ["　（所得税）", yen(c.saving.incomeTax)],
-      ["　（住民税）", yen(c.saving.residentTax)],
-      ["税額の合計（実行後）", yen(c.totalTax)],
+      [t.ofIncomeTax, yen(c.saving.incomeTax)],
+      [t.ofResidentTax, yen(c.saving.residentTax)],
+      [t.totalTaxAfter, yen(c.totalTax)],
     ]),
     notes(c.notes),
   );
 }
 
-const BLUE_LABEL = { none: "白色申告", "10": "青色 10万円", "55": "青色 55万円", "65": "青色 65万円" } as const;
+const BLUE_LABEL = t.blueLabel;
 
 /** 内訳（いまの税額、各策の上限と残り枠、青色申告の区分ごとの税額、計算に使った値） */
 function renderBreakdown(top: Done): HTMLElement[] {
@@ -116,56 +119,55 @@ function renderBreakdown(top: Done): HTMLElement[] {
 
   const income: Row[] = [];
   if (r.input.salaryRevenue > 0) {
-    const adjusted = b.incomeAdjustment > 0 ? `（所得金額調整控除 ${yen(b.incomeAdjustment)}を控除後）` : "";
-    income.push([`給与所得${adjusted}`, yen(b.salaryIncome)]);
+    income.push([t.salaryIncome(b.incomeAdjustment), yen(b.salaryIncome)]);
   }
   if (r.input.businessRevenue > 0 || r.input.businessExpenses > 0) {
-    income.push([r.input.businessIncomeType === "business" ? "事業所得" : "雑所得", yen(b.businessIncome)]);
+    income.push([r.input.businessIncomeType === "business" ? t.businessIncome : t.miscIncome, yen(b.businessIncome)]);
   }
   income.push(
-    ["合計所得金額", yen(b.totalIncome)],
-    [`所得税の課税所得（税率 ${b.incomeTax.marginalRatePercent}%）`, yen(b.incomeTax.taxableIncome)],
-    ["所得税 + 復興特別所得税", yen(b.incomeTax.total)],
-    [`住民税（${r.residentTaxLabel}）`, yen(b.residentTax.total)],
-    ["税額の合計", yen(b.totalTax), "strong"],
+    [t.totalIncome, yen(b.totalIncome)],
+    [t.taxableIncome(b.incomeTax.marginalRatePercent), yen(b.incomeTax.taxableIncome)],
+    [t.incomeTaxLine, yen(b.incomeTax.total)],
+    [t.residentTaxLine(r.residentTaxLabel), yen(b.residentTax.total)],
+    [t.totalTax, yen(b.totalTax), "strong"],
   );
-  out.push(card(`現状の見込み（${r.label}）`, rows(income)));
+  out.push(card(t.baselineTitle(r.label), rows(income)));
 
   const c = m.combined;
-  if (c.totalPayment > 0) out.push(combinedCard("まとめて実行した場合", c));
-  if (m.combinedWithIdeco) out.push(combinedCard("iDeCo の追加も年内に間に合う場合", m.combinedWithIdeco));
+  if (c.totalPayment > 0) out.push(combinedCard(t.combinedAll, c));
+  if (m.combinedWithIdeco) out.push(combinedCard(t.combinedIfIdeco, m.combinedWithIdeco));
 
   const f = m.furusato;
   out.push(
     card(
-      "ふるさと納税",
+      t.furusato,
       f.limit > 0
         ? rows([
-            ["控除上限額の目安（年間）", yen(f.limit), "strong"],
-            ["寄附済み", yen(f.paid)],
-            ["上限までの残り（追加で寄附する額）", yen(f.remaining)],
+            [t.furusatoLimitYear, yen(f.limit), "strong"],
+            [t.donated, yen(f.paid)],
+            [t.furusatoRemainingToDonate, yen(f.remaining)],
             ...savingRows(f.saving),
-            ["上限まで寄附した場合の自己負担", yen(f.outOfPocket)],
+            [t.furusatoOutOfPocket, yen(f.outOfPocket)],
             ...(f.limitAfterOtherMeasures !== f.limit
-              ? [["掛金を追加した場合の上限（まとめて実行した場合）", yen(f.limitAfterOtherMeasures)] as const]
+              ? [[t.furusatoLimitAfter, yen(f.limitAfterOtherMeasures)] as const]
               : []),
           ])
         : null,
       notes(f.notes),
     ),
   );
-  out.push(contributionCard("iDeCo（個人型確定拠出年金）", m.ideco));
-  out.push(contributionCard("小規模企業共済", m.kyosai));
+  out.push(contributionCard(t.idecoTitle, m.ideco));
+  out.push(contributionCard(t.kyosai, m.kyosai));
 
   out.push(
     card(
-      "青色申告特別控除",
+      t.blueTitle,
       m.blueReturn.applicable
         ? rows(
             m.blueReturn.options.map((o) => {
               const diff = o.savingVsCurrent.total;
-              const text = o.current ? "現在" : diff >= 0 ? `${yen(diff)} 減` : `${yen(-diff)} 増`;
-              return [`${BLUE_LABEL[o.level]}（税額 ${yen(o.totalTax)}）`, text, o.current ? "current" : undefined] as const;
+              const text = o.current ? t.current : diff >= 0 ? t.less(diff) : t.more(-diff);
+              return [t.blueOption(BLUE_LABEL[o.level], o.totalTax), text, o.current ? "current" : undefined] as const;
             }),
           )
         : null,
@@ -177,22 +179,22 @@ function renderBreakdown(top: Done): HTMLElement[] {
   if (nhi) {
     out.push(
       card(
-        `国民健康保険料（所得割 ${nhi.ratePercent}%・翌年度の目安）`,
+        t.nhiTitle(nhi.ratePercent),
         rows([
-          ["所得割の算定基礎", yen(nhi.baseIncome)],
-          ["所得割額の目安", yen(nhi.incomeLevy), "strong"],
+          [t.nhiBase, yen(nhi.baseIncome)],
+          [t.nhiLevy, yen(nhi.incomeLevy), "strong"],
           ...nhi.blueReturnOptions.map((o) => {
             const diff = o.reductionVsCurrent;
-            const text = o.current ? "現在" : diff >= 0 ? `${yen(diff)} 減` : `${yen(-diff)} 増`;
-            return [`${BLUE_LABEL[o.level]}（${yen(o.incomeLevy)}）`, text, o.current ? "current" : undefined] as const;
+            const text = o.current ? t.current : diff >= 0 ? t.less(diff) : t.more(-diff);
+            return [t.nhiOption(BLUE_LABEL[o.level], o.incomeLevy), text, o.current ? "current" : undefined] as const;
           }),
         ]),
         notes(nhi.notes),
       ),
     );
   }
-  out.push(card("計算に使った値", rows(usedInputs(top))));
-  out.push(card("ことばの説明", h("ul", { class: "notes" }, ...GLOSSARY.map(([term, text]) => h("li", {}, h("strong", {}, term), `: ${text}`)))));
+  out.push(card(t.usedTitle, rows(usedInputs(top, locale))));
+  out.push(card(t.glossaryTitle, h("ul", { class: "notes" }, ...t.glossary.map(([term, text]) => h("li", {}, h("strong", {}, term), `: ${text}`)))));
   return out;
 }
 
@@ -217,7 +219,7 @@ function fieldLabel(el: Element): string | null {
   const label = el.closest("label") ?? (el.id ? document.querySelector(`label[for="${el.id}"]`) : null);
   if (el.id && label?.getAttribute("for") === el.id) {
     const name = el.closest(".action")?.querySelector(".action-name")?.textContent ?? "";
-    return `${name}の${(label.textContent ?? "").trim()}`;
+    return t.actionField(name, (label.textContent ?? "").trim());
   }
   for (const node of Array.from(label?.childNodes ?? [])) {
     if (node instanceof HTMLElement && (node.classList.contains("num") || node.classList.contains("sub"))) continue;
@@ -270,7 +272,10 @@ function start(): void {
   let totalsVisible = false;
   const showJump = (): void => {
     if (!jump) return;
-    const shown = jumpText !== null && !totalsVisible;
+    // 入力欄に打っている間は出さない（スマホ幅で、帯が次の入力欄に重なり、欄を押したつもりで結果へ飛んでしまうため）
+    const active = document.activeElement;
+    const typing = active instanceof HTMLInputElement && !["radio", "checkbox", "range"].includes(active.type) && form.contains(active);
+    const shown = jumpText !== null && !totalsVisible && !typing;
     jump.hidden = !shown;
     document.body.classList.toggle("has-jump", shown);
   };
@@ -289,6 +294,9 @@ function start(): void {
       showJump();
     }).observe($("plan-lead"));
   }
+
+  form.addEventListener("focusin", showJump);
+  form.addEventListener("focusout", () => setTimeout(showJump, 0));
 
   let liveTimer = 0;
   const announce = (message: string): void => {
@@ -337,18 +345,18 @@ function start(): void {
     const r = top.result;
     const m = r.measures;
     const plan = top.plan;
-    const split = (s: Saving): string => `${yen(s.total)}（所得税 ${yen(s.incomeTax)}・住民税 ${yen(s.residentTax)}）`;
+    const split = (s: Saving): string => t.split(s.total, s.incomeTax, s.residentTax);
 
     text(
       "plan-lead",
       plan.totalPayment > 0
-        ? `年内に${[plan.furusato.amount, plan.kyosai?.amount ?? 0, plan.ideco.amount].filter((n) => n > 0).length > 1 ? "合わせて " : " "}${yen(plan.totalPayment)}払うと、税金が ${yen(plan.saving.total)}減る見込みです。`
-        : "いまの見込みでは、年内に追加で払って税金が減るものはありません。",
+        ? t.planLead(plan.totalPayment, plan.saving.total, [plan.furusato.amount, plan.kyosai?.amount ?? 0, plan.ideco.amount].filter((n) => n > 0).length > 1)
+        : t.planNone,
     );
 
     // 年内に出せるお金
     const budgetNotes = plan.budget ? [plan.budget.reason] : [];
-    if (plan.budget && plan.budget.over > 0) budgetNotes.push(`自分で決めた払う額が、出せるお金を ${yen(plan.budget.over)}超えています。`);
+    if (plan.budget && plan.budget.over > 0) budgetNotes.push(t.budgetOver(plan.budget.over));
     text("budget-reason", budgetNotes.join(""));
 
     // 仮に置いた値
@@ -361,35 +369,31 @@ function start(): void {
     const furusatoOff = f.limit === 0 && f.amount === 0 && !custom.furusato;
     $("act-furusato").classList.toggle("off", furusatoOff);
     $("act-furusato").classList.toggle("optional", f.skipped !== null);
-    text("furusato-off", f.limit === 0 ? `今回は対象になりません。${browserNote(m.furusato.notes[0] ?? "")}` : "");
+    text("furusato-off", f.limit === 0 ? t.furusatoOff(browserNote(m.furusato.notes[0] ?? "")) : "");
     if (!furusatoOff) {
       text(
         "furusato-do",
         f.skipped
-          ? `やることに入れていません。上限の目安まで ${yen(f.skipped.amount)}寄附しても、減る税額は ${yen(f.skipped.saving.total)}で、自己負担（${yen(f.skipped.amount - f.skipped.saving.total)}）のほうが大きく、割に合いにくいためです。返礼品が目的で寄附するなら、「払う額」に額を入れると計算に入ります`
+          ? t.furusatoSkipped(f.skipped.amount, f.skipped.saving.total, f.skipped.amount - f.skipped.saving.total)
           : f.amount === 0
-          ? f.paid >= f.limit
-            ? `これ以上の寄附はしない（寄附済みの ${yen(f.paid)}が、上限の目安の ${yen(f.limit)}に達しています）`
-            : "寄附しない（0 円にしています）"
-          : f.paid > 0
-            ? `あと ${yen(f.amount)}寄附する（寄附済みの ${yen(f.paid)}と合わせて、ことしの合計 ${yen(f.paid + f.amount)}）`
-            : `${yen(f.amount)}寄附する`,
+            ? f.paid >= f.limit
+              ? t.furusatoEnough(f.paid, f.limit)
+              : t.furusatoZero
+            : f.paid > 0
+              ? t.furusatoMore(f.amount, f.paid, f.paid + f.amount)
+              : t.furusatoDonate(f.amount),
       );
-      const hint = [`上限の目安は年間 ${yen(f.limit)}です（これを超えると、超えた分のほとんどが自己負担になります）。`];
-      if (f.limit < m.furusato.limit) hint.push(`掛金を払う分、上限の目安は ${yen(m.furusato.limit)}から下がっています。`);
+      const hint = [t.furusatoHintLimit(f.limit)];
+      if (f.limit < m.furusato.limit) hint.push(t.furusatoHintLowered(m.furusato.limit));
       text("furusato-hint", hint.join(""));
       $("furusato-saving").replaceChildren(
         split(f.saving),
-        ...(f.over > 0 ? [h("span", { class: "warn" }, `上限の目安を ${yen(f.over)}超えています。超えた分は、ほとんどが自己負担になります。`)] : []),
+        ...(f.over > 0 ? [h("span", { class: "warn" }, t.furusatoOver(f.over))] : []),
       );
       const self = f.amount - f.saving.total;
       text(
         "furusato-worth",
-        f.amount === 0
-          ? ""
-          : self <= 0
-            ? "手元に残るもの: 返礼品。払った額と同じだけ税金が減ります（自己負担の 2,000 円は、寄附済みの分で負担しています）。寄附と引き換えなので、手元のお金は増えません。"
-            : `手元に残るもの: 返礼品。払う ${yen(f.amount)}のうち ${yen(f.saving.total)}が税金から引かれ、差の ${yen(self)}が自己負担です。手元のお金は増えないので、得になるのは返礼品の分です。${f.saving.total < self ? "減る税額より自己負担のほうが大きく、割に合いにくい額です。" : ""}`,
+        f.amount === 0 ? "" : self <= 0 ? t.furusatoWorthFull : t.furusatoWorth(f.amount, f.saving.total, self, f.saving.total < self),
       );
       setPlanField("furusato", f.amount, f.skipped ? f.skipped.amount : f.recommended, f.skipped !== null);
       $("furusato-notes").replaceChildren(...m.furusato.notes.map((n) => h("li", {}, browserNote(n))));
@@ -402,39 +406,29 @@ function start(): void {
       // いま加入していない人には、額を入れるまで合計に入れず、「さらに減らしたい場合」として出す
       const optional = k.ifJoined !== null && !k.custom;
       $("act-kyosai").classList.toggle("optional", optional);
-      text(
-        "kyosai-kind",
-        k.ifJoined !== null
-          ? "さらに減らしたい場合。個人事業主が、自分の退職金を積み立てる制度（中小機構が運営）"
-          : "個人事業主が、自分の退職金を積み立てる制度（中小機構が運営）",
-      );
+      text("kyosai-kind", t.kyosaiKind(k.ifJoined !== null));
       text(
         "kyosai-do",
         optional
-          ? "いま入っていない方は、新しく加入して年内に掛金を払うと、さらに税金が減ります。払える額を「払う額」に入れると、合計に入ります"
+          ? t.kyosaiOptionalDo
           : k.amount === 0
             ? k.custom || plan.budget
-              ? "追加で払わない（0 円にしています）"
-              : "これ以上払っても、税額は減りません"
+              ? t.kyosaiZeroChosen
+              : t.kyosaiNoMore
             : k.paid > 0
-              ? `掛金を、年内にあと ${yen(k.amount)}多く払う（掛金の増額か、先の月の分をまとめて払う前納）`
-              : `新しく加入して、年内に ${yen(k.amount)}の掛金を払う`,
+              ? t.kyosaiIncrease(k.amount)
+              : t.kyosaiJoin(k.amount),
       );
       const limitOfEffect = k.ifJoined ? k.ifJoined.amount : m.kyosai.noEffectBeyond;
-      const hint = [`年間の上限（月 70,000 円 × 12 か月）までの残りは ${yen(k.max)}です。`];
+      const hint = [t.kyosaiHintMax(k.max)];
       if (k.ifJoined && optional) {
-        hint.push(`${yen(k.ifJoined.amount)}を払った場合は、それだけで税金が ${yen(k.ifJoined.saving.total)}減ります（いまは「やること」に入れていません。払う額を入れると入ります）。払った掛金は、自分の積立として残ります。`);
-      } else if (limitOfEffect !== null && limitOfEffect < k.max) hint.push(`${yen(limitOfEffect)}を超えて払っても、税額はそれ以上減りません。`);
+        hint.push(t.kyosaiHintIfJoined(k.ifJoined.amount, k.ifJoined.saving.total));
+      } else if (limitOfEffect !== null && limitOfEffect < k.max) hint.push(t.kyosaiHintNoEffect(limitOfEffect));
       const typed = parseAmount(planInput("kyosai").value);
-      if (k.custom && typed !== null && typed > k.amount) hint.push(`入れた額のうち、税額が減る ${yen(k.amount)}までで計算しています。`);
+      if (k.custom && typed !== null && typed > k.amount) hint.push(t.kyosaiHintCapped(k.amount));
       text("kyosai-hint", hint.join(""));
-      text("kyosai-saving", optional ? "やることに入れていません（払う額を入れると入ります）" : split(k.saving));
-      text(
-        "kyosai-worth",
-        !optional && k.amount > 0
-          ? `手元に残るもの: 払った ${yen(k.amount)}は、将来受け取る自分の積立です。得になるのは、いま税金が減る ${yen(k.saving.total)}です（受け取るときに税金がかかります）。`
-          : "",
-      );
+      text("kyosai-saving", optional ? t.notIncluded : split(k.saving));
+      text("kyosai-worth", !optional && k.amount > 0 ? t.kyosaiWorth(k.amount, k.saving.total) : "");
       setPlanField("kyosai", k.amount, limitOfEffect ?? k.max, optional);
       $("kyosai-notes").replaceChildren(...m.kyosai.notes.map((n) => h("li", {}, browserNote(n))));
     }
@@ -443,24 +437,15 @@ function start(): void {
     const i = plan.ideco;
     text(
       "ideco-do",
-      i.included && i.amount > 0
-        ? `掛金を、年内にあと ${yen(i.amount)}多く払う`
-        : i.max === 0
-          ? "追加はできません（年間の限度額まで払う見込みです）"
-          : "年内に増やせる額が分かっていれば、その額を「払う額」に入れる（分からなければ、このままで構いません）",
+      i.included && i.amount > 0 ? t.idecoIncrease(i.amount) : i.max === 0 ? t.idecoFull : t.idecoIfKnown,
     );
-    const idecoHint = [`年間の限度額までの残りは ${yen(i.max)}です。`];
+    const idecoHint = [t.idecoHintMax(i.max)];
     if (!i.included && m.ideco.additional > 0 && m.ideco.saving.total > 0) {
-      idecoHint.push(`${yen(m.ideco.additional)}を年内に払えた場合は、それだけで税金が ${yen(m.ideco.saving.total)}減ります（いまは「やること」に入れていません。払う額を入れると入ります）。`);
+      idecoHint.push(t.idecoHintIf(m.ideco.additional, m.ideco.saving.total));
     }
     text("ideco-hint", idecoHint.join(""));
-    text("ideco-saving", i.included ? split(i.saving) : "やることに入れていません（払う額を入れると入ります）");
-    text(
-      "ideco-worth",
-      i.included && i.amount > 0
-        ? `手元に残るもの: 払った ${yen(i.amount)}は、60 歳以降に受け取る自分の年金の積立です。得になるのは、いま税金が減る ${yen(i.saving.total)}です（受け取るときに税金がかかります）。`
-        : "",
-    );
+    text("ideco-saving", i.included ? split(i.saving) : t.notIncluded);
+    text("ideco-worth", i.included && i.amount > 0 ? t.idecoWorth(i.amount, i.saving.total) : "");
     setPlanField("ideco", i.amount, i.max);
     $("ideco-notes").replaceChildren(...m.ideco.notes.map((n) => h("li", {}, browserNote(n))));
     $("act-ideco").classList.toggle("optional", !i.included);
@@ -469,14 +454,14 @@ function start(): void {
     text("total-saving", yen(plan.saving.total));
     text("total-payment", yen(plan.totalPayment));
     text("total-tax", `${yen(plan.taxBefore)} → ${yen(plan.taxAfter)}`);
-    const totalNotes: string[] = [`税額は、所得税と住民税（${r.residentTaxLabel}）の合計です。`];
+    const totalNotes: string[] = [t.totalsTax(r.residentTaxLabel)];
     if ([f.amount, k?.amount ?? 0, i.amount].filter((n) => n > 0).length > 1) {
-      totalNotes.push("合計は、まとめて計算し直した額です。それぞれの「減る税額」は、小規模企業共済・iDeCo・ふるさと納税の順に実行したときの額です。");
+      totalNotes.push(t.totalsRecomputed);
     }
     if (f.amount > 0) {
-      totalNotes.push(`減る税額のうち ${yen(f.saving.total)}はふるさと納税の分で、寄附と引き換えです（手元のお金は増えません）。`);
+      totalNotes.push(t.totalsFurusato(f.saving.total));
     }
-    if ((k?.amount ?? 0) + i.amount > 0) totalNotes.push("掛金は、払った分が自分の積立として残ります。");
+    if ((k?.amount ?? 0) + i.amount > 0) totalNotes.push(t.totalsContributions);
     text("totals-note", totalNotes.join(""));
     $("plan-reset").hidden = !PLAN_FIELDS.some((name) => custom[name]);
 
@@ -489,12 +474,7 @@ function start(): void {
       const unknown = blue.current === "none";
       text(
         "later-text",
-        (best.savingVsCurrent.total > 0
-          ? `青色申告特別控除が 65 万円なら、税額はいまの計算より ${yen(best.savingVsCurrent.total)}少なくなります。`
-          : "いまの所得では、青色申告特別控除で税額は変わりません。") +
-          (unknown
-            ? "ただし、ことしの分に使えるのは「青色申告承認申請書」を期限までに税務署に出している方だけです（これから出す場合は、来年分からです）。出していて、複式簿記の帳簿と e-Tax での申告ができる方は、「もっと正確にする」の青色申告特別控除で 65 万円を選んでください。上の金額も変わります。"
-            : "65 万円にするには、複式簿記の帳簿と、e-Tax での期限内の申告が必要です。"),
+        (best.savingVsCurrent.total > 0 ? t.laterSaving(best.savingVsCurrent.total) : t.laterNone) + (unknown ? t.laterUnknown : t.laterNeeds),
       );
     }
   };
@@ -503,24 +483,22 @@ function start(): void {
   const renderGuide = (top: Done | null): void => {
     const box = $("si-guide");
     if (!top?.insurance) {
-      box.replaceChildren(h("p", { class: "sub" }, "収入を入れると、ここに目安の額と、その出し方を出します。"));
+      box.replaceChildren(h("p", { class: "sub" }, t.guideEmpty));
       return;
     }
     const e = top.insurance;
     box.replaceChildren(
-      h("p", { class: "guide-amount" }, "目安: ", h("strong", {}, yen(e.amount)), `（幅 ${yen(e.low)}〜${yen(e.high)}）`),
-      h("ul", { class: "guide-parts" }, ...e.parts.map((p) => h("li", {}, `${p.label}: ${yen(p.amount)}`))),
+      h("p", { class: "guide-amount" }, t.guideLabel, h("strong", {}, yen(e.amount)), t.guideRange(e.low, e.high)),
+      h("ul", { class: "guide-parts" }, ...e.parts.map((p) => h("li", {}, t.guidePart(p.label, p.amount)))),
       h(
         "p",
         { class: "sub" },
-        e.kind === "freelance"
-          ? "国民年金の免除や猶予を受けている方、家族の分も払っている方は、この目安と大きく違います。「金額を入れる」を選んでください。"
-          : "健康保険組合や共済組合に入っている方、賞与が多い方は、この目安と違うことがあります。",
+        e.kind === "freelance" ? t.guideNoteFreelance : t.guideNoteEmployee,
       ),
       h(
         "details",
         { class: "help" },
-        h("summary", {}, "目安の出し方と、正確な額の調べ方"),
+        h("summary", {}, t.guideHow),
         h("ul", {}, ...e.basis.map((line) => h("li", {}, line))),
       ),
     );
@@ -535,20 +513,20 @@ function start(): void {
     const revenueFilled = typeof values["revenue"] === "string" && values["revenue"].trim() !== "";
     form.classList.toggle("no-business", values["work"] === "employee" && !revenueFilled);
     for (const el of Array.from(document.querySelectorAll("[aria-invalid]"))) el.removeAttribute("aria-invalid");
-    if (saveBox.checked && !save(snapshot())) text("save-status", "このブラウザでは保存できませんでした（プライベートブラウズなど）。");
+    if (saveBox.checked && !save(snapshot())) text("save-status", t.saveFailed);
 
     if (isBlankTop(values)) {
       current = null;
       planBox.hidden = true;
       notice.replaceChildren(
-        h("p", { class: "placeholder" }, "左（上）の 3 つに答えると、ここに「年内にやること」と金額が出ます。"),
+        h("p", { class: "placeholder" }, t.placeholder),
       );
       output.replaceChildren();
       renderGuide(null);
       setJump(null);
       return;
     }
-    const top = computeTop(values);
+    const top = computeTop(values, locale);
     if (!top.ok) {
       // 払う額の欄を直せるよう、出ていた結果は薄くして残す（数字は古いままなので、読み上げからは外す）
       // 保存してあった値を読み込んだ直後など、まだ結果を出していないときでも、
@@ -567,10 +545,10 @@ function start(): void {
         return label === null ? message : `${label}: ${message}`;
       });
       notice.replaceChildren(
-        h("section", { class: "card error", role: "alert" }, h("h3", {}, "入力を確認してください"), h("ul", { class: "notes" }, ...lines.map((l) => h("li", {}, l)))),
+        h("section", { class: "card error", role: "alert" }, h("h3", {}, t.checkInput), h("ul", { class: "notes" }, ...lines.map((l) => h("li", {}, l)))),
       );
       output.replaceChildren();
-      setJump(`入力を確認してください（${top.issues.length} 件）　内容を見る`, true);
+      setJump(t.jumpError(top.issues.length), true);
       return;
     }
     current = top;
@@ -582,12 +560,12 @@ function start(): void {
     renderPlan(top);
     renderGuide(top);
     const r = top.result;
-    notice.replaceChildren(...(r.warnings.length > 0 ? [h("section", { class: "card caution" }, h("h3", {}, "注意"), notes(r.warnings))] : []));
+    notice.replaceChildren(...(r.warnings.length > 0 ? [h("section", { class: "card caution" }, h("h3", {}, t.cautionTitle), notes(r.warnings))] : []));
     output.replaceChildren(
       h(
         "details",
         { class: "breakdown", id: "breakdown", ...(output.querySelector<HTMLDetailsElement>("#breakdown")?.open ? { open: "" } : {}) },
-        h("summary", {}, "内訳を見る", h("span", { class: "summary-sub" }, "いまの税額、それぞれの上限と残り枠、青色申告の区分ごとの税額、計算に使った値")),
+        h("summary", {}, t.breakdownSummary, h("span", { class: "summary-sub" }, t.breakdownSub)),
         ...renderBreakdown(top),
       ),
     );
@@ -599,16 +577,8 @@ function start(): void {
       }, 0);
     });
     const p = top.plan;
-    setJump(
-      p.totalPayment > 0
-        ? `${yen(p.totalPayment)}払うと 税金 −${yen(p.saving.total)}　結果を見る`
-        : `所得税 + 住民税の見込み ${yen(p.taxBefore)}　結果を見る`,
-    );
-    announce(
-      p.totalPayment > 0
-        ? `結果を更新しました。年内に ${yen(p.totalPayment)}払うと、税金が ${yen(p.saving.total)}減る見込みです。`
-        : "結果を更新しました。年内に追加で払って税金が減るものはありません。",
-    );
+    setJump(p.totalPayment > 0 ? t.jumpPay(p.totalPayment, p.saving.total) : t.jumpTax(p.taxBefore));
+    announce(p.totalPayment > 0 ? t.announcePay(p.totalPayment, p.saving.total) : t.announceNone);
   };
 
   /** 働き方に合わせて、所得の種類の既定を決める（自分で選んだあとは変えない） */
@@ -646,7 +616,7 @@ function start(): void {
     for (const name of PLAN_FIELDS) custom[name] = planInput(name).value !== "";
     saveBox.checked = true;
     more.open = true;
-    text("save-status", "この端末に保存してあった入力を読み込みました。");
+    text("save-status", t.saveLoaded);
   }
   // 値が入っている欄が、閉じた枠の中に隠れたまま結果に効くことがないよう、値があれば開く
   for (const details of Array.from(form.querySelectorAll<HTMLDetailsElement>("details.nested"))) {
@@ -730,16 +700,16 @@ function start(): void {
     incomeTypeTouched = false;
     for (const name of PLAN_FIELDS) custom[name] = false;
     saveBox.checked = keep;
-    fillForm(form, { work: "freelance", revenue: "480万", expenses: "75万" });
+    fillForm(form, { work: "freelance", revenue: t.exampleRevenue, expenses: t.exampleExpenses });
     update();
   });
 
   saveBox.addEventListener("change", () => {
     if (saveBox.checked) {
-      text("save-status", save(snapshot()) ? "この端末に保存しています。" : "このブラウザでは保存できませんでした（プライベートブラウズなど）。");
+      text("save-status", save(snapshot()) ? t.saveOn : t.saveFailed);
     } else {
       clearSaved();
-      text("save-status", "保存した内容を消しました。");
+      text("save-status", t.saveCleared);
     }
   });
 
@@ -750,7 +720,7 @@ function start(): void {
   };
   $("copy").addEventListener("click", () => {
     if (!current) return;
-    const body = summaryText(current, today());
+    const body = summaryText(current, today(), locale);
     const fallback = (): void => {
       $("copy-fallback").hidden = false;
       const area = $<HTMLTextAreaElement>("copy-text");
@@ -765,7 +735,7 @@ function start(): void {
     }
     navigator.clipboard.writeText(body).then(() => {
       $("copy-fallback").hidden = true;
-      text("share-status", "コピーしました。メールやメモに貼り付けられます。");
+      text("share-status", t.copied);
     }, fallback);
   });
   $("print").addEventListener("click", () => window.print());

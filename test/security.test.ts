@@ -71,7 +71,8 @@ describe("公開ページ（docs/）", () => {
   const pages = list("docs").filter((f) => f.endsWith("index.html"));
 
   it("どのページも、同じ Content-Security-Policy を持つ（弱めていない）", () => {
-    assert.equal(pages.length, 6);
+    // 日本語版 6 枚 + 英語版 6 枚
+    assert.equal(pages.length, 12);
     for (const file of pages) {
       const html = read(file);
       const found = [...html.matchAll(/<meta http-equiv="Content-Security-Policy" content="([^"]*)">/g)].map((m) => m[1]);
@@ -88,6 +89,10 @@ describe("公開ページ（docs/）", () => {
     assert.match(html, /入力欄の値（収入・経費・控除・家族の人数・払う額・年内に出せるお金）をこの端末のこのブラウザの中にだけ保存/);
     assert.match(html, /計算結果は保存しません。/);
     assert.match(html, /チェックを外すと、保存した内容をすぐに消します/);
+    const en = read("docs/en/index.html");
+    assert.match(en, /stored only in this browser on this device/);
+    assert.match(en, /Results are not stored\. Nothing is sent anywhere\./);
+    assert.match(en, /Untick it and the stored values are deleted at once/);
     const storage = read("docs/js/web/storage.js");
     assert.match(storage, /const KEY = "setsuzei:input:v1";/);
     for (const call of storage.matchAll(/localStorage\.(\w+)\(([^,)]*)/g)) {

@@ -100,6 +100,8 @@ npx setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90�
 
 **<https://ozko00.github.io/setsuzei/>**（インストール不要。入力はブラウザの中だけで処理します）
 
+English version: **<https://ozko00.github.io/setsuzei/en/>**（日本に住む英語話者のフリーランス・会社員向け。トップと説明ページ 5 枚。計算は日本語版と同じ計算コアで、同じ入力なら同じ数字になります）
+
 <p>
   <img src="docs/img/desktop.png" alt="ブラウザ版の画面（PC 幅）。左に「働き方・ことしの売上・経費」の 3 つの質問、右に「年内に 75,000 円払うと、税金が 73,000 円減る見込みです」と、仮に置いた値、やること（ふるさと納税）の払う額と減る税額が並ぶ" width="68%">
   <img src="docs/img/mobile.png" alt="ブラウザ版の画面（スマホ幅）。「年内にやること」として、ふるさと納税の払う額と減る税額が並び、画面の下に結果の要点の帯が出る" width="26%">
@@ -115,7 +117,7 @@ npx setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90�
 
 ```console
 $ setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万 --ideco-paid 27.6万 --furusato-paid 3万
-setsuzei 0.4.0 ｜ 令和8年分（2026年分）の概算
+setsuzei 0.5.0 ｜ 令和8年分（2026年分）の概算
 
 ■ 現状の見込み
   事業所得（青色申告特別控除 650,000 円を控除後）  5,850,000 円
@@ -193,14 +195,14 @@ npx setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90�
 git が必要です。
 
 ```sh
-git clone --depth 1 --branch v0.4.0 https://github.com/ozko00/setsuzei.git
+git clone --depth 1 --branch v0.5.0 https://github.com/ozko00/setsuzei.git
 cd setsuzei
 npm ci
 npm run build
 node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
 ```
 
-`v0.4.0` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
+`v0.5.0` は[リリース](https://github.com/ozko00/setsuzei/releases)のタグです。タグを指定すると、いつ実行しても同じ版が入ります。
 
 `git clone` が `Could not resolve host: github.com` などで止まったときは、ネットワークの一時的な失敗のことがあります。`npm ci` に進む前に、同じ `git clone` をもう一度実行してください（clone に失敗したまま `npm ci` を実行すると、「`package-lock.json` がない」という別のエラーになります）。`npm ci` が `ENOTFOUND` や `ETIMEDOUT` で止まったときも、同じコマンドをもう一度実行すれば続きから入ります。
 
@@ -210,7 +212,7 @@ node dist/cli.js --revenue 800万 --expenses 150万 --blue 65 --social-insurance
 
 ### フラグで入力
 
-金額は円です。`600万` / `6,000,000` / `6000000` のどの書き方でも指定できます。すべて**年間の見込み額**を入れます。
+金額は円です。`600万` / `6,000,000` / `6000000` のどの書き方でも指定できます（英語圏の書き方の `6m`・`750k`・`¥6,000,000` も読みます）。すべて**年間の見込み額**を入れます。
 
 ```sh
 # 会社員の副業（雑所得）、配偶者控除あり、高校生の子 1 人
@@ -284,6 +286,14 @@ c.previous.limit; // 令和7年分の上限の目安（61,000）
 c.current.limit;  // 令和8年分の上限の目安（57,000）
 c.notes;          // 変わる・変わらない理由
 ```
+
+注記・注意・入力エラーの文面は、既定では日本語です。英語にするには、2 つめの引数に `{ locale: "en" }` を渡します。変わるのは文面だけで、数字は同じです（テストで確かめています）。
+
+```ts
+calculate(input, { locale: "en" }).warnings; // 英語の注意
+```
+
+CLI の出力と MCP のツールの結果（注記・注意）は、いまは日本語だけです。
 
 ### Agent Skill として使う
 

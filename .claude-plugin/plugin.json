@@ -1,7 +1,7 @@
 {
   "name": "setsuzei",
   "displayName": "setsuzei: Japanese tax estimate engine",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Cited, tested Japanese income/resident tax estimates (furusato nozei, iDeCo, mutual aid, blue return) as MCP tools and a skill. Local only; the model does not do the arithmetic.",
   "author": {
     "name": "Kosuke Ozawa",

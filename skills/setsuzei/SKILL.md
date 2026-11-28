@@ -98,14 +98,14 @@ npx --yes setsuzei@0.4.0 --version
 次の 2 つのコマンドを **1 つずつ別々に** 実行する（`&&` や `;` でつながない。つなぐと、エージェントの権限設定で止まることがある）。
 
 ```sh
-git clone --depth 1 --branch v0.4.0 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei
+git clone --depth 1 --branch v0.5.0 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei
 ```
 
 ```sh
 npm ci --prefix ~/.cache/setsuzei
 ```
 
-`npm ci` がビルドまで行う。終わったら `node ~/.cache/setsuzei/dist/cli.js --version` が `0.4.0` を返すことを確かめ、以後はこれを使う。
+`npm ci` がビルドまで行う。終わったら `node ~/.cache/setsuzei/dist/cli.js --version` が `0.5.0` を返すことを確かめ、以後はこれを使う。
 
 - **`git clone` がネットワークのエラーで失敗したとき**（`Could not resolve host`・`unable to access`・`Connection timed out` など）は、一時的な失敗のことがある。`npm ci` には進まず（進むと「`package-lock.json` がない」という別のエラーになる）、同じ `git clone` をもう一度だけ実行する。`npm ci` がネットワークのエラーで失敗したときも、同じ `npm ci` をもう一度だけ実行する。2 回続けて失敗したら、それ以上くり返さず、エラーの文面を利用者に伝える。
 - `~/.cache/setsuzei` が既にあって版が違う場合は、上書きや削除をせず、利用者にどうするか確認する。

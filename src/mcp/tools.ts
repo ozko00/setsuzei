@@ -62,7 +62,7 @@ export const TOOLS: readonly Tool[] = [
     title: "Estimate Japanese income/resident tax and year-end savings",
     description:
       "Estimate a freelancer's or side-job worker's Japanese income tax (tax year 2026 / Reiwa 8) and resident tax, and how much each year-end measure would still reduce them: " +
-      "furusato nozei (hometown tax donation) limit, iDeCo, Small Enterprise Mutual Aid (小規模企業共済), and the blue-return special deduction (青色申告特別控除). " +
+      "furusato nozei (hometown tax donation) limit, iDeCo, Small Business Mutual Aid (小規模企業共済), and the blue-return special deduction (青色申告特別控除). " +
       "Returns the current tax, each measure's limit / remaining room / tax reduction, and a combined plan with the extra payment and the reduction recomputed together." +
       COMMON,
     inputSchema: taxInputSchema,

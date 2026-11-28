@@ -180,7 +180,7 @@ describe("ブラウザ版: 公開する静的ファイル（docs/）", () => {
     assert.match(html, /Content-Security-Policy[^>]*form-action 'none'/);
     // 読み込むファイルは同じ場所の相対パスだけ
     // （rel="canonical" は読み込みではなく、このページ自身の URL の宣言なので除く）
-    const loaded = [...html.matchAll(/<(?:script|link|img)(?![^>]*rel="canonical")[^>]*\b(?:src|href)="([^"]+)"/g)].map((m) => m[1] ?? "");
+    const loaded = [...html.matchAll(/<(?:script|link|img)(?![^>]*rel="(?:canonical|alternate)")[^>]*\b(?:src|href)="([^"]+)"/g)].map((m) => m[1] ?? "");
     assert.deepEqual(loaded.sort(), ["img/favicon.svg", "js/web/main.js", "style.css"]);
     const css = readFileSync(join(root, "docs/style.css"), "utf8");
     assert.doesNotMatch(css, /url\(|@import/);

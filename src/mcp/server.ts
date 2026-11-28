@@ -27,7 +27,7 @@ const META_SERVER = "io.modelcontextprotocol/serverInfo";
 const SERVER_INFO = { name: "setsuzei", title: "setsuzei: Japanese tax estimate engine", version: VERSION } as const;
 const INSTRUCTIONS =
   "Estimates Japanese income tax and resident tax for freelancers and side-job workers (tax year 2026 / Reiwa 8) and the effect of year-end measures " +
-  "(furusato nozei, iDeCo, Small Enterprise Mutual Aid, blue-return deduction). Do not do the tax arithmetic yourself: call the tools with the user's figures " +
+  "(furusato nozei, iDeCo, Small Business Mutual Aid, blue-return deduction). Do not do the tax arithmetic yourself: call the tools with the user's figures " +
   "(annual amounts in whole yen) and report the returned numbers as they are. Always tell the user the result is an estimate (meta.disclaimer). " +
   "Everything runs locally; no data leaves the machine.";
 /** 一覧は版ごとに変わらないので、長めに覚えてよい */

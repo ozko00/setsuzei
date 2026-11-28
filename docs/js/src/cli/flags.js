@@ -1,3 +1,4 @@
+import { m } from "../core/messages.js";
 import { InputError } from "../core/validate.js";
 import { parseAmount } from "./amount.js";
 /**
@@ -77,8 +78,8 @@ export function flagsToInput(flags) {
         const value = parseAmount(text);
         if (value === null) {
             issues.push(/^\s*[-−ー－]/.test(text)
-                ? `--${flag}: 0 以上の金額で指定してください（受け取った値: ${JSON.stringify(text)}）`
-                : `--${flag}: 金額として読めません（${JSON.stringify(text)}）`);
+                ? m().flagNegative(flag, text)
+                : m().flagNotAmount(flag, text));
         }
         return value ?? undefined;
     };
@@ -96,7 +97,7 @@ export function flagsToInput(flags) {
         if (/^\d+$/.test(count))
             dependents[key] = Number(count);
         else
-            issues.push(`--${flag}: 人数を整数で指定してください（${JSON.stringify(text)}）`);
+            issues.push(m().flagCount(flag, text));
     }
     if (Object.keys(dependents).length > 0)
         input["dependents"] = dependents;
@@ -105,14 +106,14 @@ export function flagsToInput(flags) {
         input["spouse"] = { income, ...(flags["spouse-70"] ? { age70OrOlder: true } : {}) };
     }
     else if (flags["spouse-70"]) {
-        issues.push("--spouse-70: --spouse-income と一緒に指定してください");
+        issues.push(m().flagSpouse70);
     }
     if (flags["nhi-rate"] !== undefined) {
         const text = flags["nhi-rate"].trim().replace(/[%％]$/, "");
         if (/^\d+(\.\d+)?$/.test(text))
             input["nhiIncomeRatePercent"] = Number(text);
         else
-            issues.push(`--nhi-rate: パーセントの数値で指定してください（例: 11.5。受け取った値: ${JSON.stringify(flags["nhi-rate"])}）`);
+            issues.push(m().flagNhiRate(flags["nhi-rate"]));
     }
     if (flags["income-adjustment"])
         input["incomeAdjustment"] = true;

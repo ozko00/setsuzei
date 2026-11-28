@@ -5,8 +5,10 @@
 import { parseAmount } from "../src/cli/amount.js";
 import { flagsToInput, INPUT_BOOLEAN_FLAGS, INPUT_STRING_FLAGS, issueFlag } from "../src/cli/flags.js";
 import { calculate, compareFurusatoLimit } from "../src/core/calculate.js";
+import { m, withLocale } from "../src/core/messages.js";
 import { InputError } from "../src/core/validate.js";
 import { estimateInsurance } from "./guide.js";
+import { webMessages } from "./messages.js";
 /** フォームの値を CLI のフラグと同じ形にする。空欄は「指定なし」。 */
 export function valuesToFlags(values) {
     const flags = {};
@@ -34,9 +36,9 @@ export function valuesToFlags(values) {
     return flags;
 }
 /** フォームの値から計算する。入力の誤りは issues で返す。 */
-export function compute(values) {
+export function compute(values, locale = "ja") {
     try {
-        return { ok: true, result: calculate(flagsToInput(valuesToFlags(values))) };
+        return withLocale(locale, () => ({ ok: true, result: calculate(flagsToInput(valuesToFlags(values))) }));
     }
     catch (error) {
         if (error instanceof InputError)
@@ -47,10 +49,12 @@ export function compute(values) {
     }
 }
 /** フォームの値から、令和 8 年分の結果と、ふるさと納税の上限の令和 7 年分との比較を計算する。 */
-export function computeComparison(values) {
+export function computeComparison(values, locale = "ja") {
     try {
-        const input = flagsToInput(valuesToFlags(values));
-        return { ok: true, result: calculate(input), comparison: compareFurusatoLimit(input) };
+        return withLocale(locale, () => {
+            const input = flagsToInput(valuesToFlags(values));
+            return { ok: true, result: calculate(input), comparison: compareFurusatoLimit(input) };
+        });
     }
     catch (error) {
         if (error instanceof InputError)
@@ -108,7 +112,6 @@ export function isBlank(values) {
  * - budget: 年内に出せるお金（任意。入れたら、その範囲で減る税額が大きくなる配分にする）
  */
 export const TOP_ONLY_NAMES = ["work", "si-mode", "misc-assumed", "furusato-add", "budget", "spouse-salary"];
-const yen = (n) => `${n.toLocaleString("ja-JP")} 円`;
 const filled = (value) => typeof value === "string" && value.trim() !== "";
 /**
  * 社会保険料を目安で置くか。「分からない」を選んでいる間と、「金額を入れる」を選んだがまだ額を入れていない間
@@ -146,8 +149,13 @@ function savingBetween(before, after) {
  * 結果（result）は、計算に使った値（effective）を CLI に渡したときと同じ。
  * 年内にやること（plan）は、掛金や寄附を「支払済み」に足した入力を同じ計算コアに通して、
  * 税額の差を取ったもの（= その入力で CLI を実行したときの税額の差）。計算の中身は足していない。
+ *
+ * locale は文面（注記・理由・仮に置いた値の説明）の言語。数字は言語で変わらない。
  */
-export function computeTop(values) {
+export function computeTop(values, locale = "ja") {
+    return withLocale(locale, () => computeTopIn(values, webMessages(locale)));
+}
+function computeTopIn(values, t) {
     const v = normalizeTop(values);
     const issues = [];
     try {
@@ -156,9 +164,7 @@ export function computeTop(values) {
             const text = String(v["spouse-salary"]);
             const salary = parseAmount(text);
             if (salary === null) {
-                issues.push(/^\s*[-−ー－]/.test(text)
-                    ? `--spouse-salary: 0 以上の金額で指定してください（受け取った値: ${JSON.stringify(text)}）`
-                    : `--spouse-salary: 金額として読めません（${JSON.stringify(text)}）`);
+                issues.push(/^\s*[-−ー－]/.test(text) ? m().flagNegative("spouse-salary", text) : m().flagNotAmount("spouse-salary", text));
             }
             else {
                 try {
@@ -180,7 +186,7 @@ export function computeTop(values) {
             // 所得は社会保険料に関係なく決まるので、先に社会保険料なしで計算して、目安の計算に使う
             const first = calculate(flagsToInput(valuesToFlags(v)));
             const kind = first.input.salaryRevenue > 0 ? "employee" : "freelance";
-            insurance = estimateInsurance(kind, first.input.salaryRevenue, first.baseline.totalIncome);
+            insurance = estimateInsurance(kind, first.input.salaryRevenue, first.baseline.totalIncome, t.locale);
             v["social-insurance"] = String(insurance.amount);
         }
         const amountOf = (name) => {
@@ -189,9 +195,7 @@ export function computeTop(values) {
                 return null;
             const amount = parseAmount(text);
             if (amount === null) {
-                issues.push(/^\s*[-−ー－]/.test(text)
-                    ? `--${name}: 0 以上の金額で指定してください（受け取った値: ${JSON.stringify(text)}）`
-                    : `--${name}: 金額として読めません（${JSON.stringify(text)}）`);
+                issues.push(/^\s*[-−ー－]/.test(text) ? m().flagNegative(name, text) : m().flagNotAmount(name, text));
             }
             return amount;
         };
@@ -267,23 +271,18 @@ export function computeTop(values) {
             if (kyosaiFree)
                 v["kyosai-add"] = String(best.k);
             furusatoPlanned = best.f;
-            const parts = [best.f > 0 ? "ふるさと納税" : "", best.k > 0 ? "小規模企業共済" : ""].filter((t) => t !== "");
             budget = {
                 amount: budgetAmount,
                 over: Math.max(0, fixedIdeco + fixedKyosai + (furusatoCustom ?? 0) - budgetAmount),
-                reason: parts.length === 0
-                    ? "この範囲で、年内に払って税金が減るものはありません。"
-                    : `出せるお金の範囲で、減る税額がいちばん大きくなる組み合わせです。${best.f > 0
-                        ? "ふるさと納税は払った額とほぼ同じだけ税金が減るので、先に入れています。ただし寄附と引き換えなので、手元のお金は増えません（得になるのは返礼品の分）。"
-                        : ""}${best.k > 0 ? "残りを小規模企業共済の掛金に回しています。掛金は自分の積立として残るので、手元に残るお金を重く見るなら、掛金を多めにしてください。" : ""}`,
+                reason: best.f === 0 && best.k === 0 ? t.budgetNothing : t.budgetBest(best.f > 0, best.k > 0),
             };
         }
         const effective = valuesToFlags(v);
         const input = flagsToInput(effective);
         const result = calculate(input);
         // --- 年内にやること ---
-        const m = result.measures;
-        const c = m.combined;
+        const m_ = result.measures;
+        const c = m_.combined;
         const k = c.kyosaiAdditional;
         const i = c.idecoAdditional;
         const afterKyosai = k > 0 ? at(k, 0, 0) : result;
@@ -303,11 +302,18 @@ export function computeTop(values) {
             }
         }
         // 出せるお金に合わせて掛金を減らすと、ふるさと納税の上限の目安は上がる。配分の理由として添える
-        if (budget && limit > first.measures.furusato.limitAfterOtherMeasures) {
+        // （いま加入していない人の小規模企業共済は、額を入れるまで計算に入れていないので、この説明は当てはまらない）
+        if (budget && limit > first.measures.furusato.limitAfterOtherMeasures && !(joining && !kyosaiCustom)) {
             budget = {
                 ...budget,
-                reason: `${budget.reason}掛金を上限まで払う場合より掛金が少ないぶん、住民税が多く残るので、ふるさと納税の上限の目安は ${yen(first.measures.furusato.limitAfterOtherMeasures)}から ${yen(limit)}に上がっています。`,
+                reason: `${budget.reason}${t.budgetLimitUp(first.measures.furusato.limitAfterOtherMeasures, limit)}`,
             };
+        }
+        // 出せるお金が余っていて、加入すれば使える策（小規模企業共済）があるときは、自分で額を入れると入ることを伝える
+        if (budget && ifJoined !== null && !kyosaiCustom) {
+            const left = budget.amount - (k + i + f);
+            if (left >= 1_000)
+                budget = { ...budget, reason: `${budget.reason}${t.budgetLeftover(left)}` };
         }
         const plan = {
             furusato: {
@@ -320,12 +326,12 @@ export function computeTop(values) {
                 over: Math.max(0, f - recommended),
                 skipped,
             },
-            kyosai: m.kyosai.applicable
+            kyosai: m_.kyosai.applicable
                 ? {
                     amount: k,
                     saving: savingBetween(result.baseline, afterKyosai.baseline),
-                    max: m.kyosai.remaining,
-                    paid: m.kyosai.paid,
+                    max: m_.kyosai.remaining,
+                    paid: m_.kyosai.paid,
                     custom: kyosaiCustom,
                     ifJoined,
                 }
@@ -333,8 +339,8 @@ export function computeTop(values) {
             ideco: {
                 amount: i,
                 saving: savingBetween(afterKyosai.baseline, afterContributions.baseline),
-                max: m.ideco.remaining,
-                paid: m.ideco.paid,
+                max: m_.ideco.remaining,
+                paid: m_.ideco.paid,
                 included: c.includesIdeco,
             },
             budget,
@@ -346,29 +352,22 @@ export function computeTop(values) {
         // --- 仮に置いた値 ---
         const assumptions = [];
         if (insurance) {
-            assumptions.push({
-                key: "insurance",
-                text: `社会保険料: 目安の ${yen(insurance.amount)}（${insurance.kind === "employee" ? "給与の年収の約 14.7%" : "国民年金 + 国民健康保険の目安"}。幅は ${yen(insurance.low)}〜${yen(insurance.high)}）`,
-            });
+            assumptions.push({ key: "insurance", text: t.assumeInsurance(insurance.amount, insurance.kind === "employee", insurance.low, insurance.high) });
         }
-        if (m.blueReturn.applicable && values["blue"] === "unknown") {
-            assumptions.push({ key: "blue", text: "青色申告特別控除: なし（白色申告として計算）" });
-        }
+        if (m_.blueReturn.applicable && values["blue"] === "unknown")
+            assumptions.push({ key: "blue", text: t.assumeBlue });
         if (values["misc-assumed"] === true && n.businessRevenue > 0 && n.businessIncomeType === "misc") {
-            assumptions.push({ key: "incomeType", text: "副業の所得の種類: 雑所得（開業届を出して帳簿をつけている事業なら「事業所得」）" });
+            assumptions.push({ key: "incomeType", text: t.assumeIncomeType });
         }
         const dependents = ["dependents", "dependents-specific", "dependents-elderly", "dependents-elderly-cohabiting", "dependents-under16"];
         if (values["has-spouse"] === true && v["has-spouse"] === false) {
-            assumptions.push({ key: "family", text: "配偶者: 所得（または給料の年収）を入れるまでは、配偶者なしで計算しています" });
+            assumptions.push({ key: "family", text: t.assumeSpousePending });
         }
         else if (values["has-spouse"] !== true && !dependents.some((name) => filled(values[name]))) {
-            assumptions.push({ key: "family", text: "配偶者・扶養している家族: なし" });
+            assumptions.push({ key: "family", text: t.assumeNoFamily });
         }
         if (!["ideco-paid", "kyosai-paid", "furusato-paid", "other-deductions"].some((name) => filled(values[name]))) {
-            assumptions.push({
-                key: "paid",
-                text: "iDeCo・小規模企業共済の掛金、ふるさと納税の寄附済みの額、医療費控除や生命保険料控除など: なし",
-            });
+            assumptions.push({ key: "paid", text: t.assumeNoPaid });
         }
         return { ok: true, result, effective, insurance, assumptions, plan };
     }
