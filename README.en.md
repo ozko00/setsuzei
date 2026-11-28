@@ -12,9 +12,9 @@
 
 ```sh
 # MCP server (example: add it to Claude Code)
-claude mcp add setsuzei -- npx -y setsuzei@0.6.0 mcp
+claude mcp add setsuzei -- npx -y setsuzei@0.6.1 mcp
 # CLI
-npx setsuzei@0.6.0 --revenue 8m --expenses 1.5m --blue 65 --social-insurance 900k
+npx setsuzei@0.6.1 --revenue 8m --expenses 1.5m --blue 65 --social-insurance 900k
 ```
 
 It estimates Japanese national income tax and local resident tax for freelancers and people with side jobs (tax year 2026 / Reiwa 8), and how much each year-end measure would still reduce them:
@@ -60,7 +60,7 @@ This installs the MCP server (the five tools below) and the Agent Skill together
   "mcpServers": {
     "setsuzei": {
       "command": "npx",
-      "args": ["-y", "setsuzei@0.6.0", "mcp"]
+      "args": ["-y", "setsuzei@0.6.1", "mcp"]
     }
   }
 }
@@ -69,10 +69,10 @@ This installs the MCP server (the five tools below) and the Agent Skill together
 Claude Code, MCP server only:
 
 ```sh
-claude mcp add setsuzei -- npx -y setsuzei@0.6.0 mcp
+claude mcp add setsuzei -- npx -y setsuzei@0.6.1 mcp
 ```
 
-Keep the version (`@0.6.0`). The `mcp` subcommand exists from 0.4.0, and without a version `npx` may reuse an older copy left from an earlier `npx setsuzei`, in which case the connection fails.
+Keep the version (`@0.6.1`). The `mcp` subcommand exists from 0.4.0, and without a version `npx` may reuse an older copy left from an earlier `npx setsuzei`, in which case the connection fails.
 
 | Tool | What it returns |
 | --- | --- |
