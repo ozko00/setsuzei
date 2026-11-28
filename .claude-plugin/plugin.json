@@ -23,7 +23,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "setsuzei@0.5.0",
+        "setsuzei@0.6.0",
         "mcp"
       ]
     }
