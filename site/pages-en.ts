@@ -463,7 +463,7 @@ function medicalPageEn(): PageEn {
       "Medical expenses and eligible medicines",
       [
         field("medical", "Medical expenses paid this year", "For you and family members in the same household", "e.g. 150,000", "110,000"),
-        field("medical-reimbursed", "Part of it reimbursed", "Hospitalization benefits, the high-cost medical care benefit and similar"),
+        field("medical-reimbursed", "Part of it reimbursed", "Hospitalization benefits, the high-cost medical care benefit and similar, each up to the expense it covers"),
         field("self-medication", "Spending on medicines eligible for self-medication", "Over-the-counter medicines marked as eligible on the receipt. Only if you had a health check or similar", "e.g. 30,000", "30,000"),
       ].join("\n    "),
     ),

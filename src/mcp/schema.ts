@@ -73,7 +73,9 @@ export const taxInputSchema: JsonSchema = {
     medicalExpenses: yen(
       "Medical expenses paid this year for the user and family members in the same household (医療費). Used for the medical expense deduction; the engine compares it with the self-medication system and uses whichever leaves less tax",
     ),
-    medicalReimbursed: yen("Part of medicalExpenses reimbursed by insurance, high-cost medical care benefit, childbirth lump-sum, etc. (補てんされる金額)"),
+    medicalReimbursed: yen(
+      "Part of medicalExpenses reimbursed by insurance, high-cost medical care benefit, childbirth lump-sum, etc. (補てんされる金額). Cap each payout at the expense it covers before adding them up: an excess is not subtracted from other medical expenses",
+    ),
     selfMedicationExpenses: yen(
       "Spending on over-the-counter medicines eligible for the self-medication tax system (セルフメディケーション税制; marked on the receipt), net of reimbursements. Only for users who had a health check, vaccination or similar that year",
     ),
@@ -85,7 +87,7 @@ export const taxInputSchema: JsonSchema = {
     dependentUnder23: {
       type: "boolean",
       description:
-        "Has a dependent under 23 (including children under 16). For tax year 2026 this raises the income-tax deduction for new-contract life insurance to up to 60,000 yen. Set automatically when under16 or specific dependents are given.",
+        "Has a dependent under 23 (including children under 16). For tax year 2026 this raises the income-tax deduction for new-contract life insurance to up to 60,000 yen, and it also makes a salary over 8,500,000 yen eligible for the income adjustment deduction. Set automatically when under16 or specific dependents are given.",
     },
     otherDeductions: yen("Total of other income deductions for income tax (earthquake insurance, disability, etc.). Do not include medical expenses or life insurance premiums: use their own fields"),
     otherDeductionsResident: yen("The same total for resident tax. Defaults to otherDeductions"),

@@ -173,6 +173,13 @@ describe("生命保険料控除（国税庁 No.1140・地方税法 第314条の2
     assert.equal(calculate({ ...FREELANCER, lifeInsuranceNew: 120_000, dependentUnder23: true }).baseline.incomeTax.deductions.lifeInsurance, 60_000);
   });
 
+  it("23 歳未満の扶養親族がいれば、所得金額調整控除の対象にもなる（国税庁 No.1411。給与 1,000 万円 → 15 万円）", () => {
+    const r = calculate({ salaryRevenue: 10_000_000, socialInsurance: 1_400_000, dependents: { general: 1 }, dependentUnder23: true });
+    assert.equal(r.baseline.incomeAdjustment, 150_000);
+    assert.equal(r.input.incomeAdjustment, true);
+    assert.equal(calculate({ salaryRevenue: 10_000_000, socialInsurance: 1_400_000, dependents: { general: 1 } }).baseline.incomeAdjustment, 0);
+  });
+
   it("控除は税額とふるさと納税の上限に反映される（住民税の所得割が減るので上限は下がる）", () => {
     const base = calculate(FREELANCER);
     const r = calculate({ ...FREELANCER, lifeInsuranceNew: 100_000, medicalCareInsurance: 100_000 });

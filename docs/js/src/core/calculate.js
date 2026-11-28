@@ -101,6 +101,8 @@ function prepare(rawInput) {
         },
         // 特定扶養親族（19〜22 歳）と 16 歳未満の扶養親族は必ず 23 歳未満なので、いれば対象
         incomeAdjustment: input.incomeAdjustment === true ||
+            // 23 歳未満の扶養親族がいれば対象（国税庁 No.1411）
+            input.dependentUnder23 === true ||
             (input.dependents?.specific ?? 0) > 0 ||
             (input.dependents?.under16 ?? 0) > 0,
         medicalExpenses: input.medicalExpenses ?? 0,

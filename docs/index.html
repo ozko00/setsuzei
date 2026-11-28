@@ -137,7 +137,7 @@
         <summary>医療費（医療費控除・セルフメディケーション税制）</summary>
         <label>ことし払った医療費<span class="sub">自分と、生計を一にする家族の分の合計。病院・薬局の領収書や、健康保険の医療費通知の額</span>
           <input name="medical" inputmode="numeric" placeholder="例: 15万"></label>
-        <label>そのうち保険金などで補てんされる額<span class="sub">生命保険の入院給付金、高額療養費、出産育児一時金など</span>
+        <label>そのうち保険金などで補てんされる額<span class="sub">生命保険の入院給付金、高額療養費、出産育児一時金など。給付ごとに、その対象になった医療費の額が上限です（超えた分は入れません）</span>
           <input name="medical-reimbursed" inputmode="numeric"></label>
         <label>セルフメディケーション税制の対象の薬の購入費<span class="sub">レシートに対象の印がある市販薬（スイッチ OTC など）。健康診断・予防接種などを受けた人だけ使えます。入れると、通常の医療費控除と比べて税額が少ないほうで計算します</span>
           <input name="self-medication" inputmode="numeric" placeholder="例: 3万"></label>
@@ -157,7 +157,7 @@
           <label>個人年金保険料（旧）
             <input name="pension-old" inputmode="numeric"></label>
         </div>
-        <label class="inline"><input type="checkbox" name="dependent-under23"> <span>23 歳未満の扶養親族（16〜18 歳の子など）がいる<span class="sub">令和8年分は、新契約の一般の生命保険料の控除が最高 6 万円になります。16 歳未満か 19〜22 歳の人数を入れたときは自動で対象にします</span></span></label>
+        <label class="inline"><input type="checkbox" name="dependent-under23"> <span>23 歳未満の扶養親族（16〜18 歳の子など）がいる<span class="sub">令和8年分は、新契約の一般の生命保険料の控除が最高 6 万円になります（会社の年収が 850 万円を超える場合は、所得金額調整控除の対象にもなります）。16 歳未満か 19〜22 歳の人数を入れたときは自動で対象にします</span></span></label>
       </details>
     </fieldset>
 
