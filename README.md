@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/ozko00/setsuzei/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ozko00/setsuzei/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/setsuzei)](https://www.npmjs.com/package/setsuzei)
+[![setsuzei MCP server](https://glama.ai/mcp/servers/ozko00/setsuzei/badges/score.svg)](https://glama.ai/mcp/servers/ozko00/setsuzei)
 
 日本語 | [English](README.en.md)
 
