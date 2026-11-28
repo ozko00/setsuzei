@@ -8,6 +8,15 @@
 
 **A cited, tested calculation engine so that LLMs don't have to do Japanese tax arithmetic in their heads.** Use it as an MCP server, a CLI, an Agent Skill, or in the browser.
 
+**Quick start** (Node.js 20 or later)
+
+```sh
+# MCP server (example: add it to Claude Code)
+claude mcp add setsuzei -- npx -y setsuzei@0.6.0 mcp
+# CLI
+npx setsuzei@0.6.0 --revenue 8m --expenses 1.5m --blue 65 --social-insurance 900k
+```
+
 It estimates Japanese national income tax and local resident tax for freelancers and people with side jobs (tax year 2026 / Reiwa 8), and how much each year-end measure would still reduce them:
 
 - **Furusato nozei** (hometown tax donation): the donation limit at which the out-of-pocket cost stays at about 2,000 yen

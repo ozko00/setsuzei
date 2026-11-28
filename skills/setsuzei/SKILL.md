@@ -99,19 +99,19 @@ npx --yes setsuzei@0.6.0 --version
 
 #### npm から取得できないとき（補足）
 
-`npx` が `ETARGET`・`E404`（その版が npm にない）で失敗したとき、または npm を使えない環境では、GitHub の固定したタグから取得してビルドできる。git が必要。**これも、取得の前に利用者に伝えて了承を得る**（GitHub の `ozko00/setsuzei` のタグ `v0.6.0` を `~/.cache/setsuzei` に取得すること〔約 30 MB〕、ビルドのために npm から `typescript` と `@types/node`〔とその依存の `undici-types`〕を入れること）。
+`npx` が `ETARGET`・`E404`（その版が npm にない）で失敗したとき、または npm を使えない環境では、GitHub の固定したタグから取得してビルドできる。git が必要。**これも、取得の前に利用者に伝えて了承を得る**（GitHub の `ozko00/setsuzei` のタグ `v0.6.1` を `~/.cache/setsuzei` に取得すること〔約 30 MB〕、ビルドのために npm から `typescript` と `@types/node`〔とその依存の `undici-types`〕を入れること）。
 
 次の 2 つのコマンドを **1 つずつ別々に** 実行する（`&&` や `;` でつながない。つなぐと、エージェントの権限設定で止まることがある）。
 
 ```sh
-git clone --depth 1 --branch v0.6.0 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei
+git clone --depth 1 --branch v0.6.1 https://github.com/ozko00/setsuzei.git ~/.cache/setsuzei
 ```
 
 ```sh
 npm ci --prefix ~/.cache/setsuzei
 ```
 
-`npm ci` がビルドまで行う。終わったら `node ~/.cache/setsuzei/dist/cli.js --version` が `0.6.0` を返すことを確かめ、以後はこれを使う。
+`npm ci` がビルドまで行う。終わったら `node ~/.cache/setsuzei/dist/cli.js --version` が `0.6.1` を返すことを確かめ、以後はこれを使う。
 
 - **`git clone` がネットワークのエラーで失敗したとき**（`Could not resolve host`・`unable to access`・`Connection timed out` など）は、一時的な失敗のことがある。`npm ci` には進まず（進むと「`package-lock.json` がない」という別のエラーになる）、同じ `git clone` をもう一度だけ実行する。`npm ci` がネットワークのエラーで失敗したときも、同じ `npm ci` をもう一度だけ実行する。2 回続けて失敗したら、それ以上くり返さず、エラーの文面を利用者に伝える。
 - `~/.cache/setsuzei` が既にあって版が違う場合は、上書きや削除をせず、利用者にどうするか確認する。
