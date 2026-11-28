@@ -48,7 +48,7 @@ This installs the MCP server (the five tools below) and the Agent Skill together
   "mcpServers": {
     "setsuzei": {
       "command": "npx",
-      "args": ["-y", "setsuzei@0.4.0", "mcp"]
+      "args": ["-y", "setsuzei@0.5.0", "mcp"]
     }
   }
 }
@@ -57,10 +57,10 @@ This installs the MCP server (the five tools below) and the Agent Skill together
 Claude Code, MCP server only:
 
 ```sh
-claude mcp add setsuzei -- npx -y setsuzei@0.4.0 mcp
+claude mcp add setsuzei -- npx -y setsuzei@0.5.0 mcp
 ```
 
-Keep the version (`@0.4.0`). The `mcp` subcommand exists from 0.4.0, and without a version `npx` may reuse an older copy left from an earlier `npx setsuzei`, in which case the connection fails.
+Keep the version (`@0.5.0`). The `mcp` subcommand exists from 0.4.0, and without a version `npx` may reuse an older copy left from an earlier `npx setsuzei`, in which case the connection fails.
 
 | Tool | What it returns |
 | --- | --- |

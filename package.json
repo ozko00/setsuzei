@@ -26,7 +26,7 @@
     "node": ">=20"
   },
   "config": {
-    "npmPinned": "0.4.0"
+    "npmPinned": "0.5.0"
   },
   "bin": {
     "setsuzei": "dist/cli.js"
