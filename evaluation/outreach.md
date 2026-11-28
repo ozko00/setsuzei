@@ -86,3 +86,46 @@ Admin → Dockerfile が項目を入れる形式のときは、次の値に当�
 うまくいかないとき: Admin → Dockerfile の画面の名前や形式が上と違う場合は、そのまま画面の表示に従い、Glama の [Support](https://glama.ai/support) か Discord に問い合わせる。
 
 代わりの方法: Glama は「管理者がリポジトリに置いた Dockerfile」でもビルドする（Methodology 1.3）。リポジトリに Dockerfile を置く場合は、オーナーの判断で別に PR にする。
+
+## 検索順位の点検（2026-11-28）
+
+外の一覧に頼る前に、npm と GitHub の中の検索で見つかるかを測った。点検前は v0.6.0、点検後は v0.6.1（npm の説明を英語の 1 文目に、keywords に `mcp`・`mcp-server`・`model-context-protocol`・`claude`・`tax-calculator`・`kakutei-shinkoku`・`furusato`・`income-tax` などを足した）。GitHub の About と topics は、測った時点ではまだ変えていない。
+
+測り方: npm は registry の検索 API（`/-/v1/search`、上位 250 件まで）、GitHub はリポジトリ検索 API（`search/repositories`、既定の best match、上位 300 件まで）。表の「n/全体」は順位と、その検索語で出る件数。`-` は範囲内に出ないこと。`gh search repos "a b c"` は語の並びを 1 つの語句として検索するので、使わない（同じ語でも API と結果が違った）。
+
+| 検索語 | npm 点検前 | npm 点検後 | GitHub 点検前 | GitHub 点検後 |
+|---|---|---|---|---|
+| mcp japan tax | - / 148,931 | - / 148,936 | 15 / 16 | 15 / 16 |
+| japan tax | - / 5,367 | - / 5,368 | 245 / 254 | 245 / 254 |
+| japanese tax | - / 10,124 | - / 10,125 | 177 / 195 | 177 / 195 |
+| mcp tax | - | - | - / 705 | - / 705 |
+| mcp server tax | - | - | - / 351 | - / 351 |
+| furusato nozei | 5 / 5 | 5 / 5 | 24 / 25 | 24 / 25 |
+| furusato | 5 / 5 | 5 / 5 | 276 / 278 | 276 / 278 |
+| ideco | 10 / 10 | 10 / 10 | - / 351 | - / 351 |
+| japan income tax | - / 6,450 | - / 6,451 | 21 / 22 | 21 / 22 |
+| tax calculator japan | - | - | - / 45（説明に calculator がない） | - / 45 |
+| mcp finance japan | - | - | - / 19（finance の語がない） | - / 19 |
+| freelance tax japan | - | - | 7 / 7 | 7 / 7 |
+| ふるさと納税 | - / 7,298 | - / 7,300 | - / 67（説明に日本語の語がない） | - / 67 |
+| 確定申告 | - / 97,337 | - / 97,342 | - / 106 | - / 106 |
+
+npm のキーワード指定の検索（点検後に測った。点検前は該当するキーワードがなかったものは「一致しない」）:
+
+| 検索語 | 点検前 | 点検後 |
+|---|---|---|
+| keywords:japan keywords:tax | 19 / 19 | 19 / 19 |
+| keywords:mcp-server keywords:japan | 一致しない | 20 / 20 |
+| keywords:mcp-server keywords:tax | 一致しない | 23 / 24 |
+| keywords:mcp keywords:tax | 一致しない | 133 / 137 |
+| keywords:income-tax keywords:japan | 一致しない | 2 / 2 |
+| keywords:tax-calculator | 一致しない | 34 / 34 |
+| keywords:kakutei-shinkoku | 一致しない | 1 / 1 |
+| keywords:furusato | 一致しない | 1 / 1 |
+| keywords:ideco | 未測定（keywords にはあった） | 2 / 2 |
+
+わかったこと:
+
+- 自由入力の検索の順位は、npm も GitHub も変わらなかった。npm の自由入力は人気（ダウンロード数など）の重みが大きく、GitHub の best match はスター数の多いものが上に来るので、スター 0・ダウンロード 0 のうちは最下位に近い。説明やキーワードで変えられるのは「検索に一致するかどうか」と、キーワードで絞った検索での位置。
+- npm は説明を 255 文字で切る（0.6.1 の説明は末尾が切れた。リポジトリでは 235 文字に縮めたので、次の公開から直る）。
+- GitHub では、トピックと説明の語が検索に使われる。「calculator」「finance」と、日本語の「ふるさと納税」「確定申告」が説明・トピックにないので、その語の検索に一致しない。
