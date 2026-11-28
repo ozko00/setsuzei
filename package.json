@@ -1,6 +1,6 @@
 {
   "name": "setsuzei",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "mcpName": "io.github.ozko00/setsuzei",
   "description": "年末までに、あと何をすればいくら税金が減るかを概算する CLI / ライブラリ / Agent Skill（フリーランス・副業向け、令和8年分）",
   "license": "MIT",

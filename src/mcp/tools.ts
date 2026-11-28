@@ -16,6 +16,8 @@ export const ASSUMPTIONS: readonly string[] = [
   "ふるさと納税の上限の目安は、確定申告をする前提で、自己負担がおおむね 2,000 円で済む寄附額（1,000 円未満切り捨て）。",
   "iDeCo の年間の限度額は、指定がなければ、給与収入がなければ月額 68,000 円、あれば企業年金のない会社員の月額 23,000 円とする。",
   "各策の軽減額は、その策だけを実行した場合の額。まとめて実行した場合（combined）は、足し算ではなく計算し直した額。",
+  "医療費控除は、通常の控除とセルフメディケーション税制のうち、税額が少なくなるほうで計算する（併用はできない）。",
+  "確定申告書の欄の対応（filing）は、国税庁が公開している令和8年分の確定申告書（案）の第一表・第二表の欄の番号に当てはめたもの。源泉徴収税額・予定納税額・税額控除は含めない。",
 ];
 
 /** 計算していないもの */
@@ -63,7 +65,8 @@ export const TOOLS: readonly Tool[] = [
     description:
       "Estimate a freelancer's or side-job worker's Japanese income tax (tax year 2026 / Reiwa 8) and resident tax, and how much each year-end measure would still reduce them: " +
       "furusato nozei (hometown tax donation) limit, iDeCo, Small Business Mutual Aid (小規模企業共済), and the blue-return special deduction (青色申告特別控除). " +
-      "Returns the current tax, each measure's limit / remaining room / tax reduction, and a combined plan with the extra payment and the reduction recomputed together." +
+      "Returns the current tax, each measure's limit / remaining room / tax reduction, and a combined plan with the extra payment and the reduction recomputed together. " +
+      "It also handles the medical expense deduction (compared with the self-medication tax system) and the life insurance premium deduction, and returns `filing`: which box of the final tax return (確定申告書, pages 1 and 2, tax year 2026 draft form) each figure goes in. Use it for filing-season questions such as where to write an amount." +
       COMMON,
     inputSchema: taxInputSchema,
     outputSchema: outputSchemas.estimate,

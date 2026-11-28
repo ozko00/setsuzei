@@ -34,8 +34,21 @@ const HELP = `setsuzei ${VERSION}
   --ideco-paid 金額              iDeCo の掛金（年末までの拠出見込み）
   --kyosai-paid 金額             小規模企業共済の掛金（年末までの支払見込み）
   --furusato-paid 金額           ふるさと納税の寄附済み額
-  --other-deductions 金額        その他の所得控除の合計（医療費控除・生命保険料控除など）
+  --other-deductions 金額        その他の所得控除の合計（地震保険料控除など。医療費・生命保険料は下の項目で）
   --other-deductions-resident 金額   同・住民税での金額（省略時は所得税と同額）
+
+医療費控除（通常の控除とセルフメディケーション税制の、税額が少なくなるほうで計算）:
+  --medical 金額                 支払った医療費（自分と生計を一にする家族の分）
+  --medical-reimbursed 金額      そのうち保険金・高額療養費などで補てんされる額（給付ごとに、その対象の
+                                 医療費の額が上限。超えた分は入れない）
+  --self-medication 金額         セルフメディケーション税制の対象の医薬品の購入費（健康診断などを受けた人だけ）
+
+生命保険料控除（保険会社の控除証明書の額。新契約 = 平成24年以後、旧契約 = 平成23年以前）:
+  --life-new 金額                一般の生命保険料（新契約）
+  --life-old 金額                一般の生命保険料（旧契約）
+  --care-medical 金額            介護医療保険料
+  --pension-new 金額             個人年金保険料（新契約）
+  --pension-old 金額             個人年金保険料（旧契約）
 
 家族:
   --spouse-income 金額           配偶者の合計所得金額（配偶者がいる場合のみ。所得なしは 0）
@@ -49,6 +62,8 @@ const HELP = `setsuzei ${VERSION}
   --income-adjustment            所得金額調整控除の対象（給与収入 850 万円超で、23 歳未満の扶養親族
                                  ＜16 歳未満の子を含む＞か特別障害者がいる場合。16 歳未満か 19〜22 歳の
                                  扶養親族を入力したときは自動で対象）
+  --dependent-under23            23 歳未満の扶養親族がいる（令和8年分の生命保険料控除の特例と、
+                                 所得金額調整控除に使う。16 歳未満か 19〜22 歳の扶養親族を入力したときは自動）
 
 試算の条件:
   --ideco-limit 金額             iDeCo の年間拠出限度額（省略時は就業形態から推定）
@@ -62,7 +77,8 @@ const HELP = `setsuzei ${VERSION}
   --year 年                      年分（西暦）。対応: ${supportedYears().join(", ")}（既定 ${DEFAULT_YEAR}）
 
 出力:
-  --json                         JSON で出力
+  --json                         JSON で出力（確定申告書の欄の対応表 filing を含む）
+  --filing                       確定申告書（第一表・第二表）のどの欄に書くかの表も出す
   --sources                      根拠にした一次情報の一覧を表示
   -i, --interactive              対話形式で入力
   -h, --help                     このヘルプ
@@ -71,12 +87,13 @@ const HELP = `setsuzei ${VERSION}
 例:
   setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万
   setsuzei --salary 600万 --revenue 120万 --expenses 20万 --misc --social-insurance 88万 --json
+  setsuzei --revenue 800万 --expenses 150万 --blue 65 --social-insurance 90万 --medical 15万 --life-new 8万 --filing
 
 結果は概算です。税理士や税務署・市区町村の判断に代わるものではありません。
 `;
 
 const STRING_FLAGS = [...INPUT_STRING_FLAGS, "input"] as const;
-const BOOLEAN_FLAGS = [...INPUT_BOOLEAN_FLAGS, "json", "sources", "interactive", "help", "version"] as const;
+const BOOLEAN_FLAGS = [...INPUT_BOOLEAN_FLAGS, "json", "filing", "sources", "interactive", "help", "version"] as const;
 
 type Flags = Partial<Record<(typeof STRING_FLAGS)[number], string>> &
   Partial<Record<(typeof BOOLEAN_FLAGS)[number], boolean>>;
@@ -191,7 +208,7 @@ async function main(argv: readonly string[]): Promise<number> {
 
     const result = calculate(input);
     process.stdout.write(
-      flags.json ? `${JSON.stringify({ version: VERSION, ...result }, null, 2)}\n` : `${formatResult(result, VERSION)}\n`,
+      flags.json ? `${JSON.stringify({ version: VERSION, ...result }, null, 2)}\n` : `${formatResult(result, VERSION, { filing: flags.filing === true })}\n`,
     );
     return 0;
   } catch (error) {

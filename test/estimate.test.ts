@@ -27,6 +27,8 @@ const scenario = (overrides: Partial<Scenario> = {}): Scenario => ({
   otherDeductions: 0,
   otherDeductionsResident: 0,
   incomeAdjustmentEligible: false,
+  medical: { netExpenses: 0, selfMedication: 0, method: "none" },
+  lifeInsurance: { incomeTax: 0, residentTax: 0 },
   ...overrides,
 });
 

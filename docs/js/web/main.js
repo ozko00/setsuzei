@@ -8,6 +8,7 @@ import { getSources } from "../src/data/index.js";
 import { VERSION } from "../src/version.js";
 import { browserNote, computeTop, isBlankTop, queryToValues, splitIssue } from "./logic.js";
 import { webMessages } from "./messages.js";
+import { filingList, lifeRows, medicalRows } from "./filing.js";
 import { clearSaved, loadSaved, save } from "./storage.js";
 import { summaryText, usedInputs } from "./summary.js";
 function h(tag, attrs = {}, ...children) {
@@ -135,6 +136,12 @@ function renderBreakdown(top) {
             }),
         ]), notes(nhi.notes)));
     }
+    const med = r.deductionDetails.medical;
+    if (med.applicable)
+        out.push(card(t.medTitle, rows(medicalRows(med, t)), notes(med.notes)));
+    const life = r.deductionDetails.lifeInsurance;
+    if (life.applicable)
+        out.push(card(t.lifeTitle, rows(lifeRows(life, t)), notes(life.notes)));
     out.push(card(t.usedTitle, rows(usedInputs(top, locale))));
     out.push(card(t.glossaryTitle, h("ul", { class: "notes" }, ...t.glossary.map(([term, text]) => h("li", {}, h("strong", {}, term), `: ${text}`)))));
     return out;
@@ -477,7 +484,7 @@ function start() {
         renderGuide(top);
         const r = top.result;
         notice.replaceChildren(...(r.warnings.length > 0 ? [h("section", { class: "card caution" }, h("h3", {}, t.cautionTitle), notes(r.warnings))] : []));
-        output.replaceChildren(h("details", { class: "breakdown", id: "breakdown", ...(output.querySelector("#breakdown")?.open ? { open: "" } : {}) }, h("summary", {}, t.breakdownSummary, h("span", { class: "summary-sub" }, t.breakdownSub)), ...renderBreakdown(top)));
+        output.replaceChildren(h("details", { class: "breakdown", id: "breakdown", ...(output.querySelector("#breakdown")?.open ? { open: "" } : {}) }, h("summary", {}, t.breakdownSummary, h("span", { class: "summary-sub" }, t.breakdownSub)), ...renderBreakdown(top)), h("details", { class: "breakdown filing-guide", id: "filing", ...(output.querySelector("#filing")?.open ? { open: "" } : {}) }, h("summary", {}, t.filingSummary, h("span", { class: "summary-sub" }, t.filingSub)), h("section", { class: "card" }, ...filingList(r.filing, t))));
         const breakdown = output.querySelector("#breakdown");
         // 自分で開いたときだけ、開いた先頭が見える位置へ送る（再計算で描き直したときは動かさない）
         breakdown?.querySelector("summary")?.addEventListener("click", () => {
@@ -532,7 +539,7 @@ function start() {
     }
     // 値が入っている欄が、閉じた枠の中に隠れたまま結果に効くことがないよう、値があれば開く
     for (const details of Array.from(form.querySelectorAll("details.nested"))) {
-        if (Array.from(details.querySelectorAll("input")).some((el) => el.value !== "")) {
+        if (Array.from(details.querySelectorAll("input")).some((el) => (el.type === "checkbox" ? el.checked : el.value !== ""))) {
             details.open = true;
             more.open = true;
         }

@@ -61,7 +61,39 @@ export interface TaxInput {
    * 特定扶養親族（19〜22 歳）か 16 歳未満の扶養親族を 1 人以上入力した場合は、指定しなくても対象として扱う。
    */
   readonly incomeAdjustment?: boolean;
-  /** その他の所得控除の合計（所得税）。医療費控除・生命保険料控除など。 */
+  /**
+   * その年に支払った医療費（自分と、生計を一にする家族の分）。医療費控除の計算に使う。
+   * セルフメディケーション税制の対象の薬の購入費は selfMedicationExpenses にも入れる（両方を比べて有利なほうを使う）。
+   */
+  readonly medicalExpenses?: number;
+  /**
+   * 医療費のうち、保険金・高額療養費・出産育児一時金などで補てんされる金額。
+   * 補てんは、その給付の目的となった医療費の額が上限（超えた分をほかの医療費から引かない。国税庁 No.1120）。
+   * 給付ごとに、その対象の医療費を上限にした額の合計を入れる。
+   */
+  readonly medicalReimbursed?: number;
+  /**
+   * セルフメディケーション税制の対象の医薬品（スイッチ OTC など）の購入費（保険金などで補てんされる部分を除く）。
+   * 健康診断・予防接種などの「一定の取組」をしている人だけが使える。
+   */
+  readonly selfMedicationExpenses?: number;
+  /** 生命保険料（平成 24 年以後の新契約の一般の生命保険料）。剰余金・割戻金を差し引いた年間の額 */
+  readonly lifeInsuranceNew?: number;
+  /** 生命保険料（平成 23 年以前の旧契約。旧契約の医療保険を含む） */
+  readonly lifeInsuranceOld?: number;
+  /** 介護医療保険料（新契約） */
+  readonly medicalCareInsurance?: number;
+  /** 個人年金保険料（新契約） */
+  readonly pensionInsuranceNew?: number;
+  /** 個人年金保険料（旧契約） */
+  readonly pensionInsuranceOld?: number;
+  /**
+   * 23 歳未満の扶養親族（16 歳未満の子を含む）がいるか。令和 8 年分の生命保険料控除の特例と、
+   * 所得金額調整控除（給与収入 850 万円超）の判定に使う。
+   * 特定扶養親族（19〜22 歳）か 16 歳未満の扶養親族を 1 人以上入力した場合は、指定しなくても true として扱う。
+   */
+  readonly dependentUnder23?: boolean;
+  /** その他の所得控除の合計（所得税）。地震保険料控除・障害者控除など（医療費控除・生命保険料控除は上の項目で入れる）。 */
   readonly otherDeductions?: number;
   /** その他の所得控除の合計（住民税）。省略時は otherDeductions と同額。 */
   readonly otherDeductionsResident?: number;
@@ -91,6 +123,9 @@ export interface DeductionBreakdown {
   readonly smallBusinessMutualAid: number;
   /** 寄附金控除（所得税のみ。住民税は税額控除） */
   readonly donation: number;
+  /** 医療費控除（セルフメディケーション税制を選んだ場合はその額） */
+  readonly medical: number;
+  readonly lifeInsurance: number;
   readonly other: number;
   readonly total: number;
 }
@@ -285,6 +320,13 @@ export interface SetsuzeiResult {
     /** 国民健康保険料への影響の目安。nhiIncomeRatePercent を指定しなければ null。 */
     readonly nationalHealthInsurance: NationalHealthInsuranceMeasure | null;
   };
+  /** 医療費控除・生命保険料控除の計算の内訳 */
+  readonly deductionDetails: {
+    readonly medical: MedicalDeductionResult;
+    readonly lifeInsurance: LifeInsuranceResult;
+  };
+  /** 現状（baseline）の金額を、確定申告書（第一表・第二表）と住民税の欄に当てはめたもの */
+  readonly filing: FilingGuide;
   /** 計算上の注意（入力に応じて出るもの） */
   readonly warnings: readonly string[];
   /** 免責 */
@@ -327,5 +369,86 @@ export interface FurusatoComparison {
   readonly difference: number;
   /** 変わった理由。specialRate = 特例分の割合の区分、incomeLevy = 住民税の所得割額 */
   readonly reasons: readonly ("specialRate" | "incomeLevy")[];
+  readonly notes: readonly string[];
+}
+
+/** 医療費控除の方法。none は控除なし */
+export type MedicalMethod = "normal" | "selfMedication" | "none";
+
+/** 医療費控除（通常）とセルフメディケーション税制の比較 */
+export interface MedicalDeductionResult {
+  /** 医療費かセルフメディケーション税制の対象の購入費が入力されたか */
+  readonly applicable: boolean;
+  /** 税額が少なくなるほう（同じなら通常の医療費控除）。どちらも控除が 0 なら none */
+  readonly method: MedicalMethod;
+  readonly normal: {
+    /** 支払った医療費 − 補てんされる金額 */
+    readonly netExpenses: number;
+    /** 足切り額（10 万円か、総所得金額等の 5% の小さいほう） */
+    readonly floor: number;
+    readonly deduction: number;
+    /** この方法を選んだ場合の税額（所得税 + 住民税） */
+    readonly totalTax: number;
+  };
+  readonly selfMedication: {
+    readonly expenses: number;
+    readonly deduction: number;
+    readonly totalTax: number;
+  };
+  /** 選んだ方法で、医療費控除がない場合より減る税額 */
+  readonly saving: Saving;
+  /** 選ばなかった方法と比べて少ない税額（0 以上） */
+  readonly advantage: number;
+  readonly notes: readonly string[];
+}
+
+/** 生命保険料控除の区分ごとの控除額 */
+export interface LifeInsuranceAmounts {
+  /** 一般の生命保険料（新・旧） */
+  readonly life: number;
+  /** 介護医療保険料 */
+  readonly medicalCare: number;
+  /** 個人年金保険料（新・旧） */
+  readonly pension: number;
+  readonly total: number;
+}
+
+export interface LifeInsuranceResult {
+  readonly applicable: boolean;
+  /** 令和 8 年分の 23 歳未満の扶養親族の特例（新生命保険料の上限 6 万円）を使ったか */
+  readonly under23Rule: boolean;
+  /** 一般の生命保険料で、旧契約だけを申告するほうが控除が大きいか（新契約の分は申告書に書かない） */
+  readonly lifeOldOnly: boolean;
+  /** 個人年金保険料で、旧契約だけを申告するほうが控除が大きいか */
+  readonly pensionOldOnly: boolean;
+  readonly incomeTax: LifeInsuranceAmounts;
+  readonly residentTax: LifeInsuranceAmounts;
+  /** 生命保険料控除がない場合より減る税額 */
+  readonly saving: Saving;
+  readonly notes: readonly string[];
+}
+
+/** 確定申告書のどこに書くか: 1 欄分 */
+export interface FilingEntry {
+  /** first = 第一表、second = 第二表、blue = 青色申告決算書、resident = 第二表の「住民税・事業税に関する事項」 */
+  readonly sheet: "first" | "second" | "blue" | "resident";
+  /** 欄の番号（「㉘」など）。番号のない欄は null */
+  readonly field: string | null;
+  /** 申告書に印刷されている欄の名前（日本語のまま） */
+  readonly label: string;
+  /** 書く金額。金額ではない欄（選ぶもの・書く事項）は null */
+  readonly amount: number | null;
+  /** 何の金額か・書き方の補足（言語は calculate の locale に従う） */
+  readonly note: string;
+}
+
+export interface FilingGuide {
+  /** 当てはめた様式の名前（「令和8年分の所得税及び復興特別所得税の確定申告書（案）」など） */
+  readonly form: string;
+  /** 様式が案（確定前）か */
+  readonly draft: boolean;
+  /** 様式の出典 */
+  readonly sourceUrl: string;
+  readonly entries: readonly FilingEntry[];
   readonly notes: readonly string[];
 }

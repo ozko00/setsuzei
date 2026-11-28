@@ -54,7 +54,7 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 
 ### 英語版（docs/en/）
 
-ブラウザ版には英語版があります（トップ [`docs/en/index.html`](docs/en/index.html) と、説明ページ 5 枚）。計算は日本語版と同じ計算コア・同じ画面のコードで、文面だけを言語ごとに持ちます。
+ブラウザ版には英語版があります（トップ [`docs/en/index.html`](docs/en/index.html) と、説明ページ 7 枚）。計算は日本語版と同じ計算コア・同じ画面のコードで、文面だけを言語ごとに持ちます。
 
 - 文面の置き場所: 計算コアの注記・注意・入力エラーは [`src/core/messages.ts`](src/core/messages.ts)、画面の文面は [`web/messages.ts`](web/messages.ts)、説明ページの本文は [`site/pages-en.ts`](site/pages-en.ts)（日本語は [`site/pages.ts`](site/pages.ts)）、トップの固定の文面は `docs/index.html` と `docs/en/index.html`。**文面を足す・変えるときは、日本語と英語の両方を直します**（項目がそろっていることと、同じ入力で数字が変わらないことを [`test/english.test.ts`](test/english.test.ts) が確かめます）。
 - 英語は逐語訳にせず、日本の制度を知らない人が読んで分かるように書きます。制度には一言ずつ説明を添え、金額は円のまま（`¥`）にします。書類や窓口で必要になる日本語（源泉徴収票、青色申告承認申請書 など）は、英語の横に添えます。
@@ -62,6 +62,14 @@ npm run test:browser  # 公開ページを Chrome で操作するテスト（下
 - リンクは、公的機関に英語のページがあればそちらに張り、なければ日本語のページに「(Japanese only)」と添えます。英語のページとして張ってよい URL は `site/pages-en.ts` の `EN_LINKS` にあります（足すときは、開けることを確かめてください）。
 - 日本語版と英語版は 1 対 1 です。ページを足すときは両方に足し、`hreflang`・相互リンク・sitemap がそろうようにします（テストが確かめます）。
 - 計算の関数は `calculate(input, { locale: "en" })` で英語の文面を返します。CLI と MCP サーバーの出力は、いまは日本語だけです。
+
+### 確定申告書の欄の対応（filing）
+
+計算結果を確定申告書の欄に当てはめる部分は [`src/core/filing.ts`](src/core/filing.ts) にあります。欄の番号と名前は、国税庁が公開している「令和８年分の所得税等の確定申告書（案）」の第一表・第二表で確かめたものです（`FORM_2026.draft` が `true`）。
+
+- **確定した様式が公開されたら**: 国税庁の「確定申告書等の様式・手引き等」から令和8年分の第一表・第二表を取り、`filing.ts` の欄の番号・名前と 1 つずつ照らし合わせます。違いがあれば直し、`FORM_2026` の `draft` を `false`、`sourceUrl` を確定した様式の URL にし、出典一覧（[`src/data/2026.ts`](src/data/2026.ts) の `sources2026`）と説明ページ（`site/pages.ts`・`site/pages-en.ts` の `form2026`）の文面も「案」を外します。
+- 年分を足すときは、その年分の様式で同じことをします。欄の番号は年分ごとに変わることがあるので、前の年分の番号を流用しません。
+- 金額はここでは計算しません。計算コアの結果を並べ直すだけにしてください（テスト [`test/deductions.test.ts`](test/deductions.test.ts) が、欄の金額と計算コアの値が同じことを確かめます）。
 
 ## Agent Skill を変えたとき
 

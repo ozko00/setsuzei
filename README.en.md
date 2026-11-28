@@ -14,6 +14,8 @@ It estimates Japanese national income tax and local resident tax for freelancers
 - **Small Business Mutual Aid** (shokibo kigyo kyosai): remaining room and the tax reduction
 - **Blue-return special deduction** (aoiro shinkoku tokubetsu kojo): tax at each level (none / 100,000 / 550,000 / 650,000 yen)
 
+For the filing season it also takes the **medical expense deduction** (compared with the self-medication tax system, using whichever leaves less tax) and the **life insurance premium deduction**, and maps each figure to **the box on the final tax return** (確定申告書, pages 1 and 2) where it goes.
+
 Why an engine instead of letting the model calculate:
 
 - **Every rate, deduction and threshold is taken from a primary source** (National Tax Agency, Ministry of Internal Affairs and Communications, statutes on e-Gov, scheme operators) and cited next to the number in [`src/data/2026.ts`](src/data/2026.ts). `list_tax_sources` returns the list.
@@ -64,7 +66,7 @@ Keep the version (`@0.5.0`). The `mcp` subcommand exists from 0.4.0, and without
 
 | Tool | What it returns |
 | --- | --- |
-| `estimate_tax_savings` | Current income tax and resident tax, each measure's limit / remaining room / tax reduction, and a combined plan recomputed together |
+| `estimate_tax_savings` | Current income tax and resident tax, each measure's limit / remaining room / tax reduction, and a combined plan recomputed together. Also the medical and life insurance deductions, and `filing`: which box of the tax return each figure goes in |
 | `furusato_nozei_limit` | Only the furusato nozei limit, the remaining room and the tax reduction |
 | `compare_furusato_limit_with_2025` | The limit for tax year 2025 vs 2026 for the same input, with the reason for any change |
 | `validate_tax_input` | Problems in an input object, without calculating |
@@ -90,7 +92,7 @@ mkdir -p ~/.claude/skills && cp -r skills/setsuzei ~/.claude/skills/
 npx setsuzei --revenue 8000000 --expenses 1500000 --blue 65 --social-insurance 900000 --json
 ```
 
-`--json` prints the same structure the MCP tool returns in `result`. Run `npx setsuzei --help` for all flags (help text is in Japanese). Amounts accept `8,000,000`, `8m`, `750k`, `¥8,000,000` and Japanese notation such as `800万`.
+`--json` prints the same structure the MCP tool returns in `result`. Add `--filing` to the text output to print which box of the final tax return each amount goes in; `--medical`, `--self-medication` and `--life-new` / `--life-old` / `--care-medical` / `--pension-new` / `--pension-old` take medical expenses and life insurance premiums. Run `npx setsuzei --help` for all flags (help text is in Japanese). Amounts accept `8,000,000`, `8m`, `750k`, `¥8,000,000` and Japanese notation such as `800万`.
 
 ### Library
 
@@ -125,21 +127,23 @@ On 2026-11-27 the same three questions were asked of the model alone (Claude Son
 
 For people rather than agents: **<https://ozko00.github.io/setsuzei/en/>** (English) and <https://ozko00.github.io/setsuzei/> (Japanese). Answer three questions (work style, revenue, expenses) and it shows what to do before year-end, how much to pay and how much tax it saves. It uses the same engine and makes no network requests.
 
-The English version is written for freelancers and employees with side income who live in Japan: each scheme gets a one-line explanation, amounts stay in yen, and the Japanese names you need on forms and at counters are shown next to the English. It has the full calculator and five single-topic pages:
+The English version is written for freelancers and employees with side income who live in Japan: each scheme gets a one-line explanation, amounts stay in yen, and the Japanese names you need on forms and at counters are shown next to the English. It has the full calculator and seven single-topic pages:
 
 - [Furusato nozei limit calculator for freelancers and sole proprietors](https://ozko00.github.io/setsuzei/en/furusato-nozei-limit-freelance/)
 - [iDeCo tax savings calculator for freelancers and the self-employed](https://ozko00.github.io/setsuzei/en/ideco-tax-savings-self-employed/)
 - [Small Business Mutual Aid (shokibo kigyo kyosai) tax savings calculator](https://ozko00.github.io/setsuzei/en/small-business-mutual-aid-tax-savings/)
 - [Blue return special deduction: ¥650,000 vs ¥550,000 vs ¥100,000 in actual tax](https://ozko00.github.io/setsuzei/en/blue-return-deduction/)
 - [Is your furusato nozei limit lower for 2026? Compare it with 2025](https://ozko00.github.io/setsuzei/en/furusato-nozei-limit-2026/)
+- [Medical expense deduction or the self-medication tax system: which saves you more tax?](https://ozko00.github.io/setsuzei/en/medical-expense-deduction-self-medication/)
+- [Which box on the Japanese tax return? Your amounts on pages 1 and 2 of the 2026 final return](https://ozko00.github.io/setsuzei/en/tax-return-form-boxes/)
 
 The same input gives the same numbers in both languages (covered by tests). It assumes you are a resident of Japan for tax purposes; foreign income, tax treaties and non-resident rules are not handled. English terms follow the National Tax Agency's [English income tax guide](https://www.nta.go.jp/english/taxes/individual/incometax_2025.htm) where it has one.
 
 ## What is and is not calculated
 
-Calculated: income tax and special reconstruction income tax for 2026; resident tax for fiscal 2027 at the standard rate, including the exemption threshold for the income-based part; salary income deduction, basic deduction, spouse and dependent deductions, social insurance and small-business mutual-aid deductions; the furusato nozei limit under the rule in force from fiscal 2026.
+Calculated: income tax and special reconstruction income tax for 2026; resident tax for fiscal 2027 at the standard rate, including the exemption threshold for the income-based part; salary income deduction, basic deduction, spouse and dependent deductions, social insurance and small-business mutual-aid deductions; the medical expense deduction and the self-medication tax system (whichever leaves less tax); the life insurance premium deduction, including the 2026 rule for a dependent under 23; the furusato nozei limit under the rule in force from fiscal 2026; the box on the final tax return for each figure, checked against the National Tax Agency's draft form for tax year 2026 (to be replaced when the final form is published).
 
-Not calculated: the full national health insurance premium, enterprise tax, consumption tax, the exemption of the per-capita part of resident tax (differs by municipality), separately taxed income (capital gains), housing-loan and other tax credits, and eligibility (whether you can join mutual aid, meet a blue-return requirement, or claim a dependent).
+Not calculated: the full national health insurance premium, enterprise tax, consumption tax, the exemption of the per-capita part of resident tax (differs by municipality), separately taxed income (capital gains), housing-loan and other tax credits, withheld and prepaid tax on the return, and eligibility (whether you can join mutual aid, meet a blue-return requirement, or claim a dependent).
 
 Details, assumptions and the comparison with the ministry's published table are in the [Japanese README](README.md#何を計算し何を計算しないか).
 

@@ -208,6 +208,54 @@ export interface TaxYearData {
     /** 小規模企業共済の掛金月額の上限 */
     readonly monthlyLimit: number;
   };
+
+  /** 医療費控除（所得税と住民税で同じ式） */
+  readonly medical: {
+    /** 足切り額の上限（10 万円）。総所得金額等の floorIncomePercent % のほうが小さければそちら */
+    readonly floorMax: number;
+    readonly floorIncomePercent: number;
+    /** 控除額の上限 */
+    readonly cap: number;
+    /** セルフメディケーション税制（通常の医療費控除との選択） */
+    readonly selfMedication: {
+      /** 特定一般用医薬品等購入費のうち、この額を超える部分が控除額 */
+      readonly floor: number;
+      readonly cap: number;
+    };
+  };
+
+  /** 生命保険料控除 */
+  readonly lifeInsurance: {
+    readonly incomeTax: LifeInsuranceRule & {
+      /**
+       * 23 歳未満の扶養親族がいる場合の、新生命保険料の控除額の表と、新旧合わせた上限。
+       * その年分に特例がなければ null。
+       */
+      readonly under23: { readonly newLife: readonly LifeInsuranceTier[]; readonly combinedLifeCap: number } | null;
+    };
+    readonly residentTax: LifeInsuranceRule;
+  };
+}
+
+/**
+ * 生命保険料控除の表の 1 行。支払保険料等が upTo 以下なら「支払保険料等 ÷ divisor + add」（1 円未満切上げ）。
+ * upTo が null の行は上限で、控除額は add。
+ */
+export interface LifeInsuranceTier {
+  readonly upTo: number | null;
+  readonly divisor: number;
+  readonly add: number;
+}
+
+export interface LifeInsuranceRule {
+  /** 新契約（平成 24 年 1 月 1 日以後の契約）の表。新生命・介護医療・新個人年金で共通 */
+  readonly newContract: readonly LifeInsuranceTier[];
+  /** 旧契約（平成 23 年 12 月 31 日以前の契約）の表。旧生命・旧個人年金で共通 */
+  readonly oldContract: readonly LifeInsuranceTier[];
+  /** 同じ区分で新契約と旧契約の両方を申告するときの、その区分の上限 */
+  readonly combinedCap: number;
+  /** 3 区分の合計の上限 */
+  readonly totalCap: number;
 }
 
 /** 住民税の非課税限度額の式: perPerson ×（人数 + 1）+ addition（家族がいれば + familyAddition） */

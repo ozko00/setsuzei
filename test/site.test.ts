@@ -44,14 +44,19 @@ const KEYWORDS: Record<string, string> = {
   "shokibo-kyosai-setsuzei": "小規模企業共済 節税額 シミュレーション",
   "aoiro-shinkoku-65-55-10": "青色申告特別控除 65万 55万 10万 違い",
   "furusato-nozei-jogen-reiwa8": "ふるさと納税 上限 下がる 令和8年 基礎控除",
+  "iryohi-kojo-self-medication": "医療費控除 セルフメディケーション どっちが得 計算",
+  "kakutei-shinkokusho-kakikata": "確定申告書 どこに書く 第一表 第二表",
 };
+
+/** 計算例の表が「所得別の 7 行」になっているページ（ほかのページは、表の作りがページごとに違う） */
+const INCOME_TABLE_SLUGS = ["furusato-nozei-freelance", "ideco-kojin-jigyonushi", "shokibo-kyosai-setsuzei", "aoiro-shinkoku-65-55-10"];
 
 /** 令和 7 年分と令和 8 年分を比べるページ（表の作りがほかのページと違う） */
 const YEAR_SLUG = "furusato-nozei-jogen-reiwa8";
 
 describe("検索語ごとのページ: 生成結果とコミット済みのファイル", () => {
   it("docs/ のファイルは、いまの計算コアから生成した結果と一致する（npm run build:site の実行漏れを検出）", () => {
-    assert.equal(pages.length, 5);
+    assert.equal(pages.length, 7);
     for (const [path, content] of site) {
       assert.equal(readFileSync(join(docs, path), "utf8"), content, path);
     }
@@ -85,11 +90,12 @@ describe("検索語ごとのページ: 生成結果とコミット済みのフ�
     for (const [path, html] of pages) {
       const body = html.replace(/<script[\s\S]*?<\/script>/g, "");
       const isYear = path === `${YEAR_SLUG}/index.html`;
-      for (const heading of ["計算式と根拠", isYear ? "年収別の比較表" : "計算例", "よくある質問", "根拠にした一次情報"]) {
+      const examplesHeading = isYear ? "年収別の比較表" : path.startsWith("kakutei-shinkokusho-kakikata/") ? "記入例（所得 500 万円のフリーランス）" : "計算例";
+      for (const heading of ["計算式と根拠", examplesHeading, "よくある質問", "根拠にした一次情報"]) {
         assert.ok(body.includes(`<h2>${heading}</h2>`), `${path}: ${heading}`);
       }
       assert.match(body, /<table class="examples">/);
-      if (!isYear) {
+      if (INCOME_TABLE_SLUGS.some((slug) => path === `${slug}/index.html`)) {
         assert.equal((body.match(/<tbody>[\s\S]*?<\/tbody>/)?.[0].match(/<tr>/g) ?? []).length, EXAMPLE_INCOMES.length, path);
       }
       assert.ok((body.match(/<h3>/g) ?? []).length >= 4, path);
@@ -293,7 +299,7 @@ describe("検索語ごとのページ: リンクと公開まわり", () => {
     const sitemap = site.get("sitemap.xml") ?? "";
     const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     assert.deepEqual(locs, siteUrls());
-    assert.equal(locs.length, 12);
+    assert.equal(locs.length, 16);
     assert.equal(locs[0], SITE_URL);
     assert.match(site.get("robots.txt") ?? "", new RegExp(`^Sitemap: ${SITE_URL}sitemap\\.xml$`, "m"));
     // canonical は sitemap の URL と同じ

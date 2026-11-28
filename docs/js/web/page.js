@@ -1,4 +1,5 @@
 import { compute, computeComparison, isBlank, splitIssue } from "./logic.js";
+import { filingList, medicalRows } from "./filing.js";
 import { webMessages } from "./messages.js";
 function h(tag, attrs = {}, ...children) {
     const el = document.createElement(tag);
@@ -84,6 +85,30 @@ function renderComparison(r, c) {
 const BLUE_LABEL = t.blueLabel;
 function render(kind, r) {
     const m = r.measures;
+    if (kind === "medical") {
+        const med = r.deductionDetails.medical;
+        const label = t.pMedMethod[med.method];
+        return {
+            summary: t.pMedSummary(label, med.saving.total),
+            cards: [
+                h("div", { class: "headline" }, h("div", { class: "figure" }, h("span", { class: "label" }, t.pMedChosen), h("strong", {}, label)), h("div", { class: "figure accent" }, h("span", { class: "label" }, t.pMedSaving), h("strong", {}, yen(med.saving.total))), h("div", { class: "figure" }, h("span", { class: "label" }, t.pMedAdvantage), h("strong", {}, yen(med.advantage)))),
+                card(t.medTitle, rows(medicalRows(med, t)), notes(med.notes)),
+                card(t.filingSummary, ...filingList({ ...r.filing, entries: r.filing.entries.filter((e) => e.field === "㉘"), notes: r.filing.notes.slice(0, 1) }, t)),
+                baselineCard(r),
+            ],
+        };
+    }
+    if (kind === "filing") {
+        const payable = r.filing.entries.find((e) => e.field === "㊿")?.amount ?? 0;
+        return {
+            summary: t.pFilingSummary(payable),
+            cards: [
+                h("div", { class: "headline" }, h("div", { class: "figure" }, h("span", { class: "label" }, t.pFilingTaxable), h("strong", {}, yen(r.baseline.incomeTax.taxableIncome))), h("div", { class: "figure accent" }, h("span", { class: "label" }, t.pFilingPayable), h("strong", {}, yen(payable)))),
+                card(t.filingSummary, ...filingList(r.filing, t)),
+                baselineCard(r),
+            ],
+        };
+    }
     if (kind === "furusato") {
         const f = m.furusato;
         return {

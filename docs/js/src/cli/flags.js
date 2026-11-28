@@ -16,6 +16,14 @@ const AMOUNT_FLAGS = {
     "kyosai-paid": "kyosaiPaid",
     "kyosai-add": "kyosaiAdditional",
     "furusato-paid": "furusatoPaid",
+    medical: "medicalExpenses",
+    "medical-reimbursed": "medicalReimbursed",
+    "self-medication": "selfMedicationExpenses",
+    "life-new": "lifeInsuranceNew",
+    "life-old": "lifeInsuranceOld",
+    "care-medical": "medicalCareInsurance",
+    "pension-new": "pensionInsuranceNew",
+    "pension-old": "pensionInsuranceOld",
     "other-deductions": "otherDeductions",
     "other-deductions-resident": "otherDeductionsResident",
 };
@@ -36,7 +44,7 @@ export const INPUT_STRING_FLAGS = [
     "nhi-rate",
 ];
 /** 真偽値の入力フラグの名前 */
-export const INPUT_BOOLEAN_FLAGS = ["misc", "spouse-70", "income-adjustment"];
+export const INPUT_BOOLEAN_FLAGS = ["misc", "spouse-70", "income-adjustment", "dependent-under23"];
 function toHalfWidthDigits(text) {
     return text.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
 }
@@ -49,6 +57,7 @@ const KEY_TO_FLAG = {
     businessIncomeType: "misc",
     nhiIncomeRatePercent: "nhi-rate",
     incomeAdjustment: "income-adjustment",
+    dependentUnder23: "dependent-under23",
     year: "year",
 };
 /**
@@ -117,6 +126,8 @@ export function flagsToInput(flags) {
     }
     if (flags["income-adjustment"])
         input["incomeAdjustment"] = true;
+    if (flags["dependent-under23"])
+        input["dependentUnder23"] = true;
     if (flags.misc)
         input["businessIncomeType"] = "misc";
     if (flags.blue !== undefined)

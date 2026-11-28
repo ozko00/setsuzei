@@ -25,6 +25,14 @@ const AMOUNT_KEYS = [
   "otherDeductionsResident",
   "idecoAdditional",
   "kyosaiAdditional",
+  "medicalExpenses",
+  "medicalReimbursed",
+  "selfMedicationExpenses",
+  "lifeInsuranceNew",
+  "lifeInsuranceOld",
+  "medicalCareInsurance",
+  "pensionInsuranceNew",
+  "pensionInsuranceOld",
 ] as const satisfies readonly (keyof TaxInput)[];
 
 const DEPENDENT_KEYS = ["general", "specific", "elderly", "elderlyCohabiting", "under16"] as const satisfies readonly (keyof DependentsInput)[];
@@ -40,6 +48,7 @@ const KNOWN_KEYS = new Set<string>([
   "dependents",
   "nhiIncomeRatePercent",
   "incomeAdjustment",
+  "dependentUnder23",
 ]);
 
 /** 金額として扱える上限（1 兆円）。桁の打ち間違いを弾く。 */
@@ -112,6 +121,12 @@ export function validateInput(raw: unknown): TaxInput {
   if (adjustment !== undefined && adjustment !== null) {
     if (typeof adjustment === "boolean") out.incomeAdjustment = adjustment;
     else issues.push(m().incomeAdjustmentBool);
+  }
+
+  const under23 = raw["dependentUnder23"];
+  if (under23 !== undefined && under23 !== null) {
+    if (typeof under23 === "boolean") out.dependentUnder23 = under23;
+    else issues.push(m().dependentUnder23Bool);
   }
 
   const type = raw["businessIncomeType"];

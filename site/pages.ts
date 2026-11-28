@@ -12,7 +12,7 @@ import { getTaxYear } from "../src/data/index.js";
 export const SITE_URL = "https://ozko00.github.io/setsuzei/";
 export const REPO_URL = "https://github.com/ozko00/setsuzei";
 /** ページの内容を最後に見直した日（sitemap の lastmod と本文の表示に使う） */
-export const LAST_REVIEWED = "2026-11-27";
+export const LAST_REVIEWED = "2026-11-28";
 
 const data = getTaxYear(2026);
 const MAN = 10_000;
@@ -81,6 +81,12 @@ export const SRC = {
     "https://www.city.nerima.tokyo.jp/kurashi/zei/jyuminzei/zeigakukojo/kifukinzeigakukojo.html",
   ],
   ikoma: ["生駒市 令和8年度から適用される個人住民税の主な改正点", "https://www.city.ikoma.lg.jp/0000038581.html"],
+  medical: ["国税庁 No.1120 医療費を支払ったとき（医療費控除）", "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1120.htm"],
+  selfMedication: ["国税庁 No.1129 セルフメディケーション税制", "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1129.htm"],
+  life: ["国税庁 No.1140 生命保険料控除", "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1140.htm"],
+  form2026: ["国税庁 令和８年分の所得税等の確定申告書（案）", "https://www.nta.go.jp/taxes/shiraberu/shinkoku/pdf/0026006-063.pdf"],
+  tebikiMedical: ["国税庁 確定申告の手引き（令和7年分）医療費控除", "https://www.nta.go.jp/taxes/shiraberu/shinkoku/tebiki/2025/03/order3/3-3_24.htm"],
+  tebikiLife: ["国税庁 確定申告の手引き（令和7年分）生命保険料控除", "https://www.nta.go.jp/taxes/shiraberu/shinkoku/tebiki/2025/03/order3/3-3_12.htm"],
 } as const satisfies Record<string, readonly [string, string]>;
 
 function link(key: keyof typeof SRC, text?: string): string {
@@ -277,7 +283,7 @@ const scanRangeText = (scan: YearScan): string =>
 // ページの定義
 // ---------------------------------------------------------------------------
 
-export type PageKind = "furusato" | "ideco" | "kyosai" | "blue" | "furusato-year";
+export type PageKind = "furusato" | "ideco" | "kyosai" | "blue" | "furusato-year" | "medical" | "filing";
 
 /** 英語版のページの場所（docs/en/<slug>/）。日本語版と 1 対 1 で、互いに hreflang とリンクで結ぶ */
 export const EN_SLUG: Record<PageKind, string> = {
@@ -286,6 +292,8 @@ export const EN_SLUG: Record<PageKind, string> = {
   kyosai: "small-business-mutual-aid-tax-savings",
   blue: "blue-return-deduction",
   "furusato-year": "furusato-nozei-limit-2026",
+  medical: "medical-expense-deduction-self-medication",
+  filing: "tax-return-form-boxes",
 };
 
 /** 日本語版のページの場所（docs/<slug>/） */
@@ -294,10 +302,12 @@ export const JA_SLUG: Record<PageKind, string> = {
   ideco: "ideco-kojin-jigyonushi",
   kyosai: "shokibo-kyosai-setsuzei",
   blue: "aoiro-shinkoku-65-55-10",
+  medical: "iryohi-kojo-self-medication",
+  filing: "kakutei-shinkokusho-kakikata",
   "furusato-year": "furusato-nozei-jogen-reiwa8",
 };
 
-export const PAGE_KINDS: readonly PageKind[] = ["furusato", "ideco", "kyosai", "blue", "furusato-year"];
+export const PAGE_KINDS: readonly PageKind[] = ["furusato", "ideco", "kyosai", "blue", "furusato-year", "medical", "filing"];
 
 /** 同じ内容の日本語版と英語版を結ぶ <link rel="alternate">（x-default は日本語版） */
 export function alternateLinks(kind: PageKind | "top"): string {
@@ -333,6 +343,8 @@ interface PageDef {
   readonly form?: string;
   /** 「計算例」の節の見出しを変える場合 */
   readonly examplesTitle?: string;
+  /** ページごとの欄の見出し（既定は「掛金・寄附」） */
+  readonly extraLegend?: string;
 }
 
 const field = (name: string, label: string, sub: string, placeholder = "", value = ""): string =>
@@ -577,7 +589,166 @@ function buildPages(): PageDef[] {
       sources: ["blue", "blueApply", "blueR9", "blueR9Nta", "rate", "resident", "nhi", "localTax"],
     },
     furusatoYearPage(),
+    medicalPage(),
+    filingPage(),
   ];
+}
+
+// ---------------------------------------------------------------------------
+// 医療費控除とセルフメディケーション税制
+// ---------------------------------------------------------------------------
+
+/** 計算例で使う、セルフメディケーション税制の対象の薬の購入費 */
+export const MEDICAL_SELF_EXAMPLE = 30_000;
+/** 計算例で使う医療費 */
+export const MEDICAL_EXAMPLE = 200_000;
+export const MEDICAL_INCOMES = [1_500_000, 2_000_000, 2_650_000, 3_000_000, 5_000_000, 8_000_000] as const;
+
+/** 所得別の足切り額・通常の控除が有利になる医療費・医療費 20 万円で減る税額（日本語版と英語版で同じ計算） */
+export function medicalExampleRows(): { income: number; totalIncome: number; floor: number; breakEven: number; saving: number }[] {
+  return MEDICAL_INCOMES.map((income) => {
+    const r = example(income, { medicalExpenses: MEDICAL_EXAMPLE });
+    const med = r.deductionDetails.medical;
+    const selfDeduction = Math.min(data.medical.selfMedication.cap, MEDICAL_SELF_EXAMPLE - data.medical.selfMedication.floor);
+    return { income, totalIncome: r.baseline.totalIncome, floor: med.normal.floor, breakEven: med.normal.floor + selfDeduction, saving: med.saving.total };
+  });
+}
+
+function medicalPage(): PageDef {
+  const rows = medicalExampleRows();
+  const low = rows[0];
+  const r500 = rows.find((r) => r.income === 5_000_000);
+  if (!low || !r500) throw new Error("医療費の計算例の行がありません");
+  const selfDeduction = MEDICAL_SELF_EXAMPLE - data.medical.selfMedication.floor;
+  return {
+    slug: "iryohi-kojo-self-medication",
+    kind: "medical",
+    keyword: "医療費控除 セルフメディケーション どっちが得 計算",
+    title: "医療費控除とセルフメディケーション税制、どっちが得？ 税額で比べる計算機（令和8年分）｜ setsuzei",
+    h1: "医療費控除とセルフメディケーション税制、どっちが得かを税額で計算する",
+    description:
+      "医療費控除とセルフメディケーション税制、どっちが得かを、あなたの所得で計算します。10 万円（所得 200 万円未満は 5%）を超えた医療費と、12,000 円を超えた対象の市販薬の控除を税額で比べ、住民税の分と確定申告書の欄も出します。入力は送信しません。",
+    lead: "2 つは選択で、併用できません。どちらが得かは「控除額 × 税率」で決まり、所得が少ない人は医療費の足切りが 10 万円より低くなります。医療費と対象の薬の購入費を入れると、両方の控除額と税額を出し、少ないほうを示します。",
+    extraLegend: "医療費と対象の薬",
+    extraFields: [
+      field("medical", "ことし払った医療費", "自分と生計を一にする家族の分の合計", "例: 15万", "11万"),
+      field("medical-reimbursed", "そのうち保険金などで補てんされる額", "入院給付金・高額療養費など。給付ごとに、その対象の医療費が上限"),
+      field("self-medication", "セルフメディケーション税制の対象の薬の購入費", "レシートに対象の印がある市販薬。健康診断などを受けた人だけ", "例: 3万", "3万"),
+    ].join("\n    "),
+    formula: `<p>2 つの控除額を出し、それぞれで所得税と住民税を計算して、税額が少ないほうを示しています。</p>
+  <p class="formula">医療費控除 =（医療費 − 補てんされる金額）− 10 万円（総所得金額等が 200 万円未満なら、その 5%）　最高 200 万円</p>
+  <p class="formula">セルフメディケーション税制 = 対象の医薬品の購入費 − 12,000 円　最高 88,000 円</p>
+  <ul>
+    <li>医療費控除は、自分と生計を一にする配偶者・親族のために、その年に支払った医療費が対象です。保険金・高額療養費・出産育児一時金などで補てんされる分は差し引きます（${link("medical")}）。</li>
+    <li>セルフメディケーション税制は、健康診断・予防接種・特定健診などの「一定の取組」を、申告する本人がその年にしている人だけが使えます。対象はスイッチ OTC 医薬品などで、レシートに対象である旨が表示されています（${link("selfMedication")}）。</li>
+    <li>2 つは選択適用で、併用はできません。申告したあとに、更正の請求や修正申告で選び直すこともできません（${link("selfMedication")}）。</li>
+    <li>住民税も同じ式で控除されます（${link("localTax2027", "地方税法 第314条の2第1項第2号・附則第4条の5")}）。減る税額は、控除額 ×（所得税率 × 1.021 + 住民税 10%）がおおよその目安です。</li>
+    <li>確定申告書では、第一表の㉘「医療費」に控除額を書きます。セルフメディケーション税制を選ぶときは「区分」の欄に 1 を書き、「セルフメディケーション税制の明細書」を添えます（${link("tebikiMedical")}、${link("form2026")}）。</li>
+  </ul>`,
+    examples:
+      table(
+        `所得別の足切り額と、セルフメディケーション税制（対象の薬 ${man(MEDICAL_SELF_EXAMPLE)} → 控除 ${yen(selfDeduction)}）との分かれ目（令和8年分）`,
+        ["所得（売上 − 経費）", "総所得金額等（青色 65 万円控除後）", "医療費の足切り額", "通常の控除が有利になる医療費", `医療費 ${man(MEDICAL_EXAMPLE)}で減る税額`],
+        rows.map((r) => [man(r.income), yen(r.totalIncome), yen(r.floor), `${yen(r.breakEven)}超`, yen(r.saving)]),
+      ) +
+      `\n  <p class="note">${esc(EXAMPLE_NOTE)} 「通常の控除が有利になる医療費」は、控除額がセルフメディケーション税制の ${yen(selfDeduction)}を上回る医療費（補てん後）です。控除額が同じなら税額も同じです。</p>`,
+    faqs: [
+      {
+        q: "医療費控除とセルフメディケーション税制は、両方使えますか？",
+        a: `使えません。どちらか一方を選びます。申告したあとに、更正の請求や修正申告で選び直すこともできません（${link("selfMedication")}）。計算機は両方の税額を出し、少ないほうを示します。`,
+      },
+      {
+        q: "医療費が 10 万円に届かなければ、医療費控除は使えませんか？",
+        a: `総所得金額等が 200 万円未満なら、引く額は 10 万円ではなく総所得金額等の 5% です（${link("medical")}）。上の表の前提で所得 ${man(low.income)}なら、総所得金額等は ${yen(low.totalIncome)}で、足切り額は ${yen(low.floor)}です。フリーランスは青色申告特別控除の後の所得で判定するので、売上が多くても足切りが下がることがあります。`,
+      },
+      {
+        q: "フリーランスは、どちらを選ぶことが多いですか？",
+        a: `大きな病気やけががなく、医療費が足切り額をあまり超えない年は、セルフメディケーション税制のほうが控除額が大きくなりがちです。上の表の前提で所得 ${man(r500.income)}なら、医療費（補てん後）が ${yen(r500.breakEven)}を超えると通常の医療費控除のほうが有利になります（対象の薬が ${man(MEDICAL_SELF_EXAMPLE)}の場合）。ただしセルフメディケーション税制は、健康診断などを受けていないと使えません。`,
+      },
+      {
+        q: "医療費控除で、いくら戻ってきますか？",
+        a: `控除額 × 税率です。上の表の前提で所得 ${man(r500.income)}の人が医療費 ${man(MEDICAL_EXAMPLE)}を払った場合、所得税と翌年度の住民税を合わせて ${yen(r500.saving)}減ります。フリーランスは源泉徴収がないことが多く、「戻る」のではなく、確定申告で納める税額が減ります。`,
+      },
+      {
+        q: "確定申告書のどこに書きますか？",
+        a: `第一表の㉘「医療費」に控除額を書きます。セルフメディケーション税制のときは、その横の「区分」の欄に 1 を書きます。明細書（医療費控除の明細書か、セルフメディケーション税制の明細書）を作って添えます（${link("tebikiMedical")}）。欄の番号は令和8年分の確定申告書（案）で確かめています（${link("form2026")}）。<a href="../kakutei-shinkokusho-kakikata/">確定申告書のどこに書くかのページ</a>で、ほかの欄も確かめられます。`,
+      },
+    ],
+    sources: ["medical", "selfMedication", "tebikiMedical", "form2026", "localTax2027", "rate", "resident"],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 確定申告書のどこに書くか
+// ---------------------------------------------------------------------------
+
+/** 計算例の入力（所得 500 万円のフリーランス） */
+export const FILING_EXAMPLE: TaxInput = exampleInput(5_000_000, { furusatoPaid: 50_000, medicalExpenses: 150_000, lifeInsuranceNew: 80_000, idecoPaid: 276_000 });
+
+function filingPage(): PageDef {
+  const r = calculate(FILING_EXAMPLE);
+  const rowsOf = (sheet: string): string[][] =>
+    r.filing.entries.filter((e) => e.sheet === sheet).map((e) => [`${e.field ?? ""} ${e.label}`.trim(), e.amount === null ? (e.field === "㊾" ? "（計算していません）" : "（金額ではない）") : yen(e.amount), e.note]);
+  return {
+    slug: "kakutei-shinkokusho-kakikata",
+    kind: "filing",
+    keyword: "確定申告書 どこに書く 第一表 第二表",
+    title: "確定申告書のどこに書く？ 第一表・第二表の欄に金額を当てはめる計算機（令和8年分）｜ setsuzei",
+    h1: "確定申告書のどこに書くかを、自分の金額で出す（第一表・第二表・令和8年分）",
+    description:
+      "確定申告書のどこに書くかを、第一表・第二表の欄の番号（㋐・①・⑬・㉘・㉛ など）と金額で出します。売上・経費・社会保険料・ふるさと納税・医療費・生命保険料から、令和8年分の申告書（案）に当てはめます。入力は送信しません。",
+    lead: "書き方の解説は多くありますが、欄の番号と自分の金額を突き合わせるのは手間です。金額を入れると、国税庁が公開している令和8年分の確定申告書（案）の欄の番号ごとに、書く金額と説明を並べます。紙の申告書を書くときや、e-Tax で作った申告書を確かめるときに使えます。",
+    extraLegend: "控除（入れたものだけ欄に出ます）",
+    extraFields: [
+      field("furusato-paid", "ふるさと納税の寄附額", "ことしの合計", "例: 5万"),
+      field("ideco-paid", "iDeCo の掛金", "ことしの合計"),
+      field("kyosai-paid", "小規模企業共済の掛金", "ことしの合計"),
+      field("medical", "医療費", "補てん前の支払額"),
+      field("medical-reimbursed", "そのうち保険金などで補てんされる額", "入院給付金・高額療養費など。給付ごとに、その対象の医療費が上限"),
+      field("self-medication", "セルフメディケーション税制の対象の薬の購入費", "医療費控除と比べて有利なほうで計算します"),
+      field("life-new", "生命保険料（新契約）", "控除証明書の額"),
+      field("life-old", "生命保険料（旧契約）", "控除証明書の額"),
+      field("care-medical", "介護医療保険料", "控除証明書の額"),
+    ].join("\n    "),
+    formula: `<p>計算コアが出した金額を、確定申告書の欄に当てはめています。計算はほかのページと同じです。</p>
+  <ul>
+    <li>欄の番号と名前は、国税庁が公開している「令和８年分の所得税等の確定申告書（案）」の第一表・第二表で確かめました（${link("form2026")}）。案なので、確定した様式が公開されたら照らし合わせて差し替えます。</li>
+    <li>令和8年分の第一表は、収入金額等が㋐〜㋚、所得金額等が①〜⑫、所得から差し引かれる金額が⑬〜㉚、税金の計算が㉛〜（申告納税額は㊿）です。特定親族特別控除の欄（㉔）もあります（この計算機では扱いません）。</li>
+    <li>源泉徴収税額（㊾）、予定納税額、住宅ローン控除などの税額控除は計算していません。ある場合は、それを差し引いて納める税金・還付される税金を求めます。</li>
+    <li>確定申告をすれば、住民税の申告は別にしなくてかまいません。第二表の「住民税・事業税に関する事項」が市区町村に伝わります。確定申告をしない人は、市区町村に住民税の申告をします（様式は市区町村ごとで、欄の番号は共通ではありません）。</li>
+    <li>医療費控除（${link("medical")}）・セルフメディケーション税制（${link("selfMedication")}）・生命保険料控除（${link("life")}）の額は、それぞれの式で計算しています。生命保険料控除は、令和8年分の 23 歳未満の扶養親族がいる場合の特例（新生命保険料の上限 6 万円）にも対応しています。</li>
+  </ul>`,
+    examplesTitle: "記入例（所得 500 万円のフリーランス）",
+    examples:
+      `<p>前提: 売上 500 万円・経費 0 円・青色申告特別控除 65 万円・社会保険料 75 万円・iDeCo ${yen(276_000)}・ふるさと納税 5 万円・医療費 15 万円・生命保険料（新契約）8 万円。扶養親族なし。</p>\n  ` +
+      table("第一表（令和8年分・案）", ["欄", "書く金額", "何の金額か"], rowsOf("first")) +
+      "\n  " +
+      table("第二表（令和8年分・案）", ["欄", "書く金額", "何の金額か"], [...rowsOf("second"), ...rowsOf("resident")]) +
+      `\n  <p class="note">㊿は、源泉徴収税額（㊾）がない場合の額です。青色申告特別控除額（${yen(r.baseline.blueDeductionApplied)}）は青色申告決算書の損益計算書に書き、①はそれを引いた後の額です。</p>`,
+    faqs: [
+      {
+        q: "第一表と第二表は、両方出すのですか？",
+        a: `出します。第一表に収入・所得・控除・税額を、第二表にその内訳（保険料の種類、寄附先、家族、住民税に関する事項など）を書きます。令和8年分からは控用（複写）がなくなります（${link("form2026")}）。`,
+      },
+      {
+        q: "令和8年分の確定申告書は、令和7年分と何が違いますか？",
+        a: `国税庁が公開している令和8年分の確定申告書（案）では、控用（複写式）がなくなり、第一表の欄の並びは収入金額等㋐〜、所得金額等①〜⑫、所得控除⑬〜㉚、税金の計算㉛〜です（${link("form2026")}）。このページの欄の番号は、この案で確かめたものです。確定した様式が出たら差し替えます。`,
+      },
+      {
+        q: "ふるさと納税は、どこに書きますか？",
+        a: `第一表の㉙「寄附金」に寄附金控除の額（寄附の合計 − 2,000 円）を、第二表の「寄附金控除に関する事項」に寄附先と金額を書きます。さらに第二表の「住民税・事業税に関する事項」の「都道府県、市区町村への寄附（特例控除対象）」に寄附の合計を書きます。これを書かないと、住民税の特例分が計算されません（${link("furusatoNta")}、${link("furusatoMic")}）。`,
+      },
+      {
+        q: "副業の住民税を、会社の給料から天引きにしない方法は？",
+        a: `第二表の「住民税・事業税に関する事項」の「給与、公的年金等以外の所得に係る住民税の徴収方法」で「自分で納付」を選びます。自治体によっては選べないことがあります。給与所得の分は、引き続き給料から天引きされます。`,
+      },
+      {
+        q: "e-Tax で作るなら、このページは要りませんか？",
+        a: `e-Tax の確定申告書等作成コーナーでは、金額を入れると欄に自動で入ります。このページは、入れる金額の見当を付けたり、できあがった申告書の数字を確かめたりするのに使ってください。`,
+      },
+    ],
+    sources: ["form2026", "tebikiMedical", "tebikiLife", "medical", "selfMedication", "life", "furusatoNta", "furusatoMic", "rate", "basic"],
+  };
 }
 
 const pct = (per100k: number): string => `${per100k / 1_000}%`;
@@ -762,6 +933,8 @@ const KIND_LABEL: Record<PageKind, string> = {
   kyosai: "小規模企業共済の節税額",
   blue: "青色申告特別控除 65万・55万・10万の差",
   "furusato-year": "ふるさと納税の上限（令和7年分と令和8年分の比較）",
+  medical: "医療費控除とセルフメディケーション税制の比較",
+  filing: "確定申告書のどこに書くか（令和8年分）",
 };
 
 export function jsonLd(value: unknown): string {
@@ -803,7 +976,7 @@ function defaultForm(p: PageDef): string {
     ${field("social-insurance", "社会保険料", "国民健康保険・国民年金などの年額", "例: 90万", "90万")}
   </fieldset>
   <fieldset>
-    <legend>${p.kind === "blue" ? "国民健康保険料への影響（任意）" : "掛金・寄附"}</legend>
+    <legend>${esc(p.extraLegend ?? (p.kind === "blue" ? "国民健康保険料への影響（任意）" : "掛金・寄附"))}</legend>
     ${p.extraFields}
   </fieldset>
   <p class="hint">給与収入がある方、配偶者や扶養親族がいる方は、<a id="full" href="../">すべての項目を入れられる計算ページ</a>を使ってください。</p>`;

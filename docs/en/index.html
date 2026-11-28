@@ -66,7 +66,7 @@
   </section>
 
   <details class="panel more" id="more">
-    <summary><span class="summary-title">Make it more accurate</span><span class="summary-sub">Social insurance, blue return, contributions, family. Fill in only what you know</span></summary>
+    <summary><span class="summary-title">Make it more accurate</span><span class="summary-sub">Social insurance, blue return, contributions, medical expenses, life insurance, family. Fill in only what you know</span></summary>
 
     <fieldset>
       <legend>Social insurance premiums</legend>
@@ -127,8 +127,38 @@
         <input name="kyosai-paid" inputmode="numeric" placeholder="e.g. 360,000"></label>
       <label>Furusato nozei already donated<span class="sub">Furusato nozei (ふるさと納税, “hometown tax”) is a donation to a municipality that comes off your taxes. Enter what you have donated so far this year</span>
         <input name="furusato-paid" inputmode="numeric" placeholder="e.g. 30,000"></label>
-      <label>Other deductions, in total<span class="sub">Medical expenses, life insurance premiums and so on. Last year's return or year-end adjustment is a fair guide</span>
-        <input name="other-deductions" inputmode="numeric" placeholder="e.g. 80,000"></label>
+      <label>Other deductions, in total<span class="sub">Earthquake insurance premiums and so on. Enter medical expenses and life insurance premiums in the fields below</span>
+        <input name="other-deductions" inputmode="numeric" placeholder="e.g. 50,000"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Medical expenses and life insurance<span class="sub">Deductions you claim on your tax return. Entered amounts go into the tax, and into “Where each amount goes on your tax return” in the result</span></legend>
+      <details class="nested" id="medical-box">
+        <summary>Medical expenses (medical deduction or self-medication)</summary>
+        <label>Medical expenses paid this year<span class="sub">For you and family members in the same household: hospital and pharmacy receipts, or the medical expense notice from your health insurer</span>
+          <input name="medical" inputmode="numeric" placeholder="e.g. 150,000"></label>
+        <label>Part of it reimbursed<span class="sub">Hospitalization benefits from life insurance, the high-cost medical care benefit, the childbirth lump-sum, and similar. Each payout counts only up to the expense it covers; leave out any excess</span>
+          <input name="medical-reimbursed" inputmode="numeric"></label>
+        <label>Spending on medicines eligible for self-medication<span class="sub">Over-the-counter medicines marked as eligible on the receipt. Only if you had a health check, vaccination or similar this year. If entered, the calculator compares it with the regular medical deduction and uses whichever leaves less tax</span>
+          <input name="self-medication" inputmode="numeric" placeholder="e.g. 30,000"></label>
+      </details>
+      <details class="nested" id="life-box">
+        <summary>Life insurance premiums (life insurance deduction)</summary>
+        <p class="sub">Enter the amounts on the certificates your insurers send (生命保険料控除証明書), by type. “New” means contracts from 2012 on, “old” means contracts up to 2011.</p>
+        <div class="grid2">
+          <label>General life insurance (new)
+            <input name="life-new" inputmode="numeric"></label>
+          <label>General life insurance (old)
+            <input name="life-old" inputmode="numeric"></label>
+          <label>Medical and long-term care insurance
+            <input name="care-medical" inputmode="numeric"></label>
+          <label>Individual pension insurance (new)
+            <input name="pension-new" inputmode="numeric"></label>
+          <label>Individual pension insurance (old)
+            <input name="pension-old" inputmode="numeric"></label>
+        </div>
+        <label class="inline"><input type="checkbox" name="dependent-under23"> <span>I have a dependent under 23 (a child aged 16 to 18, for example)<span class="sub">For 2026 the deduction for new general life insurance goes up to ¥60,000 (with a salary above ¥8.5 million, the income adjustment deduction also applies). Applied automatically when you enter dependents under 16 or aged 19 to 22</span></span></label>
+      </details>
     </fieldset>
 
     <fieldset>
@@ -157,7 +187,7 @@
       <label class="inline only-employee"><input type="checkbox" name="income-adjustment"> <span>I have a dependent under 23 (a child aged 16 to 18, for example) or a family member with a severe disability<span class="sub">Matters only if your salary is above ¥8.5 million (an extra deduction, shotoku kingaku chosei kojo). Applied automatically when you enter dependents under 16 or aged 19 to 22</span></span></label>
     </fieldset>
 
-    <details class="nested">
+    <details class="nested" id="fine-box">
       <summary>Advanced settings</summary>
       <label>iDeCo annual limit<span class="sub">Left empty, it is guessed from how you work: ¥68,000 a month with no salary, or ¥23,000 a month for an employee whose company has no corporate pension. Enter it if your company has a corporate pension or you are a public servant</span>
         <input name="ideco-limit" inputmode="numeric"></label>
@@ -342,6 +372,8 @@
     <li><a href="small-business-mutual-aid-tax-savings/">Small Business Mutual Aid (shokibo kigyo kyosai) tax savings calculator</a></li>
     <li><a href="blue-return-deduction/">Blue return special deduction: ¥650,000 vs ¥550,000 vs ¥100,000 in actual tax</a></li>
     <li><a href="furusato-nozei-limit-2026/">Is your furusato nozei limit lower for 2026? Compare it with 2025</a></li>
+    <li><a href="medical-expense-deduction-self-medication/">Medical expense deduction or the self-medication tax system: which saves you more tax?</a></li>
+    <li><a href="tax-return-form-boxes/">Which box on the Japanese tax return? Your amounts on pages 1 and 2 of the 2026 final return</a></li>
   </ul>
   <p>Each has the formula and its legal basis, tables by income, and common questions.</p>
 </section>
@@ -354,6 +386,7 @@
     <li><strong>Small Business Mutual Aid</strong> (小規模企業共済, shokibo kigyo kyosai): a retirement fund for sole proprietors and small-company directors. Contributions of up to ¥70,000 a month are fully deductible. You get the room left and the tax saved.</li>
     <li><strong>Special deduction for blue returns</strong> (青色申告特別控除): ¥100,000, ¥550,000 or ¥650,000 off business income for people approved to file a “blue return” with proper books. You get the tax at each level and the difference.</li>
   </ul>
+  <p>At filing time, enter medical expenses and life insurance premiums under “Make it more accurate”: the medical expense deduction (or the self-medication tax system, whichever leaves less tax) and the life insurance premium deduction go into the tax. “Where each amount goes on your tax return” in the result maps the figures to the box numbers on pages 1 and 2 of the National Tax Agency's draft final return for tax year 2026 (withheld tax, prepaid tax and tax credits such as the housing loan credit are not included).</p>
   <p>The total under “To do before year-end” is recomputed with everything together, not added up. It includes furusato nozei and, for people who are already members, extra Small Business Mutual Aid contributions. Joining Small Business Mutual Aid and extra iDeCo contributions are included only when you enter an amount yourself, because joining in time needs a visit to a counter, and iDeCo amounts can be changed only once a year.</p>
   <p>You can move each amount and see how the tax changes. If you enter what you can spend before year-end, you get the mix that saves the most tax within it. Furusato nozei goes first because it cuts tax by almost as much as you pay, but it is an exchange for a donation: you do not end up with more cash.</p>
   <h3>Assumptions</h3>

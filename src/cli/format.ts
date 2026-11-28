@@ -76,7 +76,7 @@ function combinedSection(title: string, c: CombinedMeasure): string[] {
 const BLUE_LABEL = { none: "白色申告（控除なし）", "10": "青色 10万円", "55": "青色 55万円", "65": "青色 65万円" } as const;
 
 /** 人が読むための出力を組み立てる。 */
-export function formatResult(r: SetsuzeiResult, version: string): string {
+export function formatResult(r: SetsuzeiResult, version: string, options: { filing?: boolean } = {}): string {
   const b = r.baseline;
   const m = r.measures;
   const out: string[] = [];
@@ -231,6 +231,64 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
     out.push("");
   }
 
+  const med = r.deductionDetails.medical;
+  if (med.applicable) {
+    out.push("  ◆ 医療費控除（通常）とセルフメディケーション税制");
+    const medRows: string[][] = [["", "控除額", "税額の合計"]];
+    if (med.normal.netExpenses > 0) {
+      medRows.push([`通常の医療費控除${med.method === "normal" ? "（こちらで計算）" : ""}`, yen(med.normal.deduction), yen(med.normal.totalTax)]);
+    }
+    if (med.selfMedication.expenses > 0) {
+      medRows.push([
+        `セルフメディケーション税制${med.method === "selfMedication" ? "（こちらで計算）" : ""}`,
+        yen(med.selfMedication.deduction),
+        yen(med.selfMedication.totalTax),
+      ]);
+    }
+    out.push(...table(medRows, "    "));
+    out.push(...table([["医療費控除で減る税額", yen(med.saving.total)]], "    "));
+    out.push(...bullet(med.notes));
+    out.push("");
+  }
+  const life = r.deductionDetails.lifeInsurance;
+  if (life.applicable) {
+    out.push("  ◆ 生命保険料控除");
+    out.push(
+      ...table(
+        [
+          ["", "所得税", "住民税"],
+          ["一般の生命保険料", yen(life.incomeTax.life), yen(life.residentTax.life)],
+          ["介護医療保険料", yen(life.incomeTax.medicalCare), yen(life.residentTax.medicalCare)],
+          ["個人年金保険料", yen(life.incomeTax.pension), yen(life.residentTax.pension)],
+          ["控除額の合計", yen(life.incomeTax.total), yen(life.residentTax.total)],
+          ["生命保険料控除で減る税額", yen(life.saving.total), ""],
+        ],
+        "    ",
+      ),
+    );
+    out.push(...bullet(life.notes));
+    out.push("");
+  }
+
+  if (options.filing) {
+    const g = r.filing;
+    out.push(`■ 確定申告書のどの欄に書くか（${g.form}）`);
+    const sheetName = { first: "第一表", second: "第二表", resident: "第二表 住民税・事業税に関する事項", blue: "青色申告決算書" } as const;
+    for (const sheet of ["first", "second", "resident", "blue"] as const) {
+      const entries = g.entries.filter((e) => e.sheet === sheet);
+      if (entries.length === 0) continue;
+      out.push(`  ◆ ${sheetName[sheet]}`);
+      // 欄の番号・名前と金額の行のすぐ下に、その欄の説明（「区分」に 1 を書く、など）を添える
+      const lines = table(
+        entries.map((e) => [`${e.field ? `${e.field} ` : ""}${e.label}`, e.amount === null ? (e.field === "㊾" ? "（計算していません）" : "（金額ではない）") : yen(e.amount)]),
+        "    ",
+      );
+      entries.forEach((e, i) => out.push(lines[i] ?? "", `        ${e.note}`));
+    }
+    out.push(...g.notes.map((n) => `  ※ ${n}`));
+    out.push("");
+  }
+
   if (r.warnings.length > 0) {
     out.push("■ 注意");
     out.push(...r.warnings.map((w) => `  ・${w}`));
@@ -245,6 +303,7 @@ export function formatResult(r: SetsuzeiResult, version: string): string {
   out.push(`  ${r.disclaimer}`);
   out.push("  計算していないもの: 国民健康保険料の全体額、個人事業税、消費税、住民税の均等割の非課税判定、分離課税の所得、住宅ローン控除など。");
   out.push("  根拠にした一次情報の一覧は `setsuzei --sources` で表示できます。");
+  if (!options.filing) out.push("  確定申告書のどの欄に書くかは `--filing` を付けると表示します。");
   return out.join("\n");
 }
 
